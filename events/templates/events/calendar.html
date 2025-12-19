@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load event_extras %}
+
+{% block content %}
+<h2>{{ month_name }} {{ year }}</h2>
+
+<table>
+    <tr>
+        <th>Пн</th>
+        <th>Вт</th>
+        <th>Ср</th>
+        <th>Чт</th>
+        <th>Пт</th>
+        <th>Сб</th>
+        <th>Вс</th>
+    </tr>
+
+    {% for week in month_days %}
+    <tr>
+        {% for day in week %}
+        <td {% if day.month != month %}style="background:#f0f0f0"{% endif %}>
+            <strong>{{ day.day }}</strong>
+
+            {% for event in events_by_day|get_item:day %}
+                <div class="event">
+                    {{ event.name }}
+                </div>
+            {% endfor %}
+        </td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
