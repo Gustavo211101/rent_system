@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 
 from accounts.permissions import user_can_edit
 from inventory.models import Equipment
@@ -12,12 +13,25 @@ from .models import Event, EventEquipment, EventRentedEquipment
 from .forms import EventForm, EventEquipmentForm, EventRentedEquipmentForm
 
 
+def auto_close_past_events():
+    """
+    Автозакрытие мероприятий:
+    если date_end < текущего момента — переводим в closed.
+    Запускаем в ключевых view (календарь/список/карточка).
+    """
+    now = timezone.now()
+    Event.objects.filter(
+        status__in=[Event.STATUS_DRAFT, Event.STATUS_CONFIRMED, Event.STATUS_IN_RENT],
+        date_end__lt=now
+    ).update(status=Event.STATUS_CLOSED)
+
+
 def _can_modify_event(user, event: Event) -> bool:
     """
-    Можно ли изменять мероприятие и связанные данные (оборудование/аренда).
+    Можно ли изменять мероприятие и связанные данные.
     - superuser: можно всегда
     - остальные: нельзя если закрыто
-    - иначе: по роли (group) через user_can_edit
+    - иначе: по ролям через user_can_edit
     """
     if user.is_superuser:
         return True
@@ -27,10 +41,6 @@ def _can_modify_event(user, event: Event) -> bool:
 
 
 def _event_reserved_other_map(event: Event) -> dict:
-    """
-    Сколько оборудования занято ДРУГИМИ мероприятиями,
-    пересекающимися по датам с event.
-    """
     reserved = (
         EventEquipment.objects
         .filter(event__date_start__lt=event.date_end, event__date_end__gt=event.date_start)
@@ -42,9 +52,6 @@ def _event_reserved_other_map(event: Event) -> dict:
 
 
 def _event_required_map(event: Event) -> dict:
-    """
-    Сколько оборудования требуется НА ЭТО мероприятие (по позициям).
-    """
     required = (
         EventEquipment.objects
         .filter(event=event)
@@ -55,9 +62,6 @@ def _event_required_map(event: Event) -> dict:
 
 
 def _event_rented_map(event: Event) -> dict:
-    """
-    Сколько оборудования добрали в аренду НА ЭТО мероприятие (по позициям).
-    """
     rented = (
         EventRentedEquipment.objects
         .filter(event=event)
@@ -68,11 +72,6 @@ def _event_rented_map(event: Event) -> dict:
 
 
 def _event_shortages(event: Event) -> list:
-    """
-    Список нехваток по каждой позиции с учётом:
-    - занято другими мероприятиями
-    - добавленной аренды на это мероприятие
-    """
     reserved_other = _event_reserved_other_map(event)
     required_map = _event_required_map(event)
     rented_map = _event_rented_map(event)
@@ -112,6 +111,8 @@ def _event_shortages(event: Event) -> list:
 
 @login_required
 def calendar_view(request):
+    auto_close_past_events()
+
     today = date.today()
     year = int(request.GET.get('year', today.year))
     month = int(request.GET.get('month', today.month))
@@ -122,9 +123,9 @@ def calendar_view(request):
     events = Event.objects.filter(date_start__year=year, date_start__month=month)
 
     events_by_day = {}
-    for event in events:
-        day = event.date_start.date()
-        events_by_day.setdefault(day, []).append(event)
+    for ev in events:
+        day = ev.date_start.date()
+        events_by_day.setdefault(day, []).append(ev)
 
     return render(request, 'events/calendar.html', {
         'year': year,
@@ -138,6 +139,8 @@ def calendar_view(request):
 
 @login_required
 def event_list_view(request):
+    auto_close_past_events()
+
     events = Event.objects.order_by('-date_start')
     return render(request, 'events/event_list.html', {
         'events': events,
@@ -147,6 +150,8 @@ def event_list_view(request):
 
 @login_required
 def event_detail_view(request, event_id):
+    auto_close_past_events()
+
     event = get_object_or_404(Event, id=event_id)
 
     equipment_items = (
@@ -224,6 +229,23 @@ def event_update_view(request, event_id):
 
 
 @login_required
+def event_set_status_view(request, event_id, status):
+    event = get_object_or_404(Event, id=event_id)
+
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя менять статус этого мероприятия')
+
+    allowed_statuses = {s[0] for s in Event.STATUS_CHOICES}
+    if status not in allowed_statuses:
+        return redirect('event_detail', event_id=event.id)
+
+    event.status = status
+    event.save(update_fields=['status'])
+
+    return redirect('event_detail', event_id=event.id)
+
+
+@login_required
 def event_equipment_add_view(request, event_id):
     event = get_object_or_404(Event, id=event_id)
     if not _can_modify_event(request.user, event):
@@ -235,7 +257,6 @@ def event_equipment_add_view(request, event_id):
             eq = form.cleaned_data['equipment']
             qty = int(form.cleaned_data.get('quantity') or 0)
 
-            # qty=0 -> ничего не делаем
             if qty <= 0:
                 return redirect('event_detail', event_id=event.id)
 
@@ -287,7 +308,6 @@ def event_equipment_update_qty_view(request, event_id, item_id):
     except ValueError:
         return redirect('event_detail', event_id=event.id)
 
-    # 0 -> удаление позиции
     if qty <= 0:
         item.delete()
         if not EventEquipment.objects.filter(event=event).exists():
@@ -400,6 +420,7 @@ def event_rented_update_qty_view(request, event_id, item_id):
 
     item.quantity = qty
     item.save()
+
     return redirect('event_detail', event_id=event.id)
 
 
@@ -413,5 +434,21 @@ def event_rented_delete_view(request, event_id, item_id):
 
     if request.method == 'POST':
         item.delete()
+
+    return redirect('event_detail', event_id=event.id)
+
+@login_required
+def event_set_status_view(request, event_id, status):
+    event = get_object_or_404(Event, id=event_id)
+
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя менять статус этого мероприятия')
+
+    allowed_statuses = {s[0] for s in Event.STATUS_CHOICES}
+    if status not in allowed_statuses:
+        return redirect('event_detail', event_id=event.id)
+
+    event.status = status
+    event.save(update_fields=['status'])
 
     return redirect('event_detail', event_id=event.id)

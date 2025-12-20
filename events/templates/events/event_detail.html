@@ -11,6 +11,29 @@
         {{ event.date_start|date:"d.m.Y H:i" }} – {{ event.date_end|date:"d.m.Y H:i" }}
     {% endif %}
 </p>
+<p>
+    <strong>Статус:</strong>
+    <span class="event-badge status-{{ event.status }}">
+        {{ event.get_status_display }}
+    </span>
+</p>
+
+{% if can_modify %}
+<div class="toolbar">
+    {% if event.status != 'draft' %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'draft' %}">В черновик</a>
+    {% endif %}
+    {% if event.status != 'confirmed' %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'confirmed' %}">Подтвердить</a>
+    {% endif %}
+    {% if event.status != 'in_rent' %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'in_rent' %}">В работе</a>
+    {% endif %}
+    {% if event.status != 'closed' %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'closed' %}">Закрыть</a>
+    {% endif %}
+</div>
+{% endif %}
 
 <p><strong>Клиент:</strong> {{ event.client }}</p>
 <p><strong>Локация:</strong> {{ event.location }}</p>

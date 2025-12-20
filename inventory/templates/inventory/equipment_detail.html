@@ -4,56 +4,16 @@
 <h1>{{ equipment.name }}</h1>
 
 <p><strong>Категория:</strong> {{ equipment.category.name }}</p>
-<p><strong>Серийный номер:</strong> {{ equipment.serial_number|default:"—" }}</p>
+<p><strong>Серийник:</strong> {{ equipment.serial_number|default:"—" }}</p>
 <p><strong>Всего:</strong> {{ equipment.quantity_total }}</p>
-<p><strong>Статус:</strong> {{ equipment.get_status_display }}</p>
 <p><strong>Локация:</strong> {{ equipment.location|default:"—" }}</p>
+<p><strong>Статус:</strong> {{ equipment.get_status_display }}</p>
 
 {% if equipment.notes %}
-<p><strong>Заметки:</strong> {{ equipment.notes }}</p>
+<p><strong>Примечания:</strong><br>{{ equipment.notes }}</p>
 {% endif %}
 
-{% if can_edit %}
-    <div class="toolbar">
-        <a class="btn-secondary" href="{% url 'equipment_edit' equipment.id %}">✏️ Редактировать</a>
-    </div>
-{% endif %}
-
-<hr>
-
-<h2>Бронирования</h2>
-
-{% if bookings %}
-    <table class="list-table">
-        <thead>
-            <tr>
-                <th>Мероприятие</th>
-                <th style="width: 220px;">Период</th>
-                <th style="width: 120px;">Кол-во</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for b in bookings %}
-            <tr>
-                <td>
-                    <a href="{% url 'event_detail' b.event.id %}">
-                        {{ b.event.name }}
-                    </a>
-                </td>
-                <td>
-                    {% if b.event.all_day %}
-                        {{ b.event.date_start|date:"d.m.Y" }}
-                    {% else %}
-                        {{ b.event.date_start|date:"d.m.Y H:i" }} – {{ b.event.date_end|date:"d.m.Y H:i" }}
-                    {% endif %}
-                </td>
-                <td>{{ b.quantity }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>Эта позиция пока не использовалась в мероприятиях.</p>
-{% endif %}
-
+<p style="margin-top:16px;">
+    <a class="btn" href="{% url 'equipment_list' %}">← Назад</a>
+</p>
 {% endblock %}

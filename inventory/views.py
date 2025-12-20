@@ -1,101 +1,121 @@
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
-from django.shortcuts import render, redirect, get_object_or_404
+from datetime import datetime
 
-from accounts.permissions import user_can_edit
-from .models import EquipmentCategory, Equipment
-from .forms import EquipmentForm
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+from django.shortcuts import render, get_object_or_404
+from django.utils import timezone
 
 from events.models import EventEquipment
+from .models import Equipment, EquipmentCategory
+
+
+def _parse_dt(value: str):
+    """
+    Парсим datetime-local из формы: 'YYYY-MM-DDTHH:MM'
+    Возвращаем aware datetime (если USE_TZ=True), иначе naive.
+    """
+    if not value:
+        return None
+
+    dt = datetime.fromisoformat(value)
+    if timezone.is_naive(dt):
+        try:
+            dt = timezone.make_aware(dt, timezone.get_current_timezone())
+        except Exception:
+            pass
+    return dt
+
+
+def _reserved_map(start_dt, end_dt):
+    """
+    Сколько занято на период start_dt..end_dt по каждому equipment_id.
+    """
+    reserved = (
+        EventEquipment.objects
+        .filter(event__date_start__lt=end_dt, event__date_end__gt=start_dt)
+        .values('equipment_id')
+        .annotate(total=Sum('quantity'))
+    )
+    return {row['equipment_id']: (row['total'] or 0) for row in reserved}
 
 
 @login_required
-def equipment_list_view(request):
-    mode = request.GET.get('mode', 'categories')  # 'categories' | 'all'
-    can_edit = user_can_edit(request.user)
+def equipment_list_all_view(request):
+    """
+    Полный список оборудования.
+    Если передан период (start/end) — считаем свободно на период.
+    """
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+
+    start_dt = _parse_dt(start)
+    end_dt = _parse_dt(end)
+
+    equipments = Equipment.objects.select_related('category').order_by('category__name', 'name')
+
+    availability = {}
+    if start_dt and end_dt:
+        reserved = _reserved_map(start_dt, end_dt)
+        for eq in equipments:
+            used = int(reserved.get(eq.id, 0) or 0)
+            free = eq.quantity_total - used
+            if free < 0:
+                free = 0
+            availability[eq.id] = free
+
+    return render(request, 'inventory/equipment_list_all.html', {
+        'equipments': equipments,
+        'start': start,
+        'end': end,
+        'availability': availability,
+    })
+
+
+@login_required
+def equipment_list_categories_view(request):
+    """
+    Просмотр по категориям.
+    Возвращаем:
+    - categories: список категорий
+    - by_category: {category_id: [Equipment, ...]}
+    - availability: {equipment_id: free_on_period}
+    """
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+
+    start_dt = _parse_dt(start)
+    end_dt = _parse_dt(end)
 
     categories = EquipmentCategory.objects.all().order_by('name')
+    equipments = Equipment.objects.select_related('category').order_by('category__name', 'name')
 
-    if mode == 'all':
-        items = Equipment.objects.select_related('category').order_by('category__name', 'name')
-        return render(request, 'inventory/equipment_list_all.html', {
-            'mode': mode,
-            'can_edit': can_edit,
-            'categories': categories,
-            'items': items,
-        })
+    availability = {}
+    if start_dt and end_dt:
+        reserved = _reserved_map(start_dt, end_dt)
+        for eq in equipments:
+            used = int(reserved.get(eq.id, 0) or 0)
+            free = eq.quantity_total - used
+            if free < 0:
+                free = 0
+            availability[eq.id] = free
 
-    category_id = request.GET.get('category')
-    selected_category = None
-    items = Equipment.objects.none()
-
-    if category_id:
-        selected_category = get_object_or_404(EquipmentCategory, id=category_id)
-        items = Equipment.objects.filter(category=selected_category).order_by('name')
+    by_category = {}
+    for eq in equipments:
+        by_category.setdefault(eq.category_id, []).append(eq)
 
     return render(request, 'inventory/equipment_list_categories.html', {
-        'mode': mode,
-        'can_edit': can_edit,
         'categories': categories,
-        'selected_category': selected_category,
-        'items': items,
+        'by_category': by_category,
+        'start': start,
+        'end': end,
+        'availability': availability,
     })
 
 
 @login_required
 def equipment_detail_view(request, equipment_id):
-    can_edit = user_can_edit(request.user)
     equipment = get_object_or_404(Equipment.objects.select_related('category'), id=equipment_id)
 
-    bookings = (
-        EventEquipment.objects
-        .filter(equipment=equipment)
-        .select_related('event')
-        .order_by('-event__date_start')
-    )
-
     return render(request, 'inventory/equipment_detail.html', {
-        'can_edit': can_edit,
         'equipment': equipment,
-        'bookings': bookings,
-    })
-
-
-@login_required
-def equipment_create_view(request):
-    if not user_can_edit(request.user):
-        return HttpResponseForbidden('Недостаточно прав')
-
-    if request.method == 'POST':
-        form = EquipmentForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            return redirect('equipment_detail', equipment_id=obj.id)
-    else:
-        form = EquipmentForm()
-
-    return render(request, 'inventory/equipment_form.html', {
-        'title': 'Добавить оборудование',
-        'form': form,
-    })
-
-
-@login_required
-def equipment_update_view(request, equipment_id):
-    if not user_can_edit(request.user):
-        return HttpResponseForbidden('Недостаточно прав')
-
-    equipment = get_object_or_404(Equipment, id=equipment_id)
-
-    if request.method == 'POST':
-        form = EquipmentForm(request.POST, instance=equipment)
-        if form.is_valid():
-            obj = form.save()
-            return redirect('equipment_detail', equipment_id=obj.id)
-    else:
-        form = EquipmentForm(instance=equipment)
-
-    return render(request, 'inventory/equipment_form.html', {
-        'title': 'Редактировать оборудование',
-        'form': form,
     })
