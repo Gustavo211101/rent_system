@@ -2,9 +2,14 @@
 {% load event_extras %}
 
 {% block content %}
-<h2>{{ month_name }} {{ year }}</h2>
+<div class="toolbar">
+    <h2 style="margin:0;">{{ month_name }} {{ year }}</h2>
+    {% if can_edit %}
+        <a class="btn" href="{% url 'event_create' %}">➕ Создать мероприятие</a>
+    {% endif %}
+</div>
 
-<table>
+<table class="calendar">
     <tr>
         <th>Пн</th>
         <th>Вт</th>
@@ -18,12 +23,14 @@
     {% for week in month_days %}
     <tr>
         {% for day in week %}
-        <td {% if day.month != month %}style="background:#f0f0f0"{% endif %}>
-            <strong>{{ day.day }}</strong>
+        <td class="{% if day.month != month %}other-month{% endif %}">
+            <div class="day-number">{{ day.day }}</div>
 
             {% for event in events_by_day|get_item:day %}
                 <div class="event">
-                    {{ event.name }}
+                    <a href="{% url 'event_detail' event.id %}">
+                        {{ event.name }}
+                    </a>
                 </div>
             {% endfor %}
         </td>

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Оборудование — весь список</h1>
+
+<div class="toolbar">
+    <a class="btn-secondary" href="{% url 'equipment_list' %}?mode=categories">Категории</a>
+    <a class="btn-secondary" href="{% url 'equipment_list' %}?mode=all">Весь список</a>
+
+    {% if can_edit %}
+        <a class="btn" style="margin-left:12px;" href="{% url 'equipment_create' %}">➕ Добавить</a>
+    {% endif %}
+</div>
+
+<table class="list-table">
+    <thead>
+        <tr>
+            <th>Категория</th>
+            <th>Название</th>
+            <th style="width:160px;">Кол-во</th>
+            <th style="width:140px;">Статус</th>
+            {% if can_edit %}
+                <th style="width:160px;">Действия</th>
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.category.name }}</td>
+            <td>
+                <a href="{% url 'equipment_detail' item.id %}">{{ item.name }}</a>
+            </td>
+            <td>{{ item.quantity_total }}</td>
+            <td>{{ item.get_status_display }}</td>
+            {% if can_edit %}
+            <td>
+                <a class="btn-secondary" href="{% url 'equipment_edit' item.id %}">Редактировать</a>
+            </td>
+            {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">Оборудования пока нет</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

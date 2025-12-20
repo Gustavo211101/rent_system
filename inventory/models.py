@@ -22,21 +22,10 @@ class Equipment(models.Model):
         on_delete=models.PROTECT,
         related_name='equipment'
     )
-    serial_number = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True
-    )
+    serial_number = models.CharField(max_length=100, blank=True, null=True)
     quantity_total = models.PositiveIntegerField()
-    location = models.CharField(
-        max_length=200,
-        blank=True
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='available'
-    )
+    location = models.CharField(max_length=200, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
     notes = models.TextField(blank=True)
 
     def __str__(self):
@@ -45,10 +34,7 @@ class Equipment(models.Model):
     def reserved_quantity(self, start, end):
         return (
             self.event_items
-            .filter(
-                event__date_start__lt=end,
-                event__date_end__gt=start
-            )
+            .filter(event__date_start__lt=end, event__date_end__gt=start)
             .aggregate(total=Sum('quantity'))['total']
             or 0
         )

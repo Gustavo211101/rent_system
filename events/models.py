@@ -9,17 +9,23 @@ User = settings.AUTH_USER_MODEL
 
 class Event(models.Model):
     name = models.CharField(max_length=200)
+
+    all_day = models.BooleanField(
+        default=False,
+        verbose_name='Весь день'
+    )
+
+    # Если True — мы считаем, что оборудование ещё не подобрано
+    equipment_tbd = models.BooleanField(
+        default=True,
+        verbose_name='Оборудование выберу позже'
+    )
+
     date_start = models.DateTimeField()
     date_end = models.DateTimeField()
 
-    client = models.CharField(
-        max_length=200,
-        blank=True
-    )
-    location = models.CharField(
-        max_length=200,
-        blank=True
-    )
+    client = models.CharField(max_length=200, blank=True)
+    location = models.CharField(max_length=200, blank=True)
 
     responsible = models.ForeignKey(
         User,
@@ -29,6 +35,14 @@ class Event(models.Model):
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        if self.all_day and self.date_start and self.date_end:
+            self.date_start = self.date_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            self.date_end = self.date_end.replace(hour=23, minute=59, second=59, microsecond=0)
+
+        if self.date_start and self.date_end and self.date_end <= self.date_start:
+            raise ValidationError('Дата окончания должна быть позже даты начала')
 
     def __str__(self):
         return f"{self.name} ({self.date_start:%d.%m.%Y})"

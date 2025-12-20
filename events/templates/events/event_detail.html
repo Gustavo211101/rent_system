@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ event.name }}</h1>
+
+<p>
+    <strong>Дата:</strong>
+    {% if event.all_day %}
+        {{ event.date_start|date:"d.m.Y" }} (весь день)
+    {% else %}
+        {{ event.date_start|date:"d.m.Y H:i" }} – {{ event.date_end|date:"d.m.Y H:i" }}
+    {% endif %}
+</p>
+
+<p><strong>Клиент:</strong> {{ event.client }}</p>
+<p><strong>Локация:</strong> {{ event.location }}</p>
+<p><strong>Ответственный:</strong> {{ event.responsible }}</p>
+
+<hr>
+
+{% if can_edit %}
+    <a class="btn-secondary" href="{% url 'event_edit' event.id %}">✏️ Редактировать</a>
+{% endif %}
+
+<hr>
+
+<h2>Оборудование</h2>
+
+{% if event.equipment_tbd %}
+    <p><em>Оборудование ещё не выбрано (отмечено “выберу позже”).</em></p>
+{% endif %}
+
+{% if equipment_items %}
+    <table class="list-table">
+        <thead>
+            <tr>
+                <th>Позиция</th>
+                <th style="width:120px;">Кол-во</th>
+                {% if can_edit %}
+                    <th style="width:140px;">Действия</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in equipment_items %}
+            <tr>
+                <td>{{ item.equipment.name }}</td>
+                <td>{{ item.quantity }}</td>
+                {% if can_edit %}
+                <td>
+                    <form method="post" action="{% url 'event_equipment_delete' event.id item.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-secondary">Удалить</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Пока ничего не добавлено.</p>
+{% endif %}
+
+{% if can_edit %}
+    <div class="toolbar">
+        <a class="btn" href="{% url 'event_equipment_add' event.id %}">➕ Добавить оборудование</a>
+
+        <form method="post" action="{% url 'event_equipment_tbd' event.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-secondary">Отметить “выберу позже”</button>
+        </form>
+    </div>
+{% endif %}
+
+{% endblock %}

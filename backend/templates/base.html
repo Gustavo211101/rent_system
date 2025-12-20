@@ -1,53 +1,33 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <title>Прокат</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-        }
-        header {
-            background: #222;
-            padding: 10px 20px;
-        }
-        header a {
-            color: white;
-            margin-right: 15px;
-            text-decoration: none;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            vertical-align: top;
-            height: 100px;
-        }
-        th {
-            background: #f5f5f5;
-        }
-        .event {
-            background: #e3f2fd;
-            margin-bottom: 4px;
-            padding: 3px;
-            font-size: 13px;
-        }
-    </style>
+
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/calendar.css' %}">
 </head>
 <body>
 
 <header>
-    <a href="{% url 'calendar' %}">📅 Календарь</a>
-    <a href="{% url 'event_list' %}">📋 Мероприятия</a>
-    <a href="/admin/">⚙️ Админка</a>
-    <span style="color:#aaa;">{{ request.user.username }}</span>
+    <nav>
+        <a href="{% url 'calendar' %}">📅 Календарь</a>
+        <a href="{% url 'event_list' %}">📋 Мероприятия</a>
+        <a href="{% url 'equipment_list' %}">🧰 Оборудование</a>
+
+        {% if user.is_superuser %}
+            <a href="/admin/">⚙️ Админка</a>
+        {% endif %}
+
+        <span style="margin-left:auto; color:#64748b;">
+            {{ user.username }}
+        </span>
+        <a href="{% url 'logout' %}">Выйти</a>
+    </nav>
 </header>
 
-<main style="padding: 20px;">
+<main>
     {% block content %}{% endblock %}
 </main>
 

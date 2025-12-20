@@ -1,19 +1,32 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+
 from .models import User
 
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
-    model = User
+class CustomUserAdmin(DjangoUserAdmin):
+    """
+    Роли = Django Groups.
+    Показываем группы пользователя в списке как "Роли".
+    """
 
-    fieldsets = UserAdmin.fieldsets + (
-        ('Роль в системе', {'fields': ('role',)}),
+    list_display = (
+        'username',
+        'email',
+        'roles',
+        'is_staff',
+        'is_active',
+        'is_superuser',
     )
+    list_filter = ('is_staff', 'is_active', 'is_superuser', 'groups')
+    search_fields = ('username', 'email', 'first_name', 'last_name')
+    filter_horizontal = ('groups', 'user_permissions')
 
-    add_fieldsets = UserAdmin.add_fieldsets + (
-        ('Роль в системе', {'fields': ('role',)}),
-    )
+    def roles(self, obj):
+        group_names = list(obj.groups.all().values_list('name', flat=True))
+        if not group_names:
+            return '—'
+        return ', '.join(group_names)
 
-    list_display = ('username', 'email', 'role', 'is_staff', 'is_active')
-    list_filter = ('role', 'is_staff', 'is_active')
+    roles.short_description = 'Роли'

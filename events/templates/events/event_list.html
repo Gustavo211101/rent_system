@@ -3,31 +3,53 @@
 {% block content %}
 <h1>Мероприятия</h1>
 
-<a href="#" class="btn">➕ Создать мероприятие</a>
+{% if can_edit %}
+<div class="toolbar">
+    <a class="btn" href="{% url 'event_create' %}">➕ Создать мероприятие</a>
+</div>
+{% endif %}
 
-<table>
+<table class="list-table">
     <thead>
         <tr>
             <th>Название</th>
-            <th>Дата</th>
+            <th>Период</th>
             <th>Клиент</th>
             <th>Локация</th>
+            <th style="width: 220px;">Действия</th>
         </tr>
     </thead>
     <tbody>
         {% for event in events %}
         <tr>
-            <td>{{ event.name }}</td>
             <td>
-                {{ event.date_start|date:"d.m.Y H:i" }} –
-                {{ event.date_end|date:"d.m.Y H:i" }}
+                <a href="{% url 'event_detail' event.id %}">{{ event.name }}</a>
+                {% if event.all_day %}
+                    <span class="badge">весь день</span>
+                {% endif %}
+                {% if event.equipment_tbd %}
+                    <span class="badge">оборудование позже</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if event.all_day %}
+                    {{ event.date_start|date:"d.m.Y" }}
+                {% else %}
+                    {{ event.date_start|date:"d.m.Y H:i" }} – {{ event.date_end|date:"d.m.Y H:i" }}
+                {% endif %}
             </td>
             <td>{{ event.client }}</td>
             <td>{{ event.location }}</td>
+            <td>
+                <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Открыть</a>
+                {% if can_edit %}
+                    <a class="btn-secondary" href="{% url 'event_edit' event.id %}">Редактировать</a>
+                {% endif %}
+            </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="4">Мероприятий нет</td>
+            <td colspan="5">Мероприятий пока нет</td>
         </tr>
         {% endfor %}
     </tbody>
