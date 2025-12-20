@@ -35,3 +35,9 @@ def calendar_view(request):
     }
 
     return render(request, 'events/calendar.html', context)
+
+def event_list_view(request):
+    events = Event.objects.order_by('-date_start')
+    return render(request, 'events/event_list.html', {
+        'events': events
+    })

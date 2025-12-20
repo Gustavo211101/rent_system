@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Мероприятия</h1>
+
+<a href="#" class="btn">➕ Создать мероприятие</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Название</th>
+            <th>Дата</th>
+            <th>Клиент</th>
+            <th>Локация</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in events %}
+        <tr>
+            <td>{{ event.name }}</td>
+            <td>
+                {{ event.date_start|date:"d.m.Y H:i" }} –
+                {{ event.date_end|date:"d.m.Y H:i" }}
+            </td>
+            <td>{{ event.client }}</td>
+            <td>{{ event.location }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">Мероприятий нет</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

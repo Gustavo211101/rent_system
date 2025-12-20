@@ -41,7 +41,8 @@
 <body>
 
 <header>
-<a href="{% url 'calendar' %}">📅 Календарь</a>
+    <a href="{% url 'calendar' %}">📅 Календарь</a>
+    <a href="{% url 'event_list' %}">📋 Мероприятия</a>
     <a href="/admin/">⚙️ Админка</a>
     <span style="color:#aaa;">{{ request.user.username }}</span>
 </header>
