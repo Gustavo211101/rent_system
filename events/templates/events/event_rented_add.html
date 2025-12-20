@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Добавить оборудование</h1>
+<h1>Взято в аренду</h1>
 <p><strong>Мероприятие:</strong> <a href="{% url 'event_detail' event.id %}">{{ event.name }}</a></p>
 
 {% if shortages %}
     <div style="padding:12px; border:1px solid #f59e0b; background:#fffbeb; border-radius:12px; margin-bottom:16px;">
-        <strong>⚠️ Сейчас не хватает оборудования (можно добавить, но будет дефицит):</strong>
+        <strong>⚠️ Нехватка, которую можно покрыть арендой:</strong>
         <ul style="margin:8px 0 0 18px;">
             {% for s in shortages %}
                 <li>
@@ -14,24 +14,25 @@
                 </li>
             {% endfor %}
         </ul>
-        <p style="margin-top:10px;">
-            Можно покрыть дефицит через <a href="{% url 'event_rented_add' event.id %}">“взято в аренду”</a>.
-        </p>
+    </div>
+{% else %}
+    <div style="padding:12px; border:1px solid #10b981; background:#ecfdf5; border-radius:12px; margin-bottom:16px;">
+        <strong>✅ Нехватки нет.</strong>
     </div>
 {% endif %}
 
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit" class="btn">Добавить</button>
+    <button type="submit" class="btn">Добавить аренду</button>
     <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Назад</a>
 </form>
 
 <hr>
 
-<h2>Уже добавлено</h2>
+<h2>Уже добавлено (аренда)</h2>
 
-{% if equipment_items %}
+{% if rented_items %}
     <table class="list-table">
         <thead>
             <tr>
@@ -41,12 +42,12 @@
             </tr>
         </thead>
         <tbody>
-            {% for item in equipment_items %}
+            {% for item in rented_items %}
             <tr>
                 <td>{{ item.equipment.name }}</td>
                 <td>{{ item.quantity }}</td>
                 <td>
-                    <form method="post" action="{% url 'event_equipment_delete' event.id item.id %}">
+                    <form method="post" action="{% url 'event_rented_delete' event.id item.id %}">
                         {% csrf_token %}
                         <button type="submit" class="btn-secondary">Удалить</button>
                     </form>
@@ -56,7 +57,7 @@
         </tbody>
     </table>
 {% else %}
-    <p>Пока ничего не добавлено.</p>
+    <p>Пока ничего не арендовано.</p>
 {% endif %}
 
 {% endblock %}

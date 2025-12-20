@@ -8,14 +8,29 @@ User = settings.AUTH_USER_MODEL
 
 
 class Event(models.Model):
-    name = models.CharField(max_length=200)
+    STATUS_DRAFT = 'draft'
+    STATUS_CONFIRMED = 'confirmed'
+    STATUS_IN_RENT = 'in_rent'
+    STATUS_CLOSED = 'closed'
 
-    all_day = models.BooleanField(
-        default=False,
-        verbose_name='Весь день'
+    STATUS_CHOICES = (
+        (STATUS_DRAFT, 'Черновик'),
+        (STATUS_CONFIRMED, 'Подтверждено'),
+        (STATUS_IN_RENT, 'В работе'),
+        (STATUS_CLOSED, 'Закрыто'),
     )
 
-    # Если True — мы считаем, что оборудование ещё не подобрано
+    name = models.CharField(max_length=200)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+        verbose_name='Статус'
+    )
+
+    all_day = models.BooleanField(default=False, verbose_name='Весь день')
+
     equipment_tbd = models.BooleanField(
         default=True,
         verbose_name='Оборудование выберу позже'
@@ -44,6 +59,10 @@ class Event(models.Model):
         if self.date_start and self.date_end and self.date_end <= self.date_start:
             raise ValidationError('Дата окончания должна быть позже даты начала')
 
+    @property
+    def is_closed(self):
+        return self.status == self.STATUS_CLOSED
+
     def __str__(self):
         return f"{self.name} ({self.date_start:%d.%m.%Y})"
 
@@ -68,19 +87,44 @@ class EventEquipment(models.Model):
         return f"{self.equipment.name} × {self.quantity}"
 
     def clean(self):
-        available = self.equipment.available_quantity(
-            self.event.date_start,
-            self.event.date_end
-        )
+        if not self.event_id:
+            raise ValidationError("Не задано мероприятие")
+        if not self.equipment_id:
+            raise ValidationError("Не задано оборудование")
+        if self.quantity <= 0:
+            raise ValidationError("Количество должно быть больше 0")
 
-        if self.pk:
-            old_quantity = EventEquipment.objects.get(pk=self.pk).quantity
-            available += old_quantity
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
-        if self.quantity > available:
-            raise ValidationError(
-                f"Недостаточно оборудования. Доступно: {available}"
-            )
+
+class EventRentedEquipment(models.Model):
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name='rented_equipment_items'
+    )
+    equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.PROTECT,
+        related_name='rented_event_items'
+    )
+    quantity = models.PositiveIntegerField()
+
+    class Meta:
+        unique_together = ('event', 'equipment')
+
+    def __str__(self):
+        return f"АРЕНДА: {self.equipment.name} × {self.quantity}"
+
+    def clean(self):
+        if not self.event_id:
+            raise ValidationError("Не задано мероприятие")
+        if not self.equipment_id:
+            raise ValidationError("Не задано оборудование")
+        if self.quantity <= 0:
+            raise ValidationError("Количество должно быть больше 0")
 
     def save(self, *args, **kwargs):
         self.full_clean()

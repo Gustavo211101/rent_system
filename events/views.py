@@ -2,12 +2,112 @@ from datetime import date
 import calendar
 
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 
 from accounts.permissions import user_can_edit
-from .models import Event, EventEquipment
-from .forms import EventForm, EventEquipmentForm
+from inventory.models import Equipment
+from .models import Event, EventEquipment, EventRentedEquipment
+from .forms import EventForm, EventEquipmentForm, EventRentedEquipmentForm
+
+
+def _can_modify_event(user, event: Event) -> bool:
+    """
+    Можно ли изменять мероприятие и связанные данные (оборудование/аренда).
+    - superuser: можно всегда
+    - остальные: нельзя если закрыто
+    - иначе: по роли (group) через user_can_edit
+    """
+    if user.is_superuser:
+        return True
+    if getattr(event, 'is_closed', False):
+        return False
+    return user_can_edit(user)
+
+
+def _event_reserved_other_map(event: Event) -> dict:
+    """
+    Сколько оборудования занято ДРУГИМИ мероприятиями,
+    пересекающимися по датам с event.
+    """
+    reserved = (
+        EventEquipment.objects
+        .filter(event__date_start__lt=event.date_end, event__date_end__gt=event.date_start)
+        .exclude(event=event)
+        .values('equipment_id')
+        .annotate(total=Sum('quantity'))
+    )
+    return {row['equipment_id']: (row['total'] or 0) for row in reserved}
+
+
+def _event_required_map(event: Event) -> dict:
+    """
+    Сколько оборудования требуется НА ЭТО мероприятие (по позициям).
+    """
+    required = (
+        EventEquipment.objects
+        .filter(event=event)
+        .values('equipment_id')
+        .annotate(total=Sum('quantity'))
+    )
+    return {row['equipment_id']: (row['total'] or 0) for row in required}
+
+
+def _event_rented_map(event: Event) -> dict:
+    """
+    Сколько оборудования добрали в аренду НА ЭТО мероприятие (по позициям).
+    """
+    rented = (
+        EventRentedEquipment.objects
+        .filter(event=event)
+        .values('equipment_id')
+        .annotate(total=Sum('quantity'))
+    )
+    return {row['equipment_id']: (row['total'] or 0) for row in rented}
+
+
+def _event_shortages(event: Event) -> list:
+    """
+    Список нехваток по каждой позиции с учётом:
+    - занято другими мероприятиями
+    - добавленной аренды на это мероприятие
+    """
+    reserved_other = _event_reserved_other_map(event)
+    required_map = _event_required_map(event)
+    rented_map = _event_rented_map(event)
+
+    if not required_map:
+        return []
+
+    equipment_objs = Equipment.objects.filter(id__in=required_map.keys())
+    result = []
+
+    for eq in equipment_objs:
+        required = int(required_map.get(eq.id, 0) or 0)
+        rented = int(rented_map.get(eq.id, 0) or 0)
+
+        used_other = int(reserved_other.get(eq.id, 0) or 0)
+        available_own = eq.quantity_total - used_other
+        if available_own < 0:
+            available_own = 0
+
+        effective = available_own + rented
+        shortage = required - effective
+        if shortage < 0:
+            shortage = 0
+
+        if shortage > 0:
+            result.append({
+                'equipment': eq,
+                'required': required,
+                'available_own': available_own,
+                'rented': rented,
+                'shortage': shortage,
+            })
+
+    result.sort(key=lambda x: x['shortage'], reverse=True)
+    return result
 
 
 @login_required
@@ -19,26 +119,21 @@ def calendar_view(request):
     cal = calendar.Calendar(firstweekday=0)
     month_days = cal.monthdatescalendar(year, month)
 
-    events = Event.objects.filter(
-        date_start__year=year,
-        date_start__month=month
-    )
+    events = Event.objects.filter(date_start__year=year, date_start__month=month)
 
     events_by_day = {}
     for event in events:
         day = event.date_start.date()
         events_by_day.setdefault(day, []).append(event)
 
-    context = {
+    return render(request, 'events/calendar.html', {
         'year': year,
         'month': month,
         'month_name': calendar.month_name[month],
         'month_days': month_days,
         'events_by_day': events_by_day,
         'can_edit': user_can_edit(request.user),
-    }
-
-    return render(request, 'events/calendar.html', context)
+    })
 
 
 @login_required
@@ -53,12 +148,32 @@ def event_list_view(request):
 @login_required
 def event_detail_view(request, event_id):
     event = get_object_or_404(Event, id=event_id)
-    equipment_items = EventEquipment.objects.filter(event=event).select_related('equipment')
+
+    equipment_items = (
+        EventEquipment.objects
+        .filter(event=event)
+        .select_related('equipment')
+        .order_by('equipment__name')
+    )
+    rented_items = (
+        EventRentedEquipment.objects
+        .filter(event=event)
+        .select_related('equipment')
+        .order_by('equipment__name')
+    )
+
+    shortages = _event_shortages(event)
+
+    can_edit = user_can_edit(request.user)
+    can_modify = _can_modify_event(request.user, event)
 
     return render(request, 'events/event_detail.html', {
         'event': event,
         'equipment_items': equipment_items,
-        'can_edit': user_can_edit(request.user),
+        'rented_items': rented_items,
+        'shortages': shortages,
+        'can_edit': can_edit,
+        'can_modify': can_modify,
     })
 
 
@@ -90,10 +205,9 @@ def event_create_view(request):
 
 @login_required
 def event_update_view(request, event_id):
-    if not user_can_edit(request.user):
-        return HttpResponseForbidden('Недостаточно прав')
-
     event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя редактировать это мероприятие')
 
     if request.method == 'POST':
         form = EventForm(request.POST, instance=event)
@@ -111,17 +225,26 @@ def event_update_view(request, event_id):
 
 @login_required
 def event_equipment_add_view(request, event_id):
-    if not user_can_edit(request.user):
-        return HttpResponseForbidden('Недостаточно прав')
-
     event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя изменять оборудование у закрытого мероприятия')
 
     if request.method == 'POST':
         form = EventEquipmentForm(request.POST, event=event)
         if form.is_valid():
-            item = form.save(commit=False)
-            item.event = event
-            item.save()
+            eq = form.cleaned_data['equipment']
+            qty = int(form.cleaned_data.get('quantity') or 0)
+
+            # qty=0 -> ничего не делаем
+            if qty <= 0:
+                return redirect('event_detail', event_id=event.id)
+
+            try:
+                item = EventEquipment.objects.get(event=event, equipment=eq)
+                item.quantity = item.quantity + qty
+                item.save()
+            except EventEquipment.DoesNotExist:
+                EventEquipment.objects.create(event=event, equipment=eq, quantity=qty)
 
             if event.equipment_tbd:
                 event.equipment_tbd = False
@@ -131,44 +254,164 @@ def event_equipment_add_view(request, event_id):
     else:
         form = EventEquipmentForm(event=event)
 
-    equipment_items = EventEquipment.objects.filter(event=event).select_related('equipment')
+    equipment_items = (
+        EventEquipment.objects
+        .filter(event=event)
+        .select_related('equipment')
+        .order_by('equipment__name')
+    )
+    shortages = _event_shortages(event)
 
     return render(request, 'events/event_equipment_add.html', {
         'event': event,
         'form': form,
         'equipment_items': equipment_items,
+        'shortages': shortages,
     })
 
 
 @login_required
-def event_equipment_delete_view(request, event_id, item_id):
-    if not user_can_edit(request.user):
-        return HttpResponseForbidden('Недостаточно прав')
-
+def event_equipment_update_qty_view(request, event_id, item_id):
     event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя изменять оборудование у закрытого мероприятия')
+
+    item = get_object_or_404(EventEquipment, id=item_id, event=event)
+
+    if request.method != 'POST':
+        return redirect('event_detail', event_id=event.id)
+
+    qty_raw = (request.POST.get('quantity') or '').strip()
+    try:
+        qty = int(qty_raw)
+    except ValueError:
+        return redirect('event_detail', event_id=event.id)
+
+    # 0 -> удаление позиции
+    if qty <= 0:
+        item.delete()
+        if not EventEquipment.objects.filter(event=event).exists():
+            event.equipment_tbd = True
+            event.save(update_fields=['equipment_tbd'])
+        return redirect('event_detail', event_id=event.id)
+
+    item.quantity = qty
+    item.save()
+
+    if event.equipment_tbd:
+        event.equipment_tbd = False
+        event.save(update_fields=['equipment_tbd'])
+
+    return redirect('event_detail', event_id=event.id)
+
+
+@login_required
+def event_equipment_delete_view(request, event_id, item_id):
+    event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя изменять оборудование у закрытого мероприятия')
+
     item = get_object_or_404(EventEquipment, id=item_id, event=event)
 
     if request.method == 'POST':
         item.delete()
-
         if not EventEquipment.objects.filter(event=event).exists():
             event.equipment_tbd = True
             event.save(update_fields=['equipment_tbd'])
-
-        return redirect('event_detail', event_id=event.id)
 
     return redirect('event_detail', event_id=event.id)
 
 
 @login_required
 def event_mark_equipment_tbd_view(request, event_id):
-    if not user_can_edit(request.user):
-        return HttpResponseForbidden('Недостаточно прав')
-
     event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя менять закрытое мероприятие')
 
     if request.method == 'POST':
         event.equipment_tbd = True
         event.save(update_fields=['equipment_tbd'])
+
+    return redirect('event_detail', event_id=event.id)
+
+
+@login_required
+def event_rented_add_view(request, event_id):
+    event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя изменять аренду у закрытого мероприятия')
+
+    if request.method == 'POST':
+        form = EventRentedEquipmentForm(request.POST, event=event)
+        if form.is_valid():
+            eq = form.cleaned_data['equipment']
+            qty = int(form.cleaned_data.get('quantity') or 0)
+
+            if qty <= 0:
+                return redirect('event_detail', event_id=event.id)
+
+            try:
+                item = EventRentedEquipment.objects.get(event=event, equipment=eq)
+                item.quantity = item.quantity + qty
+                item.save()
+            except EventRentedEquipment.DoesNotExist:
+                EventRentedEquipment.objects.create(event=event, equipment=eq, quantity=qty)
+
+            return redirect('event_detail', event_id=event.id)
+    else:
+        form = EventRentedEquipmentForm(event=event)
+
+    rented_items = (
+        EventRentedEquipment.objects
+        .filter(event=event)
+        .select_related('equipment')
+        .order_by('equipment__name')
+    )
+    shortages = _event_shortages(event)
+
+    return render(request, 'events/event_rented_add.html', {
+        'event': event,
+        'form': form,
+        'rented_items': rented_items,
+        'shortages': shortages,
+    })
+
+
+@login_required
+def event_rented_update_qty_view(request, event_id, item_id):
+    event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя изменять аренду у закрытого мероприятия')
+
+    item = get_object_or_404(EventRentedEquipment, id=item_id, event=event)
+
+    if request.method != 'POST':
+        return redirect('event_detail', event_id=event.id)
+
+    qty_raw = (request.POST.get('quantity') or '').strip()
+    try:
+        qty = int(qty_raw)
+    except ValueError:
+        return redirect('event_detail', event_id=event.id)
+
+    if qty <= 0:
+        item.delete()
+        return redirect('event_detail', event_id=event.id)
+
+    item.quantity = qty
+    item.save()
+    return redirect('event_detail', event_id=event.id)
+
+
+@login_required
+def event_rented_delete_view(request, event_id, item_id):
+    event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden('Нельзя изменять аренду у закрытого мероприятия')
+
+    item = get_object_or_404(EventRentedEquipment, id=item_id, event=event)
+
+    if request.method == 'POST':
+        item.delete()
 
     return redirect('event_detail', event_id=event.id)

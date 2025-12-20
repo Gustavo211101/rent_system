@@ -18,13 +18,34 @@
 
 <hr>
 
+{% if shortages %}
+    <div style="padding:12px; border:1px solid #f59e0b; background:#fffbeb; border-radius:12px; margin-bottom:16px;">
+        <strong>⚠️ Не хватает оборудования:</strong>
+        <ul style="margin:8px 0 0 18px;">
+            {% for s in shortages %}
+                <li>
+                    {{ s.equipment.name }} — нужно {{ s.required }},
+                    со склада {{ s.available_own }},
+                    в аренду {{ s.rented }},
+                    <strong>не хватает {{ s.shortage }}</strong>
+                </li>
+            {% endfor %}
+        </ul>
+        {% if can_edit %}
+        <div style="margin-top:10px;">
+            <a class="btn-secondary" href="{% url 'event_rented_add' event.id %}">➕ Добавить “взято в аренду”</a>
+        </div>
+        {% endif %}
+    </div>
+{% endif %}
+
 {% if can_edit %}
-    <a class="btn-secondary" href="{% url 'event_edit' event.id %}">✏️ Редактировать</a>
+    <a class="btn-secondary" href="{% url 'event_edit' event.id %}">✏️ Редактировать мероприятие</a>
 {% endif %}
 
 <hr>
 
-<h2>Оборудование</h2>
+<h2>Оборудование (нужно на мероприятие)</h2>
 
 {% if event.equipment_tbd %}
     <p><em>Оборудование ещё не выбрано (отмечено “выберу позже”).</em></p>
@@ -35,20 +56,29 @@
         <thead>
             <tr>
                 <th>Позиция</th>
-                <th style="width:120px;">Кол-во</th>
-                {% if can_edit %}
-                    <th style="width:140px;">Действия</th>
-                {% endif %}
+                <th style="width:180px;">Кол-во</th>
+                {% if can_edit %}<th style="width:160px;">Действия</th>{% endif %}
             </tr>
         </thead>
         <tbody>
             {% for item in equipment_items %}
             <tr>
                 <td>{{ item.equipment.name }}</td>
-                <td>{{ item.quantity }}</td>
+                <td>
+                    {% if can_edit %}
+                    <form method="post" action="{% url 'event_equipment_update_qty' event.id item.id %}" style="display:flex; gap:8px; align-items:center;">
+                        {% csrf_token %}
+                        <input type="number" name="quantity" min="0" value="{{ item.quantity }}" style="width:90px;">
+                        <button class="btn-secondary" type="submit">Сохранить</button>
+                    </form>
+                    <small>0 = удалить</small>
+                    {% else %}
+                        {{ item.quantity }}
+                    {% endif %}
+                </td>
                 {% if can_edit %}
                 <td>
-                    <form method="post" action="{% url 'event_equipment_delete' event.id item.id %}" style="display:inline;">
+                    <form method="post" action="{% url 'event_equipment_delete' event.id item.id %}">
                         {% csrf_token %}
                         <button type="submit" class="btn-secondary">Удалить</button>
                     </form>
@@ -65,11 +95,61 @@
 {% if can_edit %}
     <div class="toolbar">
         <a class="btn" href="{% url 'event_equipment_add' event.id %}">➕ Добавить оборудование</a>
-
         <form method="post" action="{% url 'event_equipment_tbd' event.id %}" style="display:inline;">
             {% csrf_token %}
             <button type="submit" class="btn-secondary">Отметить “выберу позже”</button>
         </form>
+    </div>
+{% endif %}
+
+<hr>
+
+<h2>Взято в аренду (покрывает нехватку)</h2>
+
+{% if rented_items %}
+    <table class="list-table">
+        <thead>
+            <tr>
+                <th>Позиция</th>
+                <th style="width:180px;">Кол-во</th>
+                {% if can_edit %}<th style="width:160px;">Действия</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in rented_items %}
+            <tr>
+                <td>{{ item.equipment.name }}</td>
+                <td>
+                    {% if can_edit %}
+                    <form method="post" action="{% url 'event_rented_update_qty' event.id item.id %}" style="display:flex; gap:8px; align-items:center;">
+                        {% csrf_token %}
+                        <input type="number" name="quantity" min="0" value="{{ item.quantity }}" style="width:90px;">
+                        <button class="btn-secondary" type="submit">Сохранить</button>
+                    </form>
+                    <small>0 = удалить</small>
+                    {% else %}
+                        {{ item.quantity }}
+                    {% endif %}
+                </td>
+                {% if can_edit %}
+                <td>
+                    <form method="post" action="{% url 'event_rented_delete' event.id item.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-secondary">Удалить</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Пока ничего не арендовано.</p>
+{% endif %}
+
+{% if can_edit %}
+    <div class="toolbar">
+        <a class="btn" href="{% url 'event_rented_add' event.id %}">➕ Добавить аренду</a>
     </div>
 {% endif %}
 
