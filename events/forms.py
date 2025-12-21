@@ -1,8 +1,7 @@
 from django import forms
-from django.db.models import Sum
+from django.utils import timezone
 
 from .models import Event, EventEquipment, EventRentedEquipment
-from inventory.models import Equipment
 
 
 class EventForm(forms.ModelForm):
@@ -10,75 +9,70 @@ class EventForm(forms.ModelForm):
         model = Event
         fields = [
             'name',
-            'status',
-            'all_day',
-#          'equipment_tbd',
-            'date_start',
-            'date_end',
+            'start_date',
+            'end_date',
             'client',
             'location',
             'responsible',
+            'status',
+            'equipment_tbd',
         ]
         widgets = {
-            'date_start': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'date_end': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
         }
 
     def clean(self):
-        cleaned_data = super().clean()
-        start = cleaned_data.get('date_start')
-        end = cleaned_data.get('date_end')
+        cleaned = super().clean()
+        start_date = cleaned.get('start_date')
+        end_date = cleaned.get('end_date')
 
-        if start and end and end <= start:
-            raise forms.ValidationError('Дата окончания должна быть позже даты начала')
+        if start_date and end_date and end_date < start_date:
+            self.add_error('end_date', 'Дата окончания не может быть раньше даты начала')
 
-        return cleaned_data
+        return cleaned
 
 
 class EventEquipmentForm(forms.ModelForm):
-    quantity = forms.IntegerField(min_value=0)
-
-    def __init__(self, *args, event=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.event = event
-        if self.event is not None:
-            self.instance.event = self.event
-
-            reserved = (
-                EventEquipment.objects
-                .filter(event__date_start__lt=self.event.date_end, event__date_end__gt=self.event.date_start)
-                .exclude(event=self.event)
-                .values('equipment_id')
-                .annotate(total=Sum('quantity'))
-            )
-            reserved_map = {row['equipment_id']: row['total'] for row in reserved}
-
-            self.fields['equipment'].queryset = Equipment.objects.select_related('category').order_by('category__name', 'name')
-
-            def label_from_instance(obj):
-                used_other = reserved_map.get(obj.id, 0) or 0
-                available = obj.quantity_total - used_other
-                if available < 0:
-                    available = 0
-                return f"{obj.name} — доступно: {available}"
-
-            self.fields['equipment'].label_from_instance = label_from_instance
-
     class Meta:
         model = EventEquipment
         fields = ['equipment', 'quantity']
 
+    def __init__(self, *args, **kwargs):
+        self.event = kwargs.pop('event', None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        qty = cleaned.get('quantity') or 0
+        eq = cleaned.get('equipment')
+
+        if qty <= 0:
+            self.add_error('quantity', 'Количество должно быть больше 0')
+            return cleaned
+
+        if self.event and eq:
+            available = eq.available_quantity(self.event.start_date, self.event.end_date)
+            if qty > available:
+                # тут мы не запрещаем добавлять больше (как ты хотел ранее),
+                # но если хочешь запрет — скажи, поменяем на add_error.
+                pass
+
+        return cleaned
+
 
 class EventRentedEquipmentForm(forms.ModelForm):
-    quantity = forms.IntegerField(min_value=0)
-
-    def __init__(self, *args, event=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.event = event
-        if self.event is not None:
-            self.instance.event = self.event
-            self.fields['equipment'].queryset = Equipment.objects.select_related('category').order_by('category__name', 'name')
-
     class Meta:
         model = EventRentedEquipment
         fields = ['equipment', 'quantity']
+
+    def __init__(self, *args, **kwargs):
+        self.event = kwargs.pop('event', None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        qty = cleaned.get('quantity') or 0
+        if qty <= 0:
+            self.add_error('quantity', 'Количество должно быть больше 0')
+        return cleaned

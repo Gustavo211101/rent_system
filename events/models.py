@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from inventory.models import Equipment
 
@@ -16,28 +17,15 @@ class Event(models.Model):
     STATUS_CHOICES = (
         (STATUS_DRAFT, 'Черновик'),
         (STATUS_CONFIRMED, 'Подтверждено'),
-        (STATUS_IN_RENT, 'В работе'),
+        (STATUS_IN_RENT, 'В прокате'),
         (STATUS_CLOSED, 'Закрыто'),
     )
 
     name = models.CharField(max_length=200)
 
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default=STATUS_DRAFT,
-        verbose_name='Статус'
-    )
-
-    all_day = models.BooleanField(default=False, verbose_name='Весь день')
-
-    equipment_tbd = models.BooleanField(
-        default=True,
-        verbose_name='Оборудование выберу позже'
-    )
-
-    date_start = models.DateTimeField()
-    date_end = models.DateTimeField()
+    # теперь только даты, без времени
+    start_date = models.DateField()
+    end_date = models.DateField()
 
     client = models.CharField(max_length=200, blank=True)
     location = models.CharField(max_length=200, blank=True)
@@ -49,22 +37,24 @@ class Event(models.Model):
         related_name='events'
     )
 
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+
+    equipment_tbd = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def clean(self):
-        if self.all_day and self.date_start and self.date_end:
-            self.date_start = self.date_start.replace(hour=0, minute=0, second=0, microsecond=0)
-            self.date_end = self.date_end.replace(hour=23, minute=59, second=59, microsecond=0)
-
-        if self.date_start and self.date_end and self.date_end <= self.date_start:
-            raise ValidationError('Дата окончания должна быть позже даты начала')
 
     @property
     def is_closed(self):
         return self.status == self.STATUS_CLOSED
 
+    def clean(self):
+        if self.end_date and self.start_date and self.end_date < self.start_date:
+            raise ValidationError("Дата окончания не может быть раньше даты начала")
+
     def __str__(self):
-        return f"{self.name} ({self.date_start:%d.%m.%Y})"
+        if self.start_date == self.end_date:
+            return f"{self.name} ({self.start_date:%d.%m.%Y})"
+        return f"{self.name} ({self.start_date:%d.%m.%Y}–{self.end_date:%d.%m.%Y})"
 
 
 class EventEquipment(models.Model):
@@ -87,12 +77,18 @@ class EventEquipment(models.Model):
         return f"{self.equipment.name} × {self.quantity}"
 
     def clean(self):
-        if not self.event_id:
-            raise ValidationError("Не задано мероприятие")
-        if not self.equipment_id:
-            raise ValidationError("Не задано оборудование")
-        if self.quantity <= 0:
-            raise ValidationError("Количество должно быть больше 0")
+        # Проверка доступности по ДАТАМ
+        available = self.equipment.available_quantity(
+            self.event.start_date,
+            self.event.end_date
+        )
+
+        if self.pk:
+            old_quantity = EventEquipment.objects.get(pk=self.pk).quantity
+            available += old_quantity
+
+        if self.quantity > available:
+            raise ValidationError(f"Недостаточно оборудования. Доступно: {available}")
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -100,32 +96,12 @@ class EventEquipment(models.Model):
 
 
 class EventRentedEquipment(models.Model):
-    event = models.ForeignKey(
-        Event,
-        on_delete=models.CASCADE,
-        related_name='rented_equipment_items'
-    )
-    equipment = models.ForeignKey(
-        Equipment,
-        on_delete=models.PROTECT,
-        related_name='rented_event_items'
-    )
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='rented_items')
+    equipment = models.ForeignKey(Equipment, on_delete=models.PROTECT, related_name='rented_event_items')
     quantity = models.PositiveIntegerField()
 
     class Meta:
         unique_together = ('event', 'equipment')
 
     def __str__(self):
-        return f"АРЕНДА: {self.equipment.name} × {self.quantity}"
-
-    def clean(self):
-        if not self.event_id:
-            raise ValidationError("Не задано мероприятие")
-        if not self.equipment_id:
-            raise ValidationError("Не задано оборудование")
-        if self.quantity <= 0:
-            raise ValidationError("Количество должно быть больше 0")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+        return f"{self.equipment.name} (в аренду) × {self.quantity}"

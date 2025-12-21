@@ -32,19 +32,16 @@
             <td>
                 <a href="{% url 'event_detail' event.id %}">{{ event.name }}</a>
 
-                {% if event.all_day %}
-                    <span class="badge">весь день</span>
-                {% endif %}
                 {% if event.equipment_tbd %}
                     <span class="badge">оборудование позже</span>
                 {% endif %}
             </td>
 
             <td>
-                {% if event.all_day %}
-                    {{ event.date_start|date:"d.m.Y" }}
+                {% if event.start_date == event.end_date %}
+                    {{ event.start_date|date:"d.m.Y" }}
                 {% else %}
-                    {{ event.date_start|date:"d.m.Y H:i" }} – {{ event.date_end|date:"d.m.Y H:i" }}
+                    {{ event.start_date|date:"d.m.Y" }} – {{ event.end_date|date:"d.m.Y" }}
                 {% endif %}
             </td>
 

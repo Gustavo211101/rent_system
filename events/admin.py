@@ -1,47 +1,54 @@
 from django.contrib import admin
-from django.urls import reverse
-from django.utils.html import format_html
 
-from .models import Event, EventEquipment
+from .models import Event, EventEquipment, EventRentedEquipment
+
+
+class EventEquipmentInline(admin.TabularInline):
+    model = EventEquipment
+    extra = 0
+
+
+class EventRentedEquipmentInline(admin.TabularInline):
+    model = EventRentedEquipment
+    extra = 0
 
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     list_display = (
         'name',
-        'date_start',
-        'date_end',
-        'all_day',
-        'client',
+        'start_date',
+        'end_date',
+        'status',
         'responsible',
-        'open_in_site',
+#        'equipment_tbd',
     )
-    list_filter = ('all_day', 'date_start')
+    list_filter = ('status', 'equipment_tbd', 'responsible')
     search_fields = ('name', 'client', 'location')
-    ordering = ('-date_start',)
+    ordering = ('-start_date',)
+
+    inlines = [EventEquipmentInline, EventRentedEquipmentInline]
 
     fieldsets = (
         (None, {
-            'fields': ('name', 'all_day')
-        }),
-        ('Даты', {
-            'fields': ('date_start', 'date_end')
-        }),
-        ('Дополнительно', {
-            'fields': ('client', 'location', 'responsible')
+            'fields': (
+                'name',
+                ('start_date', 'end_date'),
+                ('client', 'location'),
+                'responsible',
+                ('status'),
+            )
         }),
     )
-
-    def open_in_site(self, obj):
-        url = reverse('event_detail', args=[obj.id])
-        return format_html(
-            '<a href="{}" target="_blank">Открыть</a>',
-            url
-        )
-
-    open_in_site.short_description = 'Сайт'
 
 
 @admin.register(EventEquipment)
 class EventEquipmentAdmin(admin.ModelAdmin):
     list_display = ('event', 'equipment', 'quantity')
+    search_fields = ('event__name', 'equipment__name')
+
+
+@admin.register(EventRentedEquipment)
+class EventRentedEquipmentAdmin(admin.ModelAdmin):
+    list_display = ('event', 'equipment', 'quantity')
+    search_fields = ('event__name', 'equipment__name')

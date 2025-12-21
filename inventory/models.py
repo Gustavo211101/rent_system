@@ -32,12 +32,22 @@ class Equipment(models.Model):
         return f"{self.name} ({self.quantity_total})"
 
     def reserved_quantity(self, start, end):
+        """
+        start/end — даты (DateField).
+
+        Пересечение диапазонов дат (включительно):
+        событие пересекается с [start, end], если:
+            event.start_date <= end AND event.end_date >= start
+        """
         return (
             self.event_items
-            .filter(event__date_start__lt=end, event__date_end__gt=start)
+            .filter(event__start_date__lte=end, event__end_date__gte=start)
             .aggregate(total=Sum('quantity'))['total']
             or 0
         )
 
     def available_quantity(self, start, end):
-        return self.quantity_total - self.reserved_quantity(start, end)
+        available = self.quantity_total - self.reserved_quantity(start, end)
+        if available < 0:
+            available = 0
+        return available
