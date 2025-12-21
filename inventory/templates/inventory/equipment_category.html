@@ -2,9 +2,9 @@
 
 {% block content %}
 <div class="toolbar">
-    <h2 style="margin:0;">Оборудование — весь список</h2>
+    <h2 style="margin:0;">Категория: {{ category.name }}</h2>
     <div>
-        <a class="btn" href="{% url 'equipment_list' %}">Категории</a>
+        <a class="btn" href="{% url 'equipment_list' %}">← Категории</a>
         <a class="btn" href="{% url 'equipment_list_all' %}">Весь список</a>
     </div>
 </div>
@@ -22,7 +22,6 @@
 <table class="list-table">
     <thead>
         <tr>
-            <th>Категория</th>
             <th>Оборудование</th>
             <th>Всего</th>
             {% if has_period %}<th>Свободно на период</th>{% endif %}
@@ -31,7 +30,6 @@
     <tbody>
         {% for row in rows %}
         <tr>
-            <td>{{ row.equipment.category.name }}</td>
             <td><a href="{% url 'equipment_detail' row.equipment.id %}">{{ row.equipment.name }}</a></td>
             <td>{{ row.equipment.quantity_total }}</td>
             {% if has_period %}
@@ -40,7 +38,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="{% if has_period %}4{% else %}3{% endif %}">Оборудования пока нет</td>
+            <td colspan="{% if has_period %}3{% else %}2{% endif %}">В этой категории нет оборудования</td>
         </tr>
         {% endfor %}
     </tbody>

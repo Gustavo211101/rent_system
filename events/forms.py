@@ -12,7 +12,7 @@ class EventForm(forms.ModelForm):
             'name',
             'status',
             'all_day',
-            'equipment_tbd',
+#          'equipment_tbd',
             'date_start',
             'date_end',
             'client',

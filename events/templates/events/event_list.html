@@ -1,29 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Мероприятия</h1>
-
-{% if can_edit %}
 <div class="toolbar">
-    <a class="btn" href="{% url 'event_create' %}">➕ Создать мероприятие</a>
+    <h1 style="margin:0;">Мероприятия</h1>
+
+    {% if can_edit %}
+        <a class="btn" href="{% url 'event_create' %}">➕ Создать мероприятие</a>
+    {% endif %}
 </div>
-{% endif %}
 
 <table class="list-table">
     <thead>
         <tr>
+            <th style="width: 220px;">Статус</th>
             <th>Название</th>
             <th>Период</th>
             <th>Клиент</th>
             <th>Локация</th>
-            <th style="width: 220px;">Действия</th>
+            <th style="width: 260px;">Действия</th>
         </tr>
     </thead>
     <tbody>
         {% for event in events %}
         <tr>
             <td>
+                <span class="status-pill status-{{ event.status }}">
+                    {{ event.get_status_display }}
+                </span>
+            </td>
+
+            <td>
                 <a href="{% url 'event_detail' event.id %}">{{ event.name }}</a>
+
                 {% if event.all_day %}
                     <span class="badge">весь день</span>
                 {% endif %}
@@ -31,6 +39,7 @@
                     <span class="badge">оборудование позже</span>
                 {% endif %}
             </td>
+
             <td>
                 {% if event.all_day %}
                     {{ event.date_start|date:"d.m.Y" }}
@@ -38,8 +47,10 @@
                     {{ event.date_start|date:"d.m.Y H:i" }} – {{ event.date_end|date:"d.m.Y H:i" }}
                 {% endif %}
             </td>
+
             <td>{{ event.client }}</td>
             <td>{{ event.location }}</td>
+
             <td>
                 <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Открыть</a>
                 {% if can_edit %}
@@ -49,7 +60,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="5">Мероприятий пока нет</td>
+            <td colspan="6">Мероприятий пока нет</td>
         </tr>
         {% endfor %}
     </tbody>

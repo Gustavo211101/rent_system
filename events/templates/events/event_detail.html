@@ -120,7 +120,6 @@
         <a class="btn" href="{% url 'event_equipment_add' event.id %}">➕ Добавить оборудование</a>
         <form method="post" action="{% url 'event_equipment_tbd' event.id %}" style="display:inline;">
             {% csrf_token %}
-            <button type="submit" class="btn-secondary">Отметить “выберу позже”</button>
         </form>
     </div>
 {% endif %}

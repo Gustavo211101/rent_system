@@ -1,72 +1,69 @@
-/* ===== КАЛЕНДАРЬ ===== */
-
 .calendar {
     width: 100%;
     border-collapse: collapse;
-    table-layout: fixed;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.calendar th, .calendar td {
+    border: 1px solid #eef2f7;
+    vertical-align: top;
+    width: 14.28%;
+    height: 110px;
+    padding: 8px;
 }
 
 .calendar th {
-    background-color: #f3f4f6;
-    text-align: center;
-    padding: 8px;
-    font-weight: 600;
-    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    font-size: 13px;
+    color: #374151;
 }
 
-.calendar td {
-    border: 1px solid #e5e7eb;
-    vertical-align: top;
-    height: 120px;
-    padding: 6px;
-    background-color: #ffffff;
-}
-
-.calendar td.other-month {
-    background-color: #fafafa;
+.other-month {
+    background: #fafafa;
     color: #9ca3af;
 }
 
 .day-number {
+    font-weight: 700;
     font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 6px;
     color: #374151;
+    margin-bottom: 6px;
 }
 
-/* ===== СОБЫТИЯ В КАЛЕНДАРЕ ===== */
-
-.event-badge {
-    display: block;
-    margin-bottom: 4px;
-    padding: 4px 6px;
-    border-radius: 6px;
+.event {
+    margin-bottom: 6px;
+    padding: 5px 8px;
+    border-radius: 10px;
     font-size: 12px;
     line-height: 1.2;
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
+.event a {
     text-decoration: none;
-    color: #ffffff;
-    word-wrap: break-word;
 }
 
-/* ===== ЦВЕТА СТАТУСОВ ===== */
-
-/* Черновик */
-.status-draft {
-    background-color: #9ca3af;
+/* статусные цвета */
+.event.status-draft {
+    background: #e5e7eb;
+    color: #111827;
 }
 
-/* Подтверждено */
-.status-confirmed {
-    background-color: #3b82f6;
+.event.status-confirmed {
+    background: #dbeafe;
+    color: #1e3a8a;
 }
 
-/* В работе */
-.status-in_rent {
-    background-color: #16a34a;
+.event.status-in_rent {
+    background: #dcfce7;
+    color: #14532d;
 }
 
-/* Закрыто / прошло */
-.status-closed {
-    background-color: #4b5563;
-    opacity: 0.85;
+.event.status-closed {
+    background: #f3f4f6;
+    color: #374151;
+    opacity: 0.9;
 }

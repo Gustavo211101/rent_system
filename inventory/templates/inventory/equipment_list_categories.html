@@ -1,73 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Оборудование</h1>
-
 <div class="toolbar">
-    <a class="btn-secondary" href="{% url 'equipment_list' %}?mode=categories">Категории</a>
-    <a class="btn-secondary" href="{% url 'equipment_list' %}?mode=all">Весь список</a>
-
-    {% if can_edit %}
-        <a class="btn" style="margin-left:12px;" href="{% url 'equipment_create' %}">➕ Добавить</a>
-    {% endif %}
-</div>
-
-<div style="display:flex; gap:20px;">
-    <div style="min-width:260px;">
-        <h3>Категории</h3>
-        <ul>
-            {% for c in categories %}
-                <li>
-                    <a href="{% url 'equipment_list' %}?mode=categories&category={{ c.id }}">
-                        {{ c.name }}
-                    </a>
-                </li>
-            {% empty %}
-                <li>Категорий нет</li>
-            {% endfor %}
-        </ul>
-    </div>
-
-    <div style="flex:1;">
-        {% if selected_category %}
-            <h3>{{ selected_category.name }}</h3>
-
-            {% if items %}
-                <table class="list-table">
-                    <thead>
-                        <tr>
-                            <th>Название</th>
-                            <th style="width:160px;">Кол-во</th>
-                            <th style="width:140px;">Исправность</th>
-                            {% if can_edit %}
-                                <th style="width:160px;">Действия</th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in items %}
-                            <tr>
-                                <td>
-                                    <a href="{% url 'equipment_detail' item.id %}">{{ item.name }}</a>
-                                </td>
-                                <td>{{ item.quantity_total }}</td>
-                                <td>{{ item.get_status_display }}</td>
-                                {% if can_edit %}
-                                <td>
-                                    <a class="btn-secondary" href="{% url 'equipment_edit' item.id %}">Редактировать</a>
-                                </td>
-                                {% endif %}
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p>В этой категории нет оборудования.</p>
-            {% endif %}
-        {% else %}
-            <p>Выбери категорию слева.</p>
-        {% endif %}
+    <h2 style="margin:0;">Оборудование — категории</h2>
+    <div>
+        <a class="btn" href="{% url 'equipment_list' %}">Категории</a>
+        <a class="btn" href="{% url 'equipment_list_all' %}">Весь список</a>
     </div>
 </div>
 
+<ul style="margin-top:16px;">
+    {% for c in categories %}
+        <li style="margin-bottom:8px;">
+            <a href="{% url 'equipment_category' c.id %}">{{ c.name }}</a>
+        </li>
+    {% empty %}
+        <li>Категорий пока нет</li>
+    {% endfor %}
+</ul>
 {% endblock %}

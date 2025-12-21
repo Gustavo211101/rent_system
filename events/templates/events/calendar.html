@@ -27,7 +27,7 @@
             <div class="day-number">{{ day.day }}</div>
 
             {% for event in events_by_day|get_item:day %}
-                <div class="event">
+                <div class="event status-{{ event.status }}">
                     <a href="{% url 'event_detail' event.id %}">
                         {{ event.name }}
                     </a>

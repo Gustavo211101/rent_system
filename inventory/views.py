@@ -10,14 +10,9 @@ from .models import Equipment, EquipmentCategory
 
 
 def _parse_dt(value: str):
-    """
-    Парсим datetime-local из формы: 'YYYY-MM-DDTHH:MM'
-    Возвращаем aware datetime (если USE_TZ=True), иначе naive.
-    """
     if not value:
         return None
-
-    dt = datetime.fromisoformat(value)
+    dt = datetime.fromisoformat(value)  # "YYYY-MM-DDTHH:MM"
     if timezone.is_naive(dt):
         try:
             dt = timezone.make_aware(dt, timezone.get_current_timezone())
@@ -27,58 +22,60 @@ def _parse_dt(value: str):
 
 
 def _reserved_map(start_dt, end_dt):
-    """
-    Сколько занято на период start_dt..end_dt по каждому equipment_id.
-    """
     reserved = (
         EventEquipment.objects
         .filter(event__date_start__lt=end_dt, event__date_end__gt=start_dt)
         .values('equipment_id')
         .annotate(total=Sum('quantity'))
     )
-    return {row['equipment_id']: (row['total'] or 0) for row in reserved}
+    return {row['equipment_id']: int(row['total'] or 0) for row in reserved}
 
 
-@login_required
-def equipment_list_all_view(request):
+def _rows_with_free(equipments, start_dt, end_dt):
     """
-    Полный список оборудования.
-    Если передан период (start/end) — считаем свободно на период.
+    Возвращает список строк для таблицы:
+    [
+      {"equipment": eq, "free": free_or_None}
+    ]
     """
-    start = request.GET.get('start', '')
-    end = request.GET.get('end', '')
+    rows = []
+    free_map = None
 
-    start_dt = _parse_dt(start)
-    end_dt = _parse_dt(end)
-
-    equipments = Equipment.objects.select_related('category').order_by('category__name', 'name')
-
-    availability = {}
     if start_dt and end_dt:
+        free_map = {}
         reserved = _reserved_map(start_dt, end_dt)
         for eq in equipments:
-            used = int(reserved.get(eq.id, 0) or 0)
+            used = reserved.get(eq.id, 0)
             free = eq.quantity_total - used
             if free < 0:
                 free = 0
-            availability[eq.id] = free
+            free_map[eq.id] = free
 
-    return render(request, 'inventory/equipment_list_all.html', {
-        'equipments': equipments,
-        'start': start,
-        'end': end,
-        'availability': availability,
-    })
+    for eq in equipments:
+        rows.append({
+            "equipment": eq,
+            "free": None if free_map is None else free_map.get(eq.id, 0),
+        })
+
+    return rows
 
 
 @login_required
 def equipment_list_categories_view(request):
     """
-    Просмотр по категориям.
-    Возвращаем:
-    - categories: список категорий
-    - by_category: {category_id: [Equipment, ...]}
-    - availability: {equipment_id: free_on_period}
+    Страница категорий (кликабельных).
+    """
+    categories = EquipmentCategory.objects.all().order_by('name')
+    return render(request, 'inventory/equipment_list_categories.html', {
+        "categories": categories,
+    })
+
+
+@login_required
+def equipment_list_all_view(request):
+    """
+    Весь список оборудования.
+    Можно выбрать период, чтобы видеть 'свободно на период'.
     """
     start = request.GET.get('start', '')
     end = request.GET.get('end', '')
@@ -86,36 +83,50 @@ def equipment_list_categories_view(request):
     start_dt = _parse_dt(start)
     end_dt = _parse_dt(end)
 
-    categories = EquipmentCategory.objects.all().order_by('name')
     equipments = Equipment.objects.select_related('category').order_by('category__name', 'name')
+    rows = _rows_with_free(equipments, start_dt, end_dt)
 
-    availability = {}
-    if start_dt and end_dt:
-        reserved = _reserved_map(start_dt, end_dt)
-        for eq in equipments:
-            used = int(reserved.get(eq.id, 0) or 0)
-            free = eq.quantity_total - used
-            if free < 0:
-                free = 0
-            availability[eq.id] = free
+    return render(request, 'inventory/equipment_list_all.html', {
+        "rows": rows,
+        "start": start,
+        "end": end,
+        "has_period": bool(start_dt and end_dt),
+    })
 
-    by_category = {}
-    for eq in equipments:
-        by_category.setdefault(eq.category_id, []).append(eq)
 
-    return render(request, 'inventory/equipment_list_categories.html', {
-        'categories': categories,
-        'by_category': by_category,
-        'start': start,
-        'end': end,
-        'availability': availability,
+@login_required
+def equipment_category_view(request, category_id):
+    """
+    Оборудование внутри выбранной категории.
+    """
+    category = get_object_or_404(EquipmentCategory, id=category_id)
+
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+
+    start_dt = _parse_dt(start)
+    end_dt = _parse_dt(end)
+
+    equipments = (
+        Equipment.objects
+        .filter(category=category)
+        .select_related('category')
+        .order_by('name')
+    )
+    rows = _rows_with_free(equipments, start_dt, end_dt)
+
+    return render(request, 'inventory/equipment_category.html', {
+        "category": category,
+        "rows": rows,
+        "start": start,
+        "end": end,
+        "has_period": bool(start_dt and end_dt),
     })
 
 
 @login_required
 def equipment_detail_view(request, equipment_id):
     equipment = get_object_or_404(Equipment.objects.select_related('category'), id=equipment_id)
-
     return render(request, 'inventory/equipment_detail.html', {
-        'equipment': equipment,
+        "equipment": equipment,
     })
