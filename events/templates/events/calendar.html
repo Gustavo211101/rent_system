@@ -27,7 +27,8 @@
             <div class="day-number">{{ day.day }}</div>
 
             {% for event in events_by_day|get_item:day %}
-                <div class="event status-{{ event.status }}">
+                {# event.status -> раскраска, event_has_problem -> обводка #}
+                <div class="event-pill status-{{ event.status }} {% if event_has_problem|get_item:event.id %}has-problem{% endif %}">
                     <a href="{% url 'event_detail' event.id %}">
                         {{ event.name }}
                     </a>

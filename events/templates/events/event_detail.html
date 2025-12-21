@@ -1,178 +1,173 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ event.name }}</h1>
+<div class="page-head">
+  <div>
+    <h1 style="margin:0;">{{ event.name }}</h1>
 
-<p>
-    <strong>Дата:</strong>
-    {% if event.all_day %}
-        {{ event.date_start|date:"d.m.Y" }} (весь день)
-    {% else %}
-        {{ event.date_start|date:"d.m.Y H:i" }} – {{ event.date_end|date:"d.m.Y H:i" }}
-    {% endif %}
-</p>
-<p>
-    <strong>Статус:</strong>
-    <span class="event-badge status-{{ event.status }}">
-        {{ event.get_status_display }}
-    </span>
-</p>
-
-{% if can_modify %}
-<div class="toolbar">
-    {% if event.status != 'draft' %}
-        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'draft' %}">В черновик</a>
-    {% endif %}
-    {% if event.status != 'confirmed' %}
-        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'confirmed' %}">Подтвердить</a>
-    {% endif %}
-    {% if event.status != 'in_rent' %}
-        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'in_rent' %}">В работе</a>
-    {% endif %}
-    {% if event.status != 'closed' %}
-        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'closed' %}">Закрыть</a>
-    {% endif %}
-</div>
-{% endif %}
-
-<p><strong>Клиент:</strong> {{ event.client }}</p>
-<p><strong>Локация:</strong> {{ event.location }}</p>
-<p><strong>Ответственный:</strong> {{ event.responsible }}</p>
-
-<hr>
-
-{% if shortages %}
-    <div style="padding:12px; border:1px solid #f59e0b; background:#fffbeb; border-radius:12px; margin-bottom:16px;">
-        <strong>⚠️ Не хватает оборудования:</strong>
-        <ul style="margin:8px 0 0 18px;">
-            {% for s in shortages %}
-                <li>
-                    {{ s.equipment.name }} — нужно {{ s.required }},
-                    со склада {{ s.available_own }},
-                    в аренду {{ s.rented }},
-                    <strong>не хватает {{ s.shortage }}</strong>
-                </li>
-            {% endfor %}
-        </ul>
-        {% if can_edit %}
-        <div style="margin-top:10px;">
-            <a class="btn-secondary" href="{% url 'event_rented_add' event.id %}">➕ Добавить “взято в аренду”</a>
-        </div>
+    <div class="muted" style="margin-top:8px;">
+      <div><strong>Дата:</strong>
+        {% if event.start_date == event.end_date %}
+          {{ event.start_date|date:"d.m.Y" }}
+        {% else %}
+          {{ event.start_date|date:"d.m.Y" }} – {{ event.end_date|date:"d.m.Y" }}
         {% endif %}
+      </div>
+      <div style="margin-top:4px;"><strong>Клиент:</strong> {{ event.client|default:"—" }}</div>
+      <div style="margin-top:4px;"><strong>Локация:</strong> {{ event.location|default:"—" }}</div>
+      <div style="margin-top:4px;"><strong>Ответственный:</strong> {{ event.responsible|default:"—" }}</div>
     </div>
+
+    <div style="margin-top:10px;">
+      <strong>Статус:</strong>
+      <span class="status-pill status-{{ event.status }}">{{ event.get_status_display }}</span>
+    </div>
+  </div>
+
+  <div class="page-actions">
+    {% if can_modify %}
+      <a class="btn-secondary" href="{% url 'event_edit' event.id %}">✏️ Редактировать</a>
+
+      <div style="height:10px;"></div>
+
+      {# Статусные кнопки #}
+      {% if event.status != 'draft' %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'draft' %}">В черновик</a>
+      {% endif %}
+
+      {% if event.status != 'confirmed' %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'confirmed' %}">Подтвердить</a>
+      {% endif %}
+
+      {% if event.status != 'cancelled' %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'cancelled' %}">Отменить</a>
+      {% endif %}
+
+      {% if event.status != 'closed' %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'closed' %}">Закрыть</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{# Нехватка оборудования #}
+{% if shortages %}
+  <div class="alert alert-warning" style="margin-top:18px;">
+    <strong>⚠️ Нехватка оборудования</strong>
+    <div style="margin-top:8px;">
+      {% for row in shortages %}
+        <div style="margin-top:4px;">
+          {{ row.equipment.name }}: нужно {{ row.required }},
+          своё доступно {{ row.available_own }},
+          в аренде {{ row.rented }},
+          <strong>не хватает {{ row.shortage }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
 {% endif %}
 
-{% if can_edit %}
-    <a class="btn-secondary" href="{% url 'event_edit' event.id %}">✏️ Редактировать мероприятие</a>
-{% endif %}
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Оборудование (нужно на мероприятие)</h2>
 
-<hr>
-
-<h2>Оборудование (нужно на мероприятие)</h2>
-
-{% if event.equipment_tbd %}
-    <p><em>Оборудование ещё не выбрано (отмечено “выберу позже”).</em></p>
-{% endif %}
-
-{% if equipment_items %}
+  {% if equipment_items %}
     <table class="list-table">
-        <thead>
-            <tr>
-                <th>Позиция</th>
-                <th style="width:180px;">Кол-во</th>
-                {% if can_edit %}<th style="width:160px;">Действия</th>{% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in equipment_items %}
-            <tr>
-                <td>{{ item.equipment.name }}</td>
-                <td>
-                    {% if can_edit %}
-                    <form method="post" action="{% url 'event_equipment_update_qty' event.id item.id %}" style="display:flex; gap:8px; align-items:center;">
-                        {% csrf_token %}
-                        <input type="number" name="quantity" min="0" value="{{ item.quantity }}" style="width:90px;">
-                        <button class="btn-secondary" type="submit">Сохранить</button>
-                    </form>
-                    <small>0 = удалить</small>
-                    {% else %}
-                        {{ item.quantity }}
-                    {% endif %}
-                </td>
-                {% if can_edit %}
-                <td>
-                    <form method="post" action="{% url 'event_equipment_delete' event.id item.id %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-secondary">Удалить</button>
-                    </form>
-                </td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
+      <thead>
+        <tr>
+          <th>Оборудование</th>
+          <th style="width: 140px;">Количество</th>
+          {% if can_modify %}
+            <th style="width: 220px;">Действия</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in equipment_items %}
+          <tr>
+            <td>{{ item.equipment.name }}</td>
+            <td>
+              {% if can_modify %}
+                <form method="post" action="{% url 'event_equipment_update_qty' event.id item.id %}" style="display:flex; gap:8px; align-items:center;">
+                  {% csrf_token %}
+                  <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:90px;">
+                  <button class="btn-secondary" type="submit">Сохранить</button>
+                </form>
+              {% else %}
+                {{ item.quantity }}
+              {% endif %}
+            </td>
+            {% if can_modify %}
+              <td>
+                <form method="post" action="{% url 'event_equipment_delete' event.id item.id %}">
+                  {% csrf_token %}
+                  <button class="btn-secondary" type="submit">Удалить</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
     </table>
-{% else %}
-    <p>Пока ничего не добавлено.</p>
-{% endif %}
+  {% else %}
+    <div class="muted">Пока ничего не добавлено.</div>
+  {% endif %}
 
-{% if can_edit %}
-    <div class="toolbar">
-        <a class="btn" href="{% url 'event_equipment_add' event.id %}">➕ Добавить оборудование</a>
-        <form method="post" action="{% url 'event_equipment_tbd' event.id %}" style="display:inline;">
-            {% csrf_token %}
-        </form>
+  {% if can_modify %}
+    <div style="margin-top:12px;">
+      <a class="btn" href="{% url 'event_equipment_add' event.id %}">➕ Добавить оборудование</a>
     </div>
-{% endif %}
+  {% endif %}
+</div>
 
-<hr>
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Взято в аренду (покрывает нехватку)</h2>
 
-<h2>Взято в аренду (покрывает нехватку)</h2>
-
-{% if rented_items %}
+  {% if rented_items %}
     <table class="list-table">
-        <thead>
-            <tr>
-                <th>Позиция</th>
-                <th style="width:180px;">Кол-во</th>
-                {% if can_edit %}<th style="width:160px;">Действия</th>{% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in rented_items %}
-            <tr>
-                <td>{{ item.equipment.name }}</td>
-                <td>
-                    {% if can_edit %}
-                    <form method="post" action="{% url 'event_rented_update_qty' event.id item.id %}" style="display:flex; gap:8px; align-items:center;">
-                        {% csrf_token %}
-                        <input type="number" name="quantity" min="0" value="{{ item.quantity }}" style="width:90px;">
-                        <button class="btn-secondary" type="submit">Сохранить</button>
-                    </form>
-                    <small>0 = удалить</small>
-                    {% else %}
-                        {{ item.quantity }}
-                    {% endif %}
-                </td>
-                {% if can_edit %}
-                <td>
-                    <form method="post" action="{% url 'event_rented_delete' event.id item.id %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-secondary">Удалить</button>
-                    </form>
-                </td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
+      <thead>
+        <tr>
+          <th>Оборудование</th>
+          <th style="width: 140px;">Количество</th>
+          {% if can_modify %}
+            <th style="width: 220px;">Действия</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in rented_items %}
+          <tr>
+            <td>{{ item.equipment.name }}</td>
+            <td>
+              {% if can_modify %}
+                <form method="post" action="{% url 'event_rented_update_qty' event.id item.id %}" style="display:flex; gap:8px; align-items:center;">
+                  {% csrf_token %}
+                  <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:90px;">
+                  <button class="btn-secondary" type="submit">Сохранить</button>
+                </form>
+              {% else %}
+                {{ item.quantity }}
+              {% endif %}
+            </td>
+            {% if can_modify %}
+              <td>
+                <form method="post" action="{% url 'event_rented_delete' event.id item.id %}">
+                  {% csrf_token %}
+                  <button class="btn-secondary" type="submit">Удалить</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
     </table>
-{% else %}
-    <p>Пока ничего не арендовано.</p>
-{% endif %}
+  {% else %}
+    <div class="muted">Пока ничего не арендовано.</div>
+  {% endif %}
 
-{% if can_edit %}
-    <div class="toolbar">
-        <a class="btn" href="{% url 'event_rented_add' event.id %}">➕ Добавить аренду</a>
+  {% if can_modify %}
+    <div style="margin-top:12px;">
+      <a class="btn" href="{% url 'event_rented_add' event.id %}">➕ Добавить аренду</a>
     </div>
-{% endif %}
-
+  {% endif %}
+</div>
 {% endblock %}

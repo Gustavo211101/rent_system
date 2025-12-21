@@ -1,22 +1,18 @@
 from django import forms
-from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 from .models import Event, EventEquipment, EventRentedEquipment
+from inventory.models import Equipment
 
 
 class EventForm(forms.ModelForm):
+    """
+    Мы работаем по датам (дни).
+    end_date можно не указывать — тогда считается = start_date.
+    """
     class Meta:
         model = Event
-        fields = [
-            'name',
-            'start_date',
-            'end_date',
-            'client',
-            'location',
-            'responsible',
-            'status',
-            'equipment_tbd',
-        ]
+        fields = ['name', 'start_date', 'end_date', 'client', 'location', 'responsible', 'status']
         widgets = {
             'start_date': forms.DateInput(attrs={'type': 'date'}),
             'end_date': forms.DateInput(attrs={'type': 'date'}),
@@ -24,55 +20,46 @@ class EventForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        start_date = cleaned.get('start_date')
-        end_date = cleaned.get('end_date')
+        start = cleaned.get('start_date')
+        end = cleaned.get('end_date')
 
-        if start_date and end_date and end_date < start_date:
-            self.add_error('end_date', 'Дата окончания не может быть раньше даты начала')
+        if start and not end:
+            cleaned['end_date'] = start
+            self.instance.end_date = start
+
+        if start and end and end < start:
+            raise ValidationError("Дата окончания не может быть раньше даты начала.")
 
         return cleaned
 
 
-class EventEquipmentForm(forms.ModelForm):
-    class Meta:
-        model = EventEquipment
-        fields = ['equipment', 'quantity']
+class EventEquipmentForm(forms.Form):
+    equipment = forms.ModelChoiceField(queryset=Equipment.objects.none(), label="Оборудование")
+    quantity = forms.IntegerField(label="Количество", min_value=0, required=False)
 
-    def __init__(self, *args, **kwargs):
-        self.event = kwargs.pop('event', None)
+    def __init__(self, *args, event=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.event = event
+        self.fields['equipment'].queryset = Equipment.objects.all().order_by('name')
 
-    def clean(self):
-        cleaned = super().clean()
-        qty = cleaned.get('quantity') or 0
-        eq = cleaned.get('equipment')
-
-        if qty <= 0:
-            self.add_error('quantity', 'Количество должно быть больше 0')
-            return cleaned
-
-        if self.event and eq:
-            available = eq.available_quantity(self.event.start_date, self.event.end_date)
-            if qty > available:
-                # тут мы не запрещаем добавлять больше (как ты хотел ранее),
-                # но если хочешь запрет — скажи, поменяем на add_error.
-                pass
-
-        return cleaned
+    def clean_quantity(self):
+        qty = self.cleaned_data.get('quantity')
+        if qty is None:
+            return 0
+        return int(qty)
 
 
-class EventRentedEquipmentForm(forms.ModelForm):
-    class Meta:
-        model = EventRentedEquipment
-        fields = ['equipment', 'quantity']
+class EventRentedEquipmentForm(forms.Form):
+    equipment = forms.ModelChoiceField(queryset=Equipment.objects.none(), label="Оборудование")
+    quantity = forms.IntegerField(label="Количество", min_value=0, required=False)
 
-    def __init__(self, *args, **kwargs):
-        self.event = kwargs.pop('event', None)
+    def __init__(self, *args, event=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.event = event
+        self.fields['equipment'].queryset = Equipment.objects.all().order_by('name')
 
-    def clean(self):
-        cleaned = super().clean()
-        qty = cleaned.get('quantity') or 0
-        if qty <= 0:
-            self.add_error('quantity', 'Количество должно быть больше 0')
-        return cleaned
+    def clean_quantity(self):
+        qty = self.cleaned_data.get('quantity')
+        if qty is None:
+            return 0
+        return int(qty)
