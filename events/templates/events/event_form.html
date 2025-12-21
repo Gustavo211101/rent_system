@@ -3,11 +3,56 @@
 {% block content %}
 <h1>{{ title }}</h1>
 
-<form method="post">
+<form method="post" class="form">
     {% csrf_token %}
-    {{ form.as_p }}
 
-    <button type="submit" class="btn">💾 Сохранить</button>
-    <a class="btn-secondary" href="{% url 'calendar' %}">Отмена</a>
+    <div class="form-grid">
+        <div class="form-row">
+            <label>Название</label>
+            {{ form.name }}
+            {{ form.name.errors }}
+        </div>
+
+        <div class="form-row">
+            <label>Дата начала</label>
+            {{ form.start_date }}
+            {{ form.start_date.errors }}
+        </div>
+
+        <div class="form-row">
+            <label>Дата окончания (если пусто — один день)</label>
+            {{ form.end_date }}
+            {{ form.end_date.errors }}
+        </div>
+
+        <div class="form-row">
+            <label>Клиент</label>
+            {{ form.client }}
+            {{ form.client.errors }}
+        </div>
+
+        <div class="form-row">
+            <label>Локация</label>
+            {{ form.location }}
+            {{ form.location.errors }}
+        </div>
+
+        <div class="form-row">
+            <label>Ответственный</label>
+            {{ form.responsible }}
+            {{ form.responsible.errors }}
+        </div>
+
+        <div class="form-row">
+            <label>Статус</label>
+            {{ form.status }}
+            {{ form.status.errors }}
+        </div>
+    </div>
+
+    <div style="margin-top:16px;">
+        <button class="btn" type="submit">Сохранить</button>
+        <a class="btn-secondary" href="{% url 'calendar' %}">Отмена</a>
+    </div>
 </form>
 {% endblock %}
