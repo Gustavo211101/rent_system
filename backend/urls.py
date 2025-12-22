@@ -1,6 +1,9 @@
+# backend/urls.py
+
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from django.contrib.auth import views as auth_views
 
 
 def home(request):
@@ -11,8 +14,14 @@ def home(request):
 
 urlpatterns = [
     path('', home),
+
+    # apps
     path('', include('accounts.urls')),
     path('', include('events.urls')),
     path('', include('inventory.urls')),
+
+    # logout нужен, потому что base.html ссылается на {% url 'logout' %}
+    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+
     path('admin/', admin.site.urls),
 ]

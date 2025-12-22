@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% include "accounts/staff_base_tabs.html" %}
+
+<form method="post" class="card" style="max-width:720px;">
+  {% csrf_token %}
+  {{ form.as_p }}
+
+  <div class="toolbar" style="justify-content:flex-start; gap:10px;">
+    <button class="btn" type="submit">Сохранить</button>
+    <a class="btn-secondary" href="{% url 'staff_roles' %}">Отмена</a>
+  </div>
+</form>
+{% endblock %}

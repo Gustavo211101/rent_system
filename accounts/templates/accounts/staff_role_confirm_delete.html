@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="toolbar">
+  <a class="btn-secondary" href="{% url 'staff_roles' %}">← Назад</a>
+</div>
+
+<h1>Удалить роль</h1>
+
+<div class="card" style="max-width:720px;">
+  <p>Точно удалить роль <strong>{{ role.name }}</strong>?</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn" type="submit">Да, удалить</button>
+    <a class="btn-secondary" href="{% url 'staff_roles' %}">Отмена</a>
+  </form>
+</div>
+{% endblock %}

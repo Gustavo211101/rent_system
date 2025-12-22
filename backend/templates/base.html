@@ -1,49 +1,55 @@
 {% load static %}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Прокат</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Прокат</title>
 
-    <link rel="stylesheet" href="{% static 'css/base.css' %}">
-    <link rel="stylesheet" href="{% static 'css/calendar.css' %}">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/calendar.css' %}">
 </head>
 <body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">Прокат</div>
 
-<header class="topbar">
-    <div class="topbar-inner">
-        <div class="brand">
-            <a href="{% url 'calendar' %}">Прокат</a>
-        </div>
+      {% if user.is_authenticated %}
+      <nav class="nav">
+        <a class="nav-link" href="{% url 'calendar' %}">📅 Календарь</a>
+        <a class="nav-link" href="{% url 'event_list' %}">🗓 Мероприятия</a>
 
-        <nav class="nav">
-            <a class="nav-link" href="{% url 'calendar' %}">📅 Календарь</a>
-            <a class="nav-link" href="{% url 'event_list' %}">🗓 Мероприятия</a>
+        <a class="nav-link" href="{% url 'equipment_list' %}">🧰 Оборудование</a>
 
-            {# если у тебя урл оборудования называется иначе — поменяй name тут #}
-            <a class="nav-link" href="{% url 'equipment_list' %}">🧰 Оборудование</a>
+        {% if user.is_superuser %}
+          <a class="nav-link" href="/admin/">⚙️ Админка</a>
+        {% endif %}
 
-            {% if user.is_superuser %}
-                <a class="nav-link" href="/admin/">⚙️ Админка</a>
+        {# Персонал — только менеджеру (и суперюзеру тоже ок) #}
+        {% if user.groups.all %}
+          {% for g in user.groups.all %}
+            {% if g.name == "Менеджер" %}
+              <a class="nav-link" href="{% url 'personnel' %}">👥 Персонал</a>
             {% endif %}
+          {% endfor %}
+        {% endif %}
 
-            <a class="nav-link" href="{% url 'logout' %}">🚪 Выйти</a>
-        </nav>
+        <a class="nav-link" href="{% url 'logout' %}">🚪 Выйти</a>
+      </nav>
+      {% endif %}
     </div>
-</header>
+  </header>
 
-<main class="container">
+  <main class="container">
     {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-                <div class="message {{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        </div>
+      <div class="messages">
+        {% for message in messages %}
+          <div class="msg {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
     {% endif %}
 
     {% block content %}{% endblock %}
-</main>
-
+  </main>
 </body>
 </html>

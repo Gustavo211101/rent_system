@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Персонал</h1>
+
+{% include "accounts/staff_base_tabs.html" %}
+
+<div class="toolbar" style="gap:12px; align-items:flex-end;">
+  <form method="get" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <label style="display:block; font-size:12px; opacity:.7;">Поиск</label>
+      <input type="text" name="q" value="{{ q }}" placeholder="Имя / логин / email" />
+    </div>
+
+    <div>
+      <label style="display:block; font-size:12px; opacity:.7;">Роль</label>
+      <select name="role">
+        <option value="">Все</option>
+        {% for r in roles %}
+          <option value="{{ r.id }}" {% if role_id|add:"0" == r.id|stringformat:"s" %}selected{% endif %}>
+            {{ r.name }} ({{ r.user_count }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button class="btn-secondary" type="submit">Фильтр</button>
+    <a class="btn-secondary" href="{% url 'staff_users' %}">Сброс</a>
+  </form>
+
+  <div style="margin-left:auto;">
+    <a class="btn" href="{% url 'staff_user_add' %}">➕ Добавить пользователя</a>
+  </div>
+</div>
+
+<table class="list-table">
+  <thead>
+    <tr>
+      <th>Логин</th>
+      <th>Имя</th>
+      <th>Email</th>
+      <th>Роль</th>
+      <th style="width:220px;">Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.first_name }} {{ u.last_name }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          {% with g=u.groups.first %}
+            {% if g %}{{ g.name }}{% else %}—{% endif %}
+          {% endwith %}
+        </td>
+        <td>
+          {% if not u.is_superuser %}
+            <a class="btn-secondary" href="{% url 'staff_user_edit' u.id %}">Редактировать</a>
+            <a class="btn-secondary" href="{% url 'staff_user_delete' u.id %}">Удалить</a>
+          {% else %}
+            <span style="opacity:.6;">суперпользователь</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">Пользователей нет</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
