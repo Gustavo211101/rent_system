@@ -1,56 +1,33 @@
 from django import forms
-from django.conf import settings
 
 from inventory.models import Equipment
 from .models import Event, EventEquipment, EventRentedEquipment
 
-User = settings.AUTH_USER_MODEL
-
 
 class EventForm(forms.ModelForm):
     """
-    Форма создания/редактирования мероприятия.
-    Работаем только с датами (без времени).
-    end_date может быть пустой — тогда это однодневное мероприятие.
+    Форма мероприятия только по датам (без времени).
+    end_date можно не заполнять — тогда будет равна start_date.
     """
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="Дата начала",
+    )
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="Дата окончания",
+    )
 
     class Meta:
         model = Event
-        fields = [
-            "name",
-            "start_date",
-            "end_date",
-            "client",
-            "location",
-            "responsible",
-            "status",
-        ]
-        widgets = {
-            "name": forms.TextInput(attrs={"class": "input"}),
-            "start_date": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
-            "end_date": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
-            "client": forms.TextInput(attrs={"class": "input"}),
-            "location": forms.TextInput(attrs={"class": "input"}),
-        }
-
-    def init(self, *args, **kwargs):
-        super().init(*args, **kwargs)
-
-        # end_date необязателен (по ТЗ: если не указан — = start_date)
-        self.fields["end_date"].required = False
-
-        # чтобы формы корректно подхватывали initial для type="date"
-        if self.instance and getattr(self.instance, "start_date", None):
-            self.initial["start_date"] = self.instance.start_date
-        if self.instance and getattr(self.instance, "end_date", None):
-            self.initial["end_date"] = self.instance.end_date
+        fields = ["name", "start_date", "end_date", "client", "location", "responsible"]
 
     def clean(self):
         cleaned = super().clean()
         start = cleaned.get("start_date")
         end = cleaned.get("end_date")
 
-        # если конец не указан — считаем однодневным
         if start and not end:
             cleaned["end_date"] = start
             end = start
@@ -61,33 +38,35 @@ class EventForm(forms.ModelForm):
         return cleaned
 
 
-class EventEquipmentForm(forms.Form):
-    equipment = forms.ModelChoiceField(
-        queryset=Equipment.objects.all().order_by("name"),
-        label="Оборудование",
-    )
-    quantity = forms.IntegerField(
-        min_value=0,
-        label="Количество",
-        help_text="Если 0 — ничего не добавится.",
-    )
+class EventEquipmentForm(forms.ModelForm):
+    """
+    ВАЖНО: принимает event=... чтобы не падать в views.
+    """
+    class Meta:
+        model = EventEquipment
+        fields = ["equipment", "quantity"]
 
-    def init(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        self.event = kwargs.pop("event", None)  # <-- ключевая строка (чинит ошибку)
+        super().__init__(*args, **kwargs)
+
+        self.fields["equipment"].queryset = Equipment.objects.all().order_by("name")
+        self.fields["quantity"].min_value = 0
+        self.fields["quantity"].initial = 1
+
+
+class EventRentedEquipmentForm(forms.ModelForm):
+    """
+    Аналогично: принимает event=...
+    """
+    class Meta:
+        model = EventRentedEquipment
+        fields = ["equipment", "quantity"]
+
+    def __init__(self, *args, **kwargs):
         self.event = kwargs.pop("event", None)
-        super().init(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-
-class EventRentedEquipmentForm(forms.Form):
-    equipment = forms.ModelChoiceField(
-        queryset=Equipment.objects.all().order_by("name"),
-        label="Оборудование (в аренду)",
-    )
-    quantity = forms.IntegerField(
-        min_value=0,
-        label="Количество",
-        help_text="Если 0 — ничего не добавится.",
-    )
-
-    def init(self, *args, **kwargs):
-        self.event = kwargs.pop("event", None)
-        super().init(*args, **kwargs)
+        self.fields["equipment"].queryset = Equipment.objects.all().order_by("name")
+        self.fields["quantity"].min_value = 0
+        self.fields["quantity"].initial = 1

@@ -301,32 +301,39 @@ def event_set_status_view(request, event_id, status):
 # Equipment on event
 # =========================
 
+
 @login_required
 def event_equipment_add_view(request, event_id):
     event = get_object_or_404(Event, id=event_id)
 
-    if not _can_modify_equipment(request.user, event):
-        return HttpResponseForbidden("Недостаточно прав на оборудование")
+    # права: старший инженер + менеджер (и суперюзер обычно тоже)
+    if not user_can_edit_event_equipment(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
 
     if request.method == "POST":
         form = EventEquipmentForm(request.POST, event=event)
+
+        # ✅ КЛЮЧ: чтобы валидация не падала внутри clean()
+        form.instance.event = event
+
         if form.is_valid():
             eq = form.cleaned_data["equipment"]
-            qty = int(form.cleaned_data.get("quantity") or 0)
+            qty = int(form.cleaned_data["quantity"])
 
-            if qty <= 0:
-                return redirect("event_detail", event_id=event.id)
-
-            existing = EventEquipment.objects.filter(event=event, equipment=eq).first()
-            if existing:
-                existing.quantity = int(existing.quantity) + qty
-                existing.save()
-            else:
-                EventEquipment.objects.create(event=event, equipment=eq, quantity=qty)
+            # ✅ суммирование (как у тебя было раньше)
+            item, created = EventEquipment.objects.get_or_create(
+                event=event,
+                equipment=eq,
+                defaults={"quantity": qty},
+            )
+            if not created:
+                item.quantity = item.quantity + qty
+                item.save(update_fields=["quantity"])
 
             return redirect("event_detail", event_id=event.id)
     else:
         form = EventEquipmentForm(event=event)
+        form.instance.event = event
 
     equipment_items = (
         EventEquipment.objects
@@ -335,13 +342,15 @@ def event_equipment_add_view(request, event_id):
         .order_by("equipment__name")
     )
 
-    return render(request, "events/event_equipment_add.html", {
-        "event": event,
-        "form": form,
-        "equipment_items": equipment_items,
-        "shortages": _event_shortages(event),
-    })
-
+    return render(
+        request,
+        "events/event_equipment_add.html",
+        {
+            "event": event,
+            "form": form,
+            "equipment_items": equipment_items,
+        },
+    )
 
 @login_required
 def event_equipment_update_qty_view(request, event_id, item_id):
