@@ -149,7 +149,8 @@ a:hover {
 /* Confirmed */
 .status-pill.status-confirmed {
     background: #dbeafe;
-    color: #1e3a8a;
+    color: #111827;
+;
 }
 
 /* In rent */

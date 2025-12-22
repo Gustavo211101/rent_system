@@ -1,9 +1,8 @@
+from future import annotations
+
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-
-from .permissions import ROLE_MANAGER, ROLE_SENIOR, ROLE_ENGINEER
-
 
 User = get_user_model()
 
@@ -15,7 +14,7 @@ class StaffUserCreateForm(forms.ModelForm):
         label="Роль",
         queryset=Group.objects.all().order_by("name"),
         required=False,
-        empty_label="— без роли —"
+        empty_label="— без роли —",
     )
 
     class Meta:
@@ -35,14 +34,11 @@ class StaffUserCreateForm(forms.ModelForm):
         user.set_password(self.cleaned_data["password1"])
         if commit:
             user.save()
-            self._apply_role(user)
+            user.groups.clear()
+            role = self.cleaned_data.get("role")
+            if role:
+                user.groups.add(role)
         return user
-
-    def _apply_role(self, user):
-        role = self.cleaned_data.get("role")
-        user.groups.clear()
-        if role:
-            user.groups.add(role)
 
 
 class StaffUserUpdateForm(forms.ModelForm):
@@ -52,15 +48,15 @@ class StaffUserUpdateForm(forms.ModelForm):
         label="Роль",
         queryset=Group.objects.all().order_by("name"),
         required=False,
-        empty_label="— без роли —"
+        empty_label="— без роли —",
     )
 
     class Meta:
         model = User
         fields = ("username", "first_name", "last_name", "email", "is_active")
 
-    def init(self, *args, **kwargs):
-        super().init(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.fields["role"].initial = self.instance.groups.first()
 
@@ -79,28 +75,8 @@ class StaffUserUpdateForm(forms.ModelForm):
             user.set_password(p1)
         if commit:
             user.save()
-            self._apply_role(user)
+            user.groups.clear()
+            role = self.cleaned_data.get("role")
+            if role:
+                user.groups.add(role)
         return user
-
-    def _apply_role(self, user):
-        role = self.cleaned_data.get("role")
-        user.groups.clear()
-        if role:
-            user.groups.add(role)
-
-
-class StaffRoleForm(forms.ModelForm):
-    """
-    Роль (Group) + чекбоксы прав.
-    Права записываем в виде membership в группах:
-    - Менеджер / Старший инженер / Инженер
-    Ты позже сможешь добавлять новые роли — они тоже будут работать.
-    """
-    can_manage_staff = forms.BooleanField(label="Доступ к персоналу и ролям", required=False)
-    can_manage_inventory = forms.BooleanField(label="Управление оборудованием", required=False)
-    can_edit_event_card = forms.BooleanField(label="Редактирование карточек мероприятий (даты/статус)", required=False)
-    can_edit_event_equipment = forms.BooleanField(label="Редактирование оборудования в мероприятиях", required=False)
-
-    class Meta:
-        model = Group
-        fields = ("name",)

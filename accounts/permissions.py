@@ -1,101 +1,72 @@
-from django.contrib.auth.models import Group
+from __future__ import annotations
 
-
-# Основные названия групп (ролей)
 ROLE_MANAGER = "Менеджер"
-ROLE_SENIOR_ENGINEER = "Старший инженер"
+ROLE_SENIOR = "Старший инженер"
 ROLE_ENGINEER = "Инженер"
 
-# --- Алиасы для совместимости со старым кодом ---
-# Если где-то в проекте импортируют ROLE_SENIOR / ROLE_ADMIN / ROLE_VIEWER и т.п.
-ROLE_SENIOR = ROLE_SENIOR_ENGINEER
-ROLE_ADMIN = ROLE_MANAGER
-ROLE_VIEWER = ROLE_ENGINEER
-# ----------------------------------------------
 
-
-def _has_group(user, group_name: str) -> bool:
-    if not user or not getattr(user, "is_authenticated", False):
+def _in_group(user, group_name: str) -> bool:
+    if not user or not user.is_authenticated:
         return False
     return user.groups.filter(name=group_name).exists()
 
 
-def get_user_role_name(user) -> str:
-    """
-    Возвращает отображаемое имя роли (группы) для пользователя.
-    Если у пользователя несколько групп — приоритет:
-    Менеджер > Старший инженер > Инженер > первая группа > ''.
-    """
-    if not user or not getattr(user, "is_authenticated", False):
-        return ""
-
-    if user.is_superuser:
-        return "Суперадмин"
-
-    if _has_group(user, ROLE_MANAGER):
-        return ROLE_MANAGER
-    if _has_group(user, ROLE_SENIOR_ENGINEER):
-        return ROLE_SENIOR_ENGINEER
-    if _has_group(user, ROLE_ENGINEER):
-        return ROLE_ENGINEER
-
-    first = user.groups.first()
-    return first.name if first else ""
+def is_super(user) -> bool:
+    return bool(user and user.is_authenticated and getattr(user, "is_superuser", False))
 
 
-# -------------------------
-# Права (основные)
-# -------------------------
+def is_manager(user) -> bool:
+    return is_super(user) or _in_group(user, ROLE_MANAGER)
+
+
+def is_senior_engineer(user) -> bool:
+    return is_super(user) or _in_group(user, ROLE_SENIOR)
+
+
+def is_engineer(user) -> bool:
+    return is_super(user) or _in_group(user, ROLE_ENGINEER)
+
+
+# === ПРАВА по ТЗ ===
+
+def can_manage_staff(user) -> bool:
+    # Персонал/роли — только менеджер и суперадмин
+    return is_manager(user)
+
+
+def can_edit_event_card(user) -> bool:
+    # Карточка мероприятия + статус + даты — только менеджер и суперадмин
+    return is_manager(user)
+
+
+def can_edit_event_equipment(user) -> bool:
+    # Оборудование/аренда внутри мероприятия — менеджер + старший инженер + суперадмин
+    return is_manager(user) or is_senior_engineer(user)
+
+
+def can_edit_inventory(user) -> bool:
+    # Инвентарь (CRUD) — только менеджер и суперадмин
+    return is_manager(user)
+
+
+# === Алиасы, чтобы не падали старые импорты/вызовы ===
 
 def user_can_manage_staff(user) -> bool:
-    """Доступ к разделу "Персонал" (пользователи/роли). Только Менеджер/суперпользователь."""
-    return bool(user and user.is_authenticated and (user.is_superuser or _has_group(user, ROLE_MANAGER)))
-
-
-def user_can_manage_inventory(user) -> bool:
-    """Может создавать/редактировать оборудование и категории. Только Менеджер/суперпользователь."""
-    return bool(user and user.is_authenticated and (user.is_superuser or _has_group(user, ROLE_MANAGER)))
+    return can_manage_staff(user)
 
 
 def user_can_edit_event_card(user) -> bool:
-    """Может менять карточку мероприятия (даты/статус/клиент/локация). Только Менеджер/суперпользователь."""
-    return bool(user and user.is_authenticated and (user.is_superuser or _has_group(user, ROLE_MANAGER)))
+    return can_edit_event_card(user)
 
 
 def user_can_edit_event_equipment(user) -> bool:
-    """Может менять оборудование в мероприятии. Менеджер + Старший инженер + суперпользователь."""
-    return bool(
-        user and user.is_authenticated and (
-            user.is_superuser
-            or _has_group(user, ROLE_MANAGER)
-            or _has_group(user, ROLE_SENIOR_ENGINEER)
-        )
-    )
+    return can_edit_event_equipment(user)
 
 
-def user_can_view(user) -> bool:
-    """Просмотр (все авторизованные)."""
-    return bool(user and user.is_authenticated)
-
-
-# -------------------------
-# Алиасы функций для обратной совместимости
-# -------------------------
-
-# Часто было: user_can_edit(request.user)
-def user_can_edit(user) -> bool:
-    return user_can_edit_event_card(user)
-
-
-# Иногда встречалось: user_can_edit_equipment
 def user_can_edit_equipment(user) -> bool:
-    return user_can_edit_event_equipment(user)
+    return can_edit_inventory(user)
 
 
-# На всякий случай — если старый код импортирует такие имена:
-def can_manage_staff(user) -> bool:
-    return user_can_manage_staff(user)
-
-
-def can_manage_inventory(user) -> bool:
-    return user_can_manage_inventory(user)
+def user_can_edit(user) -> bool:
+    # старое "can_edit" трактуем как "можно править карточку"
+    return can_edit_event_card(user)
