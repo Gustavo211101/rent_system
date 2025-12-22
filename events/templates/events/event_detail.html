@@ -25,7 +25,8 @@
   </div>
 
   <div class="page-actions">
-    {% if can_modify %}
+    {# Правка карточки события (менеджер/супер) #}
+    {% if can_modify_card %}
       <a class="btn-secondary" href="{% url 'event_edit' event.id %}">✏️ Редактировать</a>
 
       <div style="height:10px;"></div>
@@ -75,8 +76,8 @@
       <thead>
         <tr>
           <th>Оборудование</th>
-          <th style="width: 140px;">Количество</th>
-          {% if can_modify %}
+          <th style="width: 170px;">Количество</th>
+          {% if can_modify_equipment %}
             <th style="width: 220px;">Действия</th>
           {% endif %}
         </tr>
@@ -86,7 +87,7 @@
           <tr>
             <td>{{ item.equipment.name }}</td>
             <td>
-              {% if can_modify %}
+              {% if can_modify_equipment %}
                 <form method="post" action="{% url 'event_equipment_update_qty' event.id item.id %}" style="display:flex; gap:8px; align-items:center;">
                   {% csrf_token %}
                   <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:90px;">
@@ -96,7 +97,7 @@
                 {{ item.quantity }}
               {% endif %}
             </td>
-            {% if can_modify %}
+            {% if can_modify_equipment %}
               <td>
                 <form method="post" action="{% url 'event_equipment_delete' event.id item.id %}">
                   {% csrf_token %}
@@ -112,8 +113,8 @@
     <div class="muted">Пока ничего не добавлено.</div>
   {% endif %}
 
-  {% if can_modify %}
-    <div style="margin-top:12px;">
+  {% if can_modify_equipment %}
+  <div style="margin-top:12px;">
       <a class="btn" href="{% url 'event_equipment_add' event.id %}">➕ Добавить оборудование</a>
     </div>
   {% endif %}
@@ -127,8 +128,8 @@
       <thead>
         <tr>
           <th>Оборудование</th>
-          <th style="width: 140px;">Количество</th>
-          {% if can_modify %}
+          <th style="width: 170px;">Количество</th>
+          {% if can_modify_equipment %}
             <th style="width: 220px;">Действия</th>
           {% endif %}
         </tr>
@@ -138,7 +139,7 @@
           <tr>
             <td>{{ item.equipment.name }}</td>
             <td>
-              {% if can_modify %}
+              {% if can_modify_equipment %}
                 <form method="post" action="{% url 'event_rented_update_qty' event.id item.id %}" style="display:flex; gap:8px; align-items:center;">
                   {% csrf_token %}
                   <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:90px;">
@@ -148,7 +149,7 @@
                 {{ item.quantity }}
               {% endif %}
             </td>
-            {% if can_modify %}
+            {% if can_modify_equipment %}
               <td>
                 <form method="post" action="{% url 'event_rented_delete' event.id item.id %}">
                   {% csrf_token %}
@@ -164,7 +165,7 @@
     <div class="muted">Пока ничего не арендовано.</div>
   {% endif %}
 
-  {% if can_modify %}
+  {% if can_modify_equipment %}
     <div style="margin-top:12px;">
       <a class="btn" href="{% url 'event_rented_add' event.id %}">➕ Добавить аренду</a>
     </div>
