@@ -30,22 +30,22 @@ def is_engineer(user) -> bool:
 # === ПРАВА по ТЗ ===
 
 def can_manage_staff(user) -> bool:
-    # Персонал/роли — только менеджер и суперадмин
+# Персонал/роли — только менеджер и суперадмин
     return is_manager(user)
 
 
 def can_edit_event_card(user) -> bool:
-    # Карточка мероприятия + статус + даты — только менеджер и суперадмин
+# Карточка мероприятия + статус + даты — только менеджер и суперадмин
     return is_manager(user)
 
 
 def can_edit_event_equipment(user) -> bool:
-    # Оборудование/аренда внутри мероприятия — менеджер + старший инженер + суперадмин
+# Оборудование/аренда внутри мероприятия — менеджер + старший инженер + суперадмин
     return is_manager(user) or is_senior_engineer(user)
 
 
 def can_edit_inventory(user) -> bool:
-    # Инвентарь (CRUD) — только менеджер и суперадмин
+# Инвентарь (CRUD) — только менеджер и суперадмин
     return is_manager(user)
 
 
@@ -68,5 +68,5 @@ def user_can_edit_equipment(user) -> bool:
 
 
 def user_can_edit(user) -> bool:
-    # старое "can_edit" трактуем как "можно править карточку"
+# старое "can_edit" трактуем как "можно править карточку"
     return can_edit_event_card(user)
