@@ -1,7 +1,6 @@
-from future import annotations
+from __future__ import annotations
 
 from typing import Optional, Any
-
 from django.utils import timezone
 
 from .models import AuditLog
@@ -24,15 +23,12 @@ def log_action(
     message: str = "",
 ) -> AuditLog:
     """
-    Единая точка логирования действий.
-    action: 'create' | 'update' | 'delete'
-    obj: модельный объект, по которому хотим определить тип/ID
+    action: create | update | delete
     """
 
-    # Определяем тип/ID автоматически, если передали obj
     if obj is not None:
         if entity_type is None:
-            entity_type = obj.class.name  # ✅ правильно
+            entity_type = obj.__class__.__name__   # <-- ВАЖНО
         if entity_id is None:
             entity_id = getattr(obj, "pk", None)
 
@@ -42,6 +38,6 @@ def log_action(
         action=action,
         entity_type=entity_type or "",
         entity_id=entity_id,
-        message=message or "",
-        object_repr=_safe_str(obj) if obj is not None else "",
+        message=message,
+        object_repr=_safe_str(obj) if obj else "",
     )
