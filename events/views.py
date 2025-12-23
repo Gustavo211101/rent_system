@@ -1,44 +1,25 @@
-from __future__ import annotations
-
-import calendar
 from datetime import date, timedelta
+import calendar
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Q
 from django.http import HttpResponseForbidden
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 
-from accounts.permissions import (
-    user_can_edit_event_card,
-    user_can_edit_event_equipment,
-)
-
+from accounts.permissions import user_can_edit
+from audit.utils import log_action
 from inventory.models import Equipment
-from .forms import EventForm, EventEquipmentForm, EventRentedEquipmentForm
 from .models import Event, EventEquipment, EventRentedEquipment
+from .forms import EventForm, EventEquipmentForm, EventRentedEquipmentForm
 
 
 # =========================
 # Helpers
 # =========================
 
-def _event_end(ev: Event) -> date:
-    return ev.end_date or ev.start_date
-
-
-def _overlap_q(prefix: str, start: date, end: date) -> Q:
-    """
-    Пересечение диапазонов дат (включительно) для DateField:
-      start_date <= end AND end_date >= start
-    end_date может быть NULL => считаем end_date = start_date
-    """
-    return (
-        Q(**{f"{prefix}start_date__lte": end})
-        & (
-            Q(**{f"{prefix}end_date__gte": start})
-            | (Q(**{f"{prefix}end_date__isnull": True}) & Q(**{f"{prefix}start_date__gte": start}))
-        )
-    )
+def _event_end(event: Event) -> date:
+    return event.end_date or event.start_date
 
 
 def auto_close_past_events():
@@ -57,20 +38,22 @@ def auto_close_past_events():
     ).update(status=Event.STATUS_CLOSED)
 
 
-def _can_modify_card(user, event: Event) -> bool:
+def _can_modify_event(user, event: Event) -> bool:
     if user.is_superuser:
         return True
     if event.status == Event.STATUS_CLOSED:
         return False
-    return user_can_edit_event_card(user)
+    return user_can_edit(user)
 
 
-def _can_modify_equipment(user, event: Event) -> bool:
-    if user.is_superuser:
-        return True
-    if event.status == Event.STATUS_CLOSED:
-        return False
-    return user_can_edit_event_equipment(user)
+def _overlap_q(prefix: str, start: date, end: date) -> Q:
+    return (
+        Q(**{f"{prefix}start_date__lte": end})
+        & (
+            Q(**{f"{prefix}end_date__gte": start})
+            | (Q(**{f"{prefix}end_date__isnull": True}) & Q(**{f"{prefix}start_date__gte": start}))
+        )
+    )
 
 
 def _event_reserved_other_map(event: Event) -> dict:
@@ -107,7 +90,7 @@ def _event_rented_map(event: Event) -> dict:
     return {row["equipment_id"]: int(row["total"] or 0) for row in rented}
 
 
-def _event_shortages(event: Event) -> list[dict]:
+def _event_shortages(event: Event) -> list:
     reserved_other = _event_reserved_other_map(event)
     required_map = _event_required_map(event)
     rented_map = _event_rented_map(event)
@@ -139,14 +122,10 @@ def _event_shortages(event: Event) -> list[dict]:
                 "available_own": available_own,
                 "rented": rented,
                 "shortage": shortage,
-                })
+            })
 
     result.sort(key=lambda x: x["shortage"], reverse=True)
     return result
-
-
-def _event_has_shortage(event: Event) -> bool:
-    return len(_event_shortages(event)) > 0
 
 
 # =========================
@@ -167,16 +146,12 @@ def calendar_view(request):
     grid_start = month_days[0][0]
     grid_end = month_days[-1][-1]
 
-    events = Event.objects.filter(_overlap_q("", grid_start, grid_end)).order_by("start_date", "id")
+    events = Event.objects.filter(_overlap_q("", grid_start, grid_end))
 
-    events_by_day: dict[date, list[Event]] = {}
-    event_has_problem: dict[int, bool] = {}
-
+    events_by_day = {}
     for ev in events:
-        event_has_problem[ev.id] = _event_has_shortage(ev)
-
-        d = ev.start_date
         ev_end = _event_end(ev)
+        d = ev.start_date
         while d <= ev_end:
             events_by_day.setdefault(d, []).append(ev)
             d += timedelta(days=1)
@@ -190,8 +165,7 @@ def calendar_view(request):
         "month_name": calendar.month_name[month],
         "month_days": month_days,
         "events_by_day": events_by_day,
-        "event_has_problem": event_has_problem,   # ВАЖНО: чтобы шаблон не падал
-        "can_edit": user_can_edit_event_card(request.user),
+        "can_edit": user_can_edit(request.user),
     })
 
 
@@ -201,7 +175,7 @@ def event_list_view(request):
     events = Event.objects.order_by("-start_date", "-id")
     return render(request, "events/event_list.html", {
         "events": events,
-        "can_edit": user_can_edit_event_card(request.user),
+        "can_edit": user_can_edit(request.user),
     })
 
 
@@ -225,6 +199,7 @@ def event_detail_view(request, event_id):
     )
 
     shortages = _event_shortages(event)
+    can_modify = _can_modify_event(request.user, event)
 
     return render(request, "events/event_detail.html", {
         "event": event,
@@ -233,38 +208,42 @@ def event_detail_view(request, event_id):
         "rented_items": rented_items,
         "shortages": shortages,
         "has_shortage": len(shortages) > 0,
-        "can_edit": user_can_edit_event_card(request.user),
-        "can_modify_card": _can_modify_card(request.user, event),
-        "can_modify_equipment": _can_modify_equipment(request.user, event),
+        "can_edit": user_can_edit(request.user),
+        "can_modify": can_modify,
     })
 
 
 @login_required
 def event_create_view(request):
-    if not user_can_edit_event_card(request.user):
+    if not user_can_edit(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
     if request.method == "POST":
         form = EventForm(request.POST)
         if form.is_valid():
             event = form.save(commit=False)
+
             if not event.end_date:
                 event.end_date = event.start_date
             if not event.responsible:
                 event.responsible = request.user
+
             event.save()
+            log_action(user=request.user, action="create", obj=event, details="Создано мероприятие")
             return redirect("event_detail", event_id=event.id)
     else:
         form = EventForm()
 
-    return render(request, "events/event_form.html", {"form": form, "title": "Создание мероприятия"})
+    return render(request, "events/event_form.html", {
+        "form": form,
+        "title": "Создание мероприятия",
+    })
 
 
 @login_required
 def event_update_view(request, event_id):
     event = get_object_or_404(Event, id=event_id)
-
-    if not _can_modify_card(request.user, event):
+    if not _can_modify_event(request.user, event):
         return HttpResponseForbidden("Нельзя редактировать это мероприятие")
 
     if request.method == "POST":
@@ -274,26 +253,36 @@ def event_update_view(request, event_id):
             if not ev.end_date:
                 ev.end_date = ev.start_date
             ev.save()
-            return redirect("event_detail", event_id=event.id)
+            log_action(user=request.user, action="update", obj=ev, details="Изменена карточка мероприятия")
+            return redirect("event_detail", event_id=ev.id)
     else:
         form = EventForm(instance=event)
 
-    return render(request, "events/event_form.html", {"form": form, "title": "Редактирование мероприятия"})
+    return render(request, "events/event_form.html", {
+        "form": form,
+        "title": "Редактирование мероприятия",
+    })
 
 
 @login_required
 def event_set_status_view(request, event_id, status):
     event = get_object_or_404(Event, id=event_id)
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden("Нельзя менять статус этого мероприятия")
 
-    if not _can_modify_card(request.user, event):
-        return HttpResponseForbidden("Нельзя менять статус")
-
-    allowed = {s[0] for s in Event.STATUS_CHOICES}
-    if status not in allowed:
+    allowed_statuses = {s[0] for s in Event.STATUS_CHOICES}
+    if status not in allowed_statuses:
         return redirect("event_detail", event_id=event.id)
 
+    old = event.status
     event.status = status
     event.save(update_fields=["status"])
+    log_action(
+        user=request.user,
+        action="update",
+        obj=event,
+        details=f"Смена статуса: {old} -> {status}",
+    )
     return redirect("event_detail", event_id=event.id)
 
 
@@ -301,39 +290,43 @@ def event_set_status_view(request, event_id, status):
 # Equipment on event
 # =========================
 
-
 @login_required
 def event_equipment_add_view(request, event_id):
     event = get_object_or_404(Event, id=event_id)
-
-    # права: старший инженер + менеджер (и суперюзер обычно тоже)
-    if not user_can_edit_event_equipment(request.user):
-        return HttpResponseForbidden("Недостаточно прав")
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden("Нельзя изменять оборудование у закрытого мероприятия")
 
     if request.method == "POST":
         form = EventEquipmentForm(request.POST, event=event)
-
-        # ✅ КЛЮЧ: чтобы валидация не падала внутри clean()
-        form.instance.event = event
-
         if form.is_valid():
             eq = form.cleaned_data["equipment"]
-            qty = int(form.cleaned_data["quantity"])
+            qty = int(form.cleaned_data.get("quantity") or 0)
 
-            # ✅ суммирование (как у тебя было раньше)
-            item, created = EventEquipment.objects.get_or_create(
-                event=event,
-                equipment=eq,
-                defaults={"quantity": qty},
-            )
-            if not created:
-                item.quantity = item.quantity + qty
-                item.save(update_fields=["quantity"])
+            if qty <= 0:
+                return redirect("event_detail", event_id=event.id)
+
+            existing = EventEquipment.objects.filter(event=event, equipment=eq).first()
+            if existing:
+                existing.quantity = int(existing.quantity) + qty
+                existing.save()
+                log_action(
+                    user=request.user,
+                    action="update",
+                    obj=event,
+                    details=f"Оборудование: +{qty} к {eq.name} (итого {existing.quantity})",
+                )
+            else:
+                EventEquipment.objects.create(event=event, equipment=eq, quantity=qty)
+                log_action(
+                    user=request.user,
+                    action="create",
+                    obj=event,
+                    details=f"Оборудование: добавлено {eq.name} x{qty}",
+                )
 
             return redirect("event_detail", event_id=event.id)
     else:
         form = EventEquipmentForm(event=event)
-        form.instance.event = event
 
     equipment_items = (
         EventEquipment.objects
@@ -342,74 +335,73 @@ def event_equipment_add_view(request, event_id):
         .order_by("equipment__name")
     )
 
-    return render(
-        request,
-        "events/event_equipment_add.html",
-        {
-            "event": event,
-            "form": form,
-            "equipment_items": equipment_items,
-        },
-    )
+    return render(request, "events/event_equipment_add.html", {
+        "event": event,
+        "form": form,
+        "equipment_items": equipment_items,
+        "shortages": _event_shortages(event),
+    })
+
 
 @login_required
 def event_equipment_update_qty_view(request, event_id, item_id):
     event = get_object_or_404(Event, id=event_id)
-
-    if not _can_modify_equipment(request.user, event):
-        return HttpResponseForbidden("Недостаточно прав на оборудование")
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden("Нельзя изменять оборудование у закрытого мероприятия")
 
     item = get_object_or_404(EventEquipment, id=item_id, event=event)
 
     if request.method != "POST":
         return redirect("event_detail", event_id=event.id)
 
-    qty_raw = (request.POST.get("quantity") or "").strip()
     try:
-        qty = int(qty_raw)
+        qty = int((request.POST.get("quantity") or "0").strip())
     except ValueError:
         return redirect("event_detail", event_id=event.id)
 
     if qty <= 0:
+        eq_name = item.equipment.name
         item.delete()
+        log_action(user=request.user, action="delete", obj=event, details=f"Оборудование: удалено {eq_name}")
         return redirect("event_detail", event_id=event.id)
 
+    old = item.quantity
     item.quantity = qty
     item.save()
+    log_action(user=request.user, action="update", obj=event, details=f"Оборудование: {item.equipment.name} {old} -> {qty}")
     return redirect("event_detail", event_id=event.id)
 
 
 @login_required
 def event_equipment_delete_view(request, event_id, item_id):
     event = get_object_or_404(Event, id=event_id)
-
-    if not _can_modify_equipment(request.user, event):
-        return HttpResponseForbidden("Недостаточно прав на оборудование")
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden("Нельзя изменять оборудование у закрытого мероприятия")
 
     item = get_object_or_404(EventEquipment, id=item_id, event=event)
 
     if request.method == "POST":
+        eq_name = item.equipment.name
         item.delete()
+        log_action(user=request.user, action="delete", obj=event, details=f"Оборудование: удалено {eq_name}")
 
     return redirect("event_detail", event_id=event.id)
 
 
 @login_required
 def event_mark_equipment_tbd_view(request, event_id):
-    # Ты просил убрать "оборудование позже" — оставляем view только для совместимости URL
     return redirect("event_detail", event_id=event_id)
 
 
 # =========================
-# Rented equipment (covers shortage)
+# Rented on event
 # =========================
 
 @login_required
 def event_rented_add_view(request, event_id):
     event = get_object_or_404(Event, id=event_id)
-
-    if not _can_modify_equipment(request.user, event):
-        return HttpResponseForbidden("Недостаточно прав на аренду")
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden("Нельзя изменять аренду у закрытого мероприятия")
 
     if request.method == "POST":
         form = EventRentedEquipmentForm(request.POST, event=event)
@@ -424,8 +416,15 @@ def event_rented_add_view(request, event_id):
             if existing:
                 existing.quantity = int(existing.quantity) + qty
                 existing.save()
+                log_action(
+                    user=request.user,
+                    action="update",
+                    obj=event,
+                    details=f"Аренда: +{qty} к {eq.name} (итого {existing.quantity})",
+                )
             else:
                 EventRentedEquipment.objects.create(event=event, equipment=eq, quantity=qty)
+                log_action(user=request.user, action="create", obj=event, details=f"Аренда: добавлено {eq.name} x{qty}")
 
             return redirect("event_detail", event_id=event.id)
     else:
@@ -449,40 +448,43 @@ def event_rented_add_view(request, event_id):
 @login_required
 def event_rented_update_qty_view(request, event_id, item_id):
     event = get_object_or_404(Event, id=event_id)
-
-    if not _can_modify_equipment(request.user, event):
-        return HttpResponseForbidden("Недостаточно прав на аренду")
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden("Нельзя изменять аренду у закрытого мероприятия")
 
     item = get_object_or_404(EventRentedEquipment, id=item_id, event=event)
 
     if request.method != "POST":
         return redirect("event_detail", event_id=event.id)
 
-    qty_raw = (request.POST.get("quantity") or "").strip()
     try:
-        qty = int(qty_raw)
+        qty = int((request.POST.get("quantity") or "0").strip())
     except ValueError:
         return redirect("event_detail", event_id=event.id)
 
     if qty <= 0:
+        eq_name = item.equipment.name
         item.delete()
+        log_action(user=request.user, action="delete", obj=event, details=f"Аренда: удалено {eq_name}")
         return redirect("event_detail", event_id=event.id)
 
+    old = item.quantity
     item.quantity = qty
     item.save()
+    log_action(user=request.user, action="update", obj=event, details=f"Аренда: {item.equipment.name} {old} -> {qty}")
     return redirect("event_detail", event_id=event.id)
 
 
 @login_required
 def event_rented_delete_view(request, event_id, item_id):
     event = get_object_or_404(Event, id=event_id)
-
-    if not _can_modify_equipment(request.user, event):
-        return HttpResponseForbidden("Недостаточно прав на аренду")
+    if not _can_modify_event(request.user, event):
+        return HttpResponseForbidden("Нельзя изменять аренду у закрытого мероприятия")
 
     item = get_object_or_404(EventRentedEquipment, id=item_id, event=event)
 
     if request.method == "POST":
+        eq_name = item.equipment.name
         item.delete()
+        log_action(user=request.user, action="delete", obj=event, details=f"Аренда: удалено {eq_name}")
 
     return redirect("event_detail", event_id=event.id)

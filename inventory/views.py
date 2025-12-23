@@ -1,14 +1,16 @@
+from django import forms
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models.deletion import ProtectedError
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
-from django import forms
 
 from accounts.permissions import can_edit_inventory
+from audit.utils import log_action
 from .models import Equipment, EquipmentCategory
-from django.db.models.deletion import ProtectedError
-from django.contrib import messages
 
-# ---------- Forms (просто и надёжно, без отдельного forms.py) ----------
+
+# ---------- Forms (просто и надёжно) ----------
 
 class EquipmentForm(forms.ModelForm):
     class Meta:
@@ -22,7 +24,7 @@ class CategoryForm(forms.ModelForm):
         fields = ["name"]
 
 
-# ---------- Views ----------
+# ---------- Views (просмотр) ----------
 
 @login_required
 def equipment_list_all_view(request):
@@ -31,7 +33,6 @@ def equipment_list_all_view(request):
         .select_related("category")
         .order_by("category__name", "name")
     )
-
     return render(request, "inventory/equipment_list_all.html", {
         "equipment": equipment,
         "can_manage": can_edit_inventory(request.user),
@@ -55,7 +56,6 @@ def equipment_category_detail_view(request, category_id):
         .filter(category=category)
         .order_by("name")
     )
-
     return render(request, "inventory/equipment_category_detail.html", {
         "category": category,
         "equipment": equipment,
@@ -73,7 +73,9 @@ def equipment_create_view(request):
     if request.method == "POST":
         form = EquipmentForm(request.POST)
         if form.is_valid():
-            form.save()
+            obj = form.save()
+            log_action(user=request.user, action="create", obj=obj, details="Создано оборудование")
+            messages.success(request, "Оборудование добавлено.")
             return redirect("equipment_list_all")
     else:
         form = EquipmentForm()
@@ -94,7 +96,9 @@ def equipment_update_view(request, equipment_id):
     if request.method == "POST":
         form = EquipmentForm(request.POST, instance=obj)
         if form.is_valid():
-            form.save()
+            obj = form.save()
+            log_action(user=request.user, action="update", obj=obj, details="Изменено оборудование")
+            messages.success(request, "Оборудование обновлено.")
             return redirect("equipment_list_all")
     else:
         form = EquipmentForm(instance=obj)
@@ -113,7 +117,25 @@ def equipment_delete_view(request, equipment_id):
     obj = get_object_or_404(Equipment, id=equipment_id)
 
     if request.method == "POST":
-        obj.delete()
+        try:
+            obj_repr = str(obj)
+            obj_id = str(obj.id)
+            obj.delete()
+            log_action(
+                user=request.user,
+                action="delete",
+                entity_type="Equipment",
+                entity_id=obj_id,
+                entity_repr=obj_repr,
+                details="Удалено оборудование",
+            )
+            messages.success(request, "Оборудование удалено.")
+        except ProtectedError:
+            messages.error(
+                request,
+                "Нельзя удалить: оборудование используется в мероприятиях. "
+                "Лучше сделать 'архив' (скрыть из списка), чтобы история не ломалась."
+            )
         return redirect("equipment_list_all")
 
     return render(request, "inventory/equipment_confirm_delete.html", {
@@ -131,7 +153,9 @@ def category_create_view(request):
     if request.method == "POST":
         form = CategoryForm(request.POST)
         if form.is_valid():
-            form.save()
+            obj = form.save()
+            log_action(user=request.user, action="create", obj=obj, details="Создана категория")
+            messages.success(request, "Категория добавлена.")
             return redirect("equipment_list_categories")
     else:
         form = CategoryForm()
@@ -147,15 +171,17 @@ def category_update_view(request, category_id):
     if not can_edit_inventory(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
-    category = get_object_or_404(EquipmentCategory, id=category_id)
+    obj = get_object_or_404(EquipmentCategory, id=category_id)
 
     if request.method == "POST":
-        form = CategoryForm(request.POST, instance=category)
+        form = CategoryForm(request.POST, instance=obj)
         if form.is_valid():
-            form.save()
+            obj = form.save()
+            log_action(user=request.user, action="update", obj=obj, details="Изменена категория")
+            messages.success(request, "Категория обновлена.")
             return redirect("equipment_list_categories")
     else:
-        form = CategoryForm(instance=category)
+        form = CategoryForm(instance=obj)
 
     return render(request, "inventory/category_form.html", {
         "form": form,
@@ -164,20 +190,27 @@ def category_update_view(request, category_id):
 
 
 @login_required
-def category_delete_view(request, equipment_id):
-    equipment = get_object_or_404(Equipment, id=equipment_id)
+def category_delete_view(request, category_id):
+    if not can_edit_inventory(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
 
-    # ...проверка прав...
+    obj = get_object_or_404(EquipmentCategory, id=category_id)
 
     if request.method == "POST":
-        try:
-            equipment.delete()
-            messages.success(request, "Оборудование удалено.")
-        except ProtectedError:
-            messages.error(
-                request,
-                "Нельзя удалить: оборудование уже используется в мероприятиях. "
-                "Лучше архивировать (скроем из списка, но оставим в истории)."
-            )
-        return redirect("equipment_list_all")  # или твой актуальный name
+        obj_repr = str(obj)
+        obj_id = str(obj.id)
+        obj.delete()
+        log_action(
+            user=request.user,
+            action="delete",
+            entity_type="EquipmentCategory",
+            entity_id=obj_id,
+            entity_repr=obj_repr,
+            details="Удалена категория",
+        )
+        messages.success(request, "Категория удалена.")
+        return redirect("equipment_list_categories")
 
+    return render(request, "inventory/category_confirm_delete.html", {
+        "category": obj,
+    })

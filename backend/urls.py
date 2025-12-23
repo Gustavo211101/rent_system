@@ -20,6 +20,7 @@ urlpatterns = [
     path('', include('events.urls')),
     path('', include('inventory.urls')),
     path('staff/', include('accounts.urls')),
+    path('audit', include('audit.urls')),
 
     # logout нужен, потому что base.html ссылается на {% url 'logout' %}
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),

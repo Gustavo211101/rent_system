@@ -70,3 +70,7 @@ def user_can_edit_equipment(user) -> bool:
 def user_can_edit(user) -> bool:
 # старое "can_edit" трактуем как "можно править карточку"
     return can_edit_event_card(user)
+    
+def can_view_audit_log(user) -> bool:
+    # Журнал — только менеджер и суперадмин
+    return is_manager(user)

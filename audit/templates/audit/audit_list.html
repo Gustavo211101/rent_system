@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Журнал действий</h1>
+
+<form method="get" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin: 12px 0;">
+  <div>
+    <div class="muted">Поиск</div>
+    <input type="text" name="q" value="{{ q }}" placeholder="пользователь / объект / текст" />
+  </div>
+
+  <div>
+    <div class="muted">Действие</div>
+    <select name="action">
+      <option value="">— все —</option>
+      <option value="create" {% if action == "create" %}selected{% endif %}>Создание</option>
+      <option value="update" {% if action == "update" %}selected{% endif %}>Изменение</option>
+      <option value="delete" {% if action == "delete" %}selected{% endif %}>Удаление</option>
+    </select>
+  </div>
+
+  <div>
+    <div class="muted">Тип</div>
+    <input type="text" name="type" value="{{ type }}" placeholder="Equipment / Event / ..." />
+  </div>
+
+  <button class="btn" type="submit">Фильтр</button>
+  <a class="btn-secondary" href="{% url 'audit_list' %}">Сброс</a>
+</form>
+
+<table class="list-table">
+  <thead>
+    <tr>
+      <th style="width:170px;">Дата</th>
+      <th style="width:170px;">Пользователь</th>
+      <th style="width:120px;">Действие</th>
+      <th>Объект</th>
+      <th>Описание</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in logs %}
+    <tr>
+      <td>{{ row.created_at|date:"d.m.Y H:i" }}</td>
+      <td>{% if row.actor %}{{ row.actor.username }}{% else %}—{% endif %}</td>
+      <td>{{ row.get_action_display }}</td>
+      <td>
+        <strong>{{ row.entity_type }}</strong>
+        {% if row.entity_id %}#{{ row.entity_id }}{% endif %}
+        {% if row.entity_repr %}<div class="muted">{{ row.entity_repr }}</div>{% endif %}
+      </td>
+      <td>{{ row.message|default:"—" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">Записей пока нет</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

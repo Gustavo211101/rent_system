@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 style="margin-top:0;">Журнал действий</h1>
+
+<form method="get" style="margin: 12px 0; display:flex; gap:10px; align-items:center;">
+  <input type="text" name="q" value="{{ q }}" placeholder="Поиск по названию объекта..." style="width:320px;">
+  <button class="btn-secondary" type="submit">Найти</button>
+  {% if q %}
+    <a class="btn-secondary" href="{% url 'action_log' %}">Сброс</a>
+  {% endif %}
+</form>
+
+<table class="list-table">
+  <thead>
+    <tr>
+      <th style="width:170px;">Дата/время</th>
+      <th style="width:160px;">Пользователь</th>
+      <th style="width:110px;">Действие</th>
+      <th>Объект</th>
+      <th>Детали</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in logs %}
+      <tr>
+        <td>{{ row.created_at|date:"d.m.Y H:i" }}</td>
+        <td>{% if row.user %}{{ row.user.username }}{% else %}—{% endif %}</td>
+        <td>{{ row.get_action_display }}</td>
+        <td>{{ row.entity_type }} #{{ row.entity_id }} — {{ row.entity_repr }}</td>
+        <td style="white-space:pre-wrap;">{{ row.details|default:"—" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted">Пока нет записей.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
