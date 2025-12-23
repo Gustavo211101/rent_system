@@ -2,12 +2,12 @@
 
 {% block content %}
 <div class="toolbar">
-  <h1 style="margin:0;">Оборудование — весь список</h1>
+  <h1 style="margin:0;">Категория: {{ category.name }}</h1>
 
   <div style="display:flex; gap:10px; align-items:center;">
-    <a class="btn-secondary" href="{% url 'equipment_list_categories' %}">По категориям</a>
+    <a class="btn-secondary" href="{% url 'equipment_list_categories' %}">← Назад</a>
     {% if can_manage %}
-      <a class="btn" href="{% url 'equipment_add' %}">➕ Добавить</a>
+      <a class="btn" href="{% url 'equipment_add' %}">➕ Добавить оборудование</a>
     {% endif %}
   </div>
 </div>
@@ -16,7 +16,6 @@
   <thead>
     <tr>
       <th>Название</th>
-      <th>Категория</th>
       <th>Серийный</th>
       <th>Кол-во</th>
       <th>Локация</th>
@@ -30,7 +29,6 @@
     {% for eq in equipment %}
       <tr>
         <td>{{ eq.name }}</td>
-        <td>{{ eq.category.name }}</td>
         <td>{{ eq.serial_number|default:"—" }}</td>
         <td>{{ eq.quantity_total }}</td>
         <td>{{ eq.location|default:"—" }}</td>
@@ -44,7 +42,7 @@
         {% endif %}
       </tr>
     {% empty %}
-      <tr><td colspan="7">Пока нет оборудования</td></tr>
+      <tr><td colspan="6">В этой категории пока нет оборудования</td></tr>
     {% endfor %}
   </tbody>
 </table>

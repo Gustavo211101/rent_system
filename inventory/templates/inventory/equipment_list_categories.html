@@ -2,20 +2,42 @@
 
 {% block content %}
 <div class="toolbar">
-    <h2 style="margin:0;">Оборудование — категории</h2>
-    <div>
-        <a class="btn" href="{% url 'equipment_list' %}">Категории</a>
-        <a class="btn" href="{% url 'equipment_list_all' %}">Весь список</a>
-    </div>
+  <h1 style="margin:0;">Оборудование — категории</h1>
+
+  <div style="display:flex; gap:10px; align-items:center;">
+    <a class="btn-secondary" href="{% url 'equipment_list_all' %}">Весь список</a>
+    {% if can_manage %}
+      <a class="btn" href="{% url 'category_add' %}">➕ Категория</a>
+    {% endif %}
+  </div>
 </div>
 
-<ul style="margin-top:16px;">
+<table class="list-table">
+  <thead>
+    <tr>
+      <th>Категория</th>
+      {% if can_manage %}
+        <th style="width:260px;">Действия</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
     {% for c in categories %}
-        <li style="margin-bottom:8px;">
-            <a href="{% url 'equipment_category' c.id %}">{{ c.name }}</a>
-        </li>
+      <tr>
+        <td>
+          <a href="{% url 'equipment_category_detail' c.id %}">{{ c.name }}</a>
+        </td>
+
+        {% if can_manage %}
+          <td>
+            <a class="btn-secondary" href="{% url 'category_edit' c.id %}">✏️ Редактировать</a>
+            <a class="btn-secondary" href="{% url 'category_delete' c.id %}">🗑 Удалить</a>
+          </td>
+        {% endif %}
+      </tr>
     {% empty %}
-        <li>Категорий пока нет</li>
+      <tr><td colspan="2">Категорий пока нет</td></tr>
     {% endfor %}
-</ul>
+  </tbody>
+</table>
 {% endblock %}

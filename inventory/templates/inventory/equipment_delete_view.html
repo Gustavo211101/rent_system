@@ -1,0 +1,25 @@
+from django.db.models.deletion import ProtectedError
+from django.contrib import messages
+
+@login_required
+def equipment_delete_view(request, equipment_id):
+    if not can_edit_inventory(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    equipment = get_object_or_404(Equipment, id=equipment_id)
+
+    if request.method == "POST":
+        try:
+            equipment.delete()
+            messages.success(request, "Оборудование удалено.")
+        except ProtectedError:
+            messages.error(
+                request,
+                "Нельзя удалить оборудование — оно используется в мероприятиях. "
+                "Рекомендуется архивировать."
+            )
+        return redirect("equipment_list_all")
+
+    return render(request, "inventory/equipment_confirm_delete.html", {
+        "equipment": equipment,
+    })

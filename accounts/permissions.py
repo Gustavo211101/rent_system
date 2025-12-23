@@ -46,7 +46,7 @@ def can_edit_event_equipment(user) -> bool:
 
 def can_edit_inventory(user) -> bool:
 # Инвентарь (CRUD) — только менеджер и суперадмин
-    return is_manager(user)
+    return is_manager(user) or is_senior_engineer(user)
 
 
 # === Алиасы, чтобы не падали старые импорты/вызовы ===

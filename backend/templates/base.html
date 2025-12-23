@@ -19,7 +19,7 @@
         <a class="nav-link" href="{% url 'calendar' %}">📅 Календарь</a>
         <a class="nav-link" href="{% url 'event_list' %}">🗓 Мероприятия</a>
 
-        <a class="nav-link" href="{% url 'equipment_list' %}">🧰 Оборудование</a>
+        <a class="nav-link" href="{% url 'equipment_list_all' %}">🧰 Оборудование</a>
 
         {% if user.is_superuser %}
           <a class="nav-link" href="/admin/">⚙️ Админка</a>
