@@ -244,39 +244,47 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
 
 
 @login_required
-def event_create_view(request: HttpRequest) -> HttpResponse:
+def event_create_view(request):
     if not can_edit_event_card(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
-    # ✅ Пункт (1): клик по дню в календаре передаёт start_date/end_date в GET.
+    # initial данные (из календаря / модалки)
     initial = {}
-    sd = (request.GET.get("start_date") or "").strip()
-    ed = (request.GET.get("end_date") or "").strip()
 
-    # ожидаем формат YYYY-MM-DD
-    try:
-        if sd:
-            initial["start_date"] = sd
-        if ed:
-            initial["end_date"] = ed
-        elif sd:
-            # если end не передали — однодневное
-            initial["end_date"] = sd
-    except Exception:
-        initial = {}
+    start_date = (request.GET.get("start_date") or "").strip()
+    end_date = (request.GET.get("end_date") or "").strip()
+    name = (request.GET.get("name") or "").strip()
+
+    if start_date:
+        initial["start_date"] = start_date
+        initial["end_date"] = end_date or start_date
+
+    if name:
+        initial["name"] = name
 
     if request.method == "POST":
         form = EventForm(request.POST)
         if form.is_valid():
             event = form.save()
-            log_action(user=request.user, action="create", obj=event, details="Создано мероприятие")
+            log_action(
+                user=request.user,
+                action="create",
+                obj=event,
+                details="Создано мероприятие",
+            )
             messages.success(request, "Мероприятие создано.")
             return redirect("event_detail", event_id=event.id)
     else:
         form = EventForm(initial=initial)
 
-    return render(request, "events/event_form.html", {"form": form, "title": "Создать мероприятие"})
-
+    return render(
+        request,
+        "events/event_form.html",
+        {
+            "form": form,
+            "title": "Создать мероприятие",
+        },
+    )
 
 @login_required
 def event_update_view(request: HttpRequest, event_id: int) -> HttpResponse:
