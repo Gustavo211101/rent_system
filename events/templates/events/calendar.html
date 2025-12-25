@@ -2,41 +2,55 @@
 {% load event_extras %}
 
 {% block content %}
-<div class="toolbar">
-    <h2 style="margin:0;">{{ month_name }} {{ year }}</h2>
-    {% if can_edit %}
-        <a class="btn" href="{% url 'event_create' %}">➕ Создать мероприятие</a>
-    {% endif %}
+
+<div class="calendar-header" style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+  {% if month > 1 %}
+    <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"-1" }}">←</a>
+  {% else %}
+    <a class="btn-secondary" href="?year={{ year|add:"-1" }}&month=12">←</a>
+  {% endif %}
+
+  <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
+
+  {% if month < 12 %}
+    <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"1" }}">→</a>
+  {% else %}
+    <a class="btn-secondary" href="?year={{ year|add:"1" }}&month=1">→</a>
+  {% endif %}
 </div>
 
 <table class="calendar">
+  <thead>
     <tr>
-        <th>Пн</th>
-        <th>Вт</th>
-        <th>Ср</th>
-        <th>Чт</th>
-        <th>Пт</th>
-        <th>Сб</th>
-        <th>Вс</th>
+      <th>Пн</th>
+      <th>Вт</th>
+      <th>Ср</th>
+      <th>Чт</th>
+      <th>Пт</th>
+      <th>Сб</th>
+      <th>Вс</th>
     </tr>
-
+  </thead>
+  <tbody>
     {% for week in month_days %}
-    <tr>
+      <tr>
         {% for day in week %}
-        <td class="{% if day.month != month %}other-month{% endif %}">
+          <td class="{% if day.month != month %}other-month{% endif %}">
             <div class="day-number">{{ day.day }}</div>
 
             {% for event in events_by_day|get_item:day %}
-                {# event.status -> раскраска, event_has_problem -> обводка #}
-                <div class="event-pill status-{{ event.status }} {% if event_has_problem|get_item:event.id %}has-problem{% endif %}">
-                    <a href="{% url 'event_detail' event.id %}">
-                        {{ event.name }}
-                    </a>
-                </div>
+              <div class="event status-{{ event.status }}">
+                <a href="{% url 'event_detail' event.id %}">
+                  {{ event.name }}
+                </a>
+              </div>
+            {% empty %}
             {% endfor %}
-        </td>
+          </td>
         {% endfor %}
-    </tr>
+      </tr>
     {% endfor %}
+  </tbody>
 </table>
+
 {% endblock %}

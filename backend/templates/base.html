@@ -2,10 +2,9 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Прокат</title>
-
   <link rel="stylesheet" href="{% static 'css/base.css' %}">
   <link rel="stylesheet" href="{% static 'css/calendar.css' %}">
 </head>
@@ -15,45 +14,32 @@
       <div class="brand">Прокат</div>
 
       {% if user.is_authenticated %}
-      <nav class="nav">
-        <a class="nav-link" href="{% url 'calendar' %}">📅 Календарь</a>
-        <a class="nav-link" href="{% url 'event_list' %}">🗓 Мероприятия</a>
+        <nav class="nav">
+          <a class="nav-link" href="{% url 'calendar' %}">📅 Календарь</a>
+          <a class="nav-link" href="{% url 'event_list' %}">🗓 Мероприятия</a>
 
-        <a class="nav-link" href="{% url 'equipment_list_all' %}">🧰 Оборудование</a>
+          <a class="nav-link" href="{% url 'equipment_list_categories' %}">🧰 Оборудование</a>
 
-        {% if user.is_superuser %}
-          <a class="nav-link" href="/admin/">⚙️ Админка</a>
-        {% endif %}
+          {% if can_manage_staff %}
+            <a class="nav-link" href="{% url 'personnel' %}">👥 Персонал</a>
+            <a class="nav-link" href="{% url 'audit_list' %}">📒 Журнал</a>
+          {% endif %}
 
-        {# Персонал — только менеджеру (и суперюзеру тоже ок) #}
-        {% if user.groups.all %}
-          {% for g in user.groups.all %}
-            {% if g.name == "Менеджер" %}
-              <a class="nav-link" href="{% url 'personnel' %}">👥 Персонал</a>
-            {% endif %}
-          {% endfor %}
-        {% endif %}
+          <a class="nav-link" href="{% url 'logout' %}">🚪 Выйти</a>
 
-        {% if can_manage_staff %}
-  <a class="nav-link" href="{% url 'audit_list' %}">📒 Журнал</a>
-        {% endif %}
-
-<form method="post" action="{% url 'logout' %}" style="display:inline;">
-  {% csrf_token %}
-  <button type="submit" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">
-    🚪 Выйти
-  </button>
-</form>
-      </nav>
+          {% if user.is_superuser %}
+            <a class="nav-link" href="/admin/">⚙️ Админка</a>
+          {% endif %}
+        </nav>
       {% endif %}
     </div>
   </header>
 
-  <main class="container">
+  <main class="container" style="padding-top: 18px;">
     {% if messages %}
-      <div class="messages">
+      <div style="margin-bottom:14px;">
         {% for message in messages %}
-          <div class="msg {{ message.tags }}">{{ message }}</div>
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
         {% endfor %}
       </div>
     {% endif %}

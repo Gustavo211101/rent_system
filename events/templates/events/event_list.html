@@ -3,10 +3,12 @@
 {% block content %}
 <h1>Мероприятия</h1>
 
-{% if can_edit %}
-<div class="toolbar">
-    <a class="btn" href="{% url 'event_create' %}">+ Создать мероприятие</a>
-</div>
+{% if can_create_event %}
+  <div style="margin-bottom:16px;">
+    <a class="btn" href="{% url 'event_create' %}">
+      ➕ Добавить мероприятие
+    </a>
+  </div>
 {% endif %}
 
 <table class="list-table">

@@ -1,43 +1,94 @@
 from __future__ import annotations
 
-from typing import Optional, Any
 from django.utils import timezone
 
 from .models import AuditLog
 
 
-def _safe_str(value: Any) -> str:
-    try:
-        return str(value)
-    except Exception:
-        return "<unprintable>"
+def _model_field_names(model) -> set[str]:
+    return {f.name for f in model._meta.get_fields()}
 
 
 def log_action(
     *,
-    user,
-    action: str,
-    obj: Optional[Any] = None,
-    entity_type: Optional[str] = None,
-    entity_id: Optional[int] = None,
-    message: str = "",
-) -> AuditLog:
+    user=None,
+    action: str = "",
+    obj=None,
+    entity_type: str | None = None,
+    message: str | None = None,
+    details: str | None = None,
+):
     """
-    action: create | update | delete
+    Универсальный логгер, который НЕ ломается из-за разных названий полей в AuditLog.
+
+    Поддерживает:
+      - message="..."
+      - details="..." (алиас к message)
     """
 
-    if obj is not None:
-        if entity_type is None:
-            entity_type = obj.__class__.__name__   # <-- ВАЖНО
-        if entity_id is None:
-            entity_id = getattr(obj, "pk", None)
+    # details -> message (если message не задан)
+    if message is None:
+        message = details or ""
+    if message is None:
+        message = ""
 
-    return AuditLog.objects.create(
-        created_at=timezone.now(),
-        user=user if getattr(user, "is_authenticated", False) else None,
-        action=action,
-        entity_type=entity_type or "",
-        entity_id=entity_id,
-        message=message,
-        object_repr=_safe_str(obj) if obj else "",
-    )
+    # entity_type по умолчанию из объекта
+    if entity_type is None:
+        entity_type = obj.__class__.__name__ if obj is not None else ""
+
+    object_id = getattr(obj, "pk", None) if obj is not None else None
+    object_repr = str(obj) if obj is not None else ""
+
+    # реальные поля модели
+    fields = _model_field_names(AuditLog)
+
+    data = {}
+
+    # created_at (разные имена)
+    for name in ("created_at", "created", "timestamp", "time"):
+        if name in fields:
+            data[name] = timezone.now()
+            break
+
+    # user (разные имена)
+    if user is not None and getattr(user, "is_authenticated", False):
+        for name in ("user", "actor", "created_by", "author"):
+            if name in fields:
+                data[name] = user
+                break
+
+    # action (разные имена)
+    for name in ("action", "verb", "event", "operation"):
+        if name in fields:
+            data[name] = action
+            break
+
+    # entity_type (разные имена)
+    for name in ("entity_type", "entity", "model", "content_type"):
+        if name in fields:
+            data[name] = entity_type
+            break
+
+    # object_id (разные имена)
+    if object_id is not None:
+        for name in ("object_id", "obj_id", "entity_id", "target_id"):
+            if name in fields:
+                data[name] = object_id
+                break
+
+    # object_repr (разные имена)
+    if object_repr:
+        for name in ("object_repr", "obj_repr", "target_repr", "title"):
+            if name in fields:
+                data[name] = object_repr
+                break
+
+    # message/details/text (разные имена)
+    if message:
+        for name in ("message", "details", "text", "description", "note"):
+            if name in fields:
+                data[name] = message
+                break
+
+    # Создаём запись (только по тем полям, которые существуют)
+    AuditLog.objects.create(**data)
