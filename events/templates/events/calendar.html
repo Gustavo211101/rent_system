@@ -4,7 +4,7 @@
 {% block content %}
 
 <style>
-  /* Мини-стили только для модалки календаря */
+  /* ===== Modal ===== */
   .cal-modal-backdrop{
     position:fixed; inset:0;
     background:rgba(0,0,0,.45);
@@ -57,9 +57,7 @@
     border-radius:10px;
     outline:none;
   }
-  .cal-modal__row input:focus{
-    border-color:rgba(0,0,0,.35);
-  }
+  .cal-modal__row input:focus{ border-color:rgba(0,0,0,.35); }
   .cal-modal__actions{
     display:flex;
     gap:10px;
@@ -68,24 +66,48 @@
     border-top:1px solid rgba(0,0,0,.08);
     background:rgba(0,0,0,.02);
   }
-  .day-cell{
-    cursor:pointer;
+
+  /* ===== Calendar interactions ===== */
+  .day-cell{ cursor:pointer; }
+  .day-cell.other-month{ cursor:default; }
+  .day-cell.other-month:hover{ background:inherit; }
+  .day-cell:hover{ background:rgba(0,0,0,.02); }
+  .day-cell.drop-hover{ outline:2px dashed rgba(0,0,0,.25); outline-offset:-4px; }
+
+  /* ===== Event chip ===== */
+  .event a{ color:inherit; text-decoration:none; display:block; }
+  .event{ user-select:none; border:1px solid transparent; }
+  .event[draggable="true"]{ cursor:grab; }
+  .event.dragging{ opacity:.5; }
+
+  /*
+    ====== ВАЖНО: Цвета статусов в календаре ======
+    Подгоняем под те же ощущения, что и на странице списка мероприятий (плашки-статусы).
+    Если у тебя в CSS уже есть точные цвета — можно заменить значения ниже на 1:1.
+  */
+  .event.status-draft{
+    background: rgba(255, 215, 0, .35);   /* жёлтый */
+    border-color: rgba(255, 215, 0, .55);
+    color:#2a2a2a;
   }
-  .day-cell.other-month{
-    cursor:default;
+  .event.status-confirmed{
+    background: rgba(40, 167, 69, .20);   /* зелёный */
+    border-color: rgba(40, 167, 69, .35);
+    color:#1f3b25;
   }
-  .day-cell.other-month:hover{
-    background:inherit;
+  .event.status-cancelled{
+    background: rgba(220, 53, 69, .20);   /* красный/розовый */
+    border-color: rgba(220, 53, 69, .35);
+    color:#4a1c20;
   }
-  .day-cell:hover{
-    background:rgba(0,0,0,.02);
+  .event.status-closed{
+    background: rgba(33, 37, 41, .18);    /* тёмно-серый */
+    border-color: rgba(33, 37, 41, .28);
+    color:#1f2327;
   }
-  .day-cell a{ color:inherit; }
-  .event a{ color:inherit; }
 </style>
 
 <div class="calendar-top" style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px;">
-  <!-- Навигация по месяцам -->
   <div class="calendar-header" style="display:flex; align-items:center; gap:12px;">
     {% if month > 1 %}
       <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"-1" }}&filter={{ filter }}">←</a>
@@ -102,7 +124,6 @@
     {% endif %}
   </div>
 
-  <!-- Фильтр -->
   <form method="get" style="display:flex; align-items:center; gap:10px;">
     <input type="hidden" name="year" value="{{ year }}">
     <input type="hidden" name="month" value="{{ month }}">
@@ -134,7 +155,6 @@
     {% for week in month_days %}
       <tr>
         {% for day in week %}
-          {# data-day нужен для модалки #}
           <td
             class="day-cell {% if day.month != month %}other-month{% endif %}"
             data-day="{{ day|date:'Y-m-d' }}"
@@ -147,6 +167,10 @@
               {% with e=item.event %}
                 <div
                   class="event status-{{ e.status }}"
+                  draggable="{% if can_create_event %}true{% else %}false{% endif %}"
+                  data-event-id="{{ e.id }}"
+                  data-start="{{ e.start_date|date:'Y-m-d' }}"
+                  data-end="{{ e.end_date|date:'Y-m-d' }}"
                   style="
                     margin-top:6px;
                     padding:6px 8px;
@@ -163,10 +187,13 @@
                       outline-offset:1px;
                     {% endif %}
                   "
+                  title="{{ e.name }} ({{ e.start_date|date:'d.m.Y' }}–{{ e.end_date|date:'d.m.Y' }})"
                 >
-                  <a href="{% url 'event_detail' e.id %}" style="text-decoration:none;">
-                    {{ e.name }}
-                  </a>
+                  {% if item.is_start %}
+                    <a href="{% url 'event_detail' e.id %}">{{ e.name }}</a>
+                  {% else %}
+                    <a href="{% url 'event_detail' e.id %}" style="opacity:.6;">&nbsp;</a>
+                  {% endif %}
                 </div>
               {% endwith %}
             {% endfor %}
@@ -178,7 +205,7 @@
   </tbody>
 </table>
 
-{# ===== MODAL ===== #}
+<!-- MODAL -->
 <div id="calModalBackdrop" class="cal-modal-backdrop" aria-hidden="true">
   <div class="cal-modal" role="dialog" aria-modal="true" aria-labelledby="calModalTitle">
     <div class="cal-modal__head">
@@ -193,18 +220,20 @@
 
       <div class="cal-modal__row">
         <label>Название</label>
-        <input id="calModalName" type="text" placeholder="Например: Съёмка / мероприятие / выезд">
+        <input id="calModalName" type="text" placeholder="Например: Съёмка / выезд / мероприятие">
       </div>
 
       <div class="cal-modal__row">
         <label>Конец (опц.)</label>
         <input id="calModalEnd" type="date">
       </div>
+
+      <div id="calModalError" class="muted" style="margin-top:10px; color:#b00020;"></div>
     </div>
 
     <div class="cal-modal__actions">
       <button type="button" class="btn-secondary" id="calModalCancel">Отмена</button>
-      <button type="button" class="btn" id="calModalGo">Перейти к созданию</button>
+      <button type="button" class="btn" id="calModalSave">Создать</button>
     </div>
   </div>
 </div>
@@ -212,58 +241,62 @@
 <script>
 (function(){
   const canCreate = {{ can_create_event|yesno:"true,false" }};
+
   const backdrop = document.getElementById("calModalBackdrop");
   const closeBtn = document.getElementById("calModalClose");
   const cancelBtn = document.getElementById("calModalCancel");
-  const goBtn = document.getElementById("calModalGo");
+  const saveBtn = document.getElementById("calModalSave");
   const dateText = document.getElementById("calModalDateText");
   const nameInput = document.getElementById("calModalName");
   const endInput = document.getElementById("calModalEnd");
+  const errBox = document.getElementById("calModalError");
 
   let selectedDay = null;
+  let draggingEl = null;
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return "";
+  }
+  const csrftoken = getCookie("csrftoken");
 
   function openModal(dayStr){
     selectedDay = dayStr;
     dateText.textContent = dayStr;
     endInput.value = dayStr;
     nameInput.value = "";
+    errBox.textContent = "";
     backdrop.style.display = "flex";
     backdrop.setAttribute("aria-hidden","false");
     setTimeout(()=>nameInput.focus(), 50);
   }
-
   function closeModal(){
     backdrop.style.display = "none";
     backdrop.setAttribute("aria-hidden","true");
     selectedDay = null;
   }
-
   function isClickOnLink(e){
     return e.target && (e.target.tagName === "A" || e.target.closest("a"));
   }
 
+  // --- click on day -> modal ---
   document.addEventListener("click", function(e){
     const cell = e.target.closest(".day-cell");
     if(!cell) return;
-
-    // клики по ссылкам события не должны открывать модалку
     if(isClickOnLink(e)) return;
-
-    // запретим модалку на "других месяцах"
     if(cell.classList.contains("other-month")) return;
-
     if(!canCreate) return;
 
     const dayStr = cell.getAttribute("data-day");
     if(!dayStr) return;
-
     openModal(dayStr);
   });
 
   backdrop.addEventListener("click", function(e){
     if(e.target === backdrop) closeModal();
   });
-
   closeBtn.addEventListener("click", closeModal);
   cancelBtn.addEventListener("click", closeModal);
 
@@ -273,19 +306,146 @@
     }
   });
 
-  goBtn.addEventListener("click", function(){
+  // --- modal save (API quick-create) ---
+  saveBtn.addEventListener("click", async function(){
     if(!selectedDay) return;
-
     const name = (nameInput.value || "").trim();
     const end = (endInput.value || "").trim() || selectedDay;
 
-    const url = new URL("{% url 'event_create' %}", window.location.origin);
-    url.searchParams.set("start_date", selectedDay);
-    url.searchParams.set("end_date", end);
-    if(name) url.searchParams.set("name", name);
+    errBox.textContent = "";
 
-    window.location.href = url.toString();
+    if(!name){
+      errBox.textContent = "Название обязательно.";
+      return;
+    }
+
+    saveBtn.disabled = true;
+
+    try{
+      const resp = await fetch("{% url 'quick_create_event_api' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify({
+          name: name,
+          start_date: selectedDay,
+          end_date: end,
+        }),
+      });
+
+      const data = await resp.json();
+      if(!data.ok){
+        errBox.textContent = data.error || "Ошибка создания";
+        saveBtn.disabled = false;
+        return;
+      }
+
+      window.location.reload();
+    }catch(err){
+      errBox.textContent = "Ошибка сети / сервера";
+      saveBtn.disabled = false;
+    }
   });
+
+  // --- drag & drop events ---
+  function parseDate(s){
+    const [y,m,d] = s.split("-").map(x=>parseInt(x,10));
+    return new Date(y, m-1, d);
+  }
+  function daysBetweenInclusive(startStr, endStr){
+    const a = parseDate(startStr);
+    const b = parseDate(endStr);
+    const ms = (b - a);
+    return Math.round(ms / (1000*60*60*24));
+  }
+
+  document.addEventListener("dragstart", function(e){
+    const ev = e.target.closest(".event");
+    if(!ev) return;
+    if(!canCreate) return;
+
+    draggingEl = ev;
+    ev.classList.add("dragging");
+
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", JSON.stringify({
+      event_id: ev.getAttribute("data-event-id"),
+      start: ev.getAttribute("data-start"),
+      end: ev.getAttribute("data-end"),
+    }));
+  });
+
+  document.addEventListener("dragend", function(e){
+    if(draggingEl) draggingEl.classList.remove("dragging");
+    draggingEl = null;
+    document.querySelectorAll(".day-cell.drop-hover").forEach(x=>x.classList.remove("drop-hover"));
+  });
+
+  document.addEventListener("dragover", function(e){
+    const cell = e.target.closest(".day-cell");
+    if(!cell) return;
+    if(cell.classList.contains("other-month")) return;
+    if(!canCreate) return;
+
+    e.preventDefault();
+    cell.classList.add("drop-hover");
+  });
+
+  document.addEventListener("dragleave", function(e){
+    const cell = e.target.closest(".day-cell");
+    if(!cell) return;
+    cell.classList.remove("drop-hover");
+  });
+
+  document.addEventListener("drop", async function(e){
+    const cell = e.target.closest(".day-cell");
+    if(!cell) return;
+    if(cell.classList.contains("other-month")) return;
+    if(!canCreate) return;
+
+    e.preventDefault();
+    cell.classList.remove("drop-hover");
+
+    let payload;
+    try{
+      payload = JSON.parse(e.dataTransfer.getData("text/plain"));
+    }catch(err){
+      return;
+    }
+
+    const eventId = payload.event_id;
+    const start = payload.start;
+    const end = payload.end;
+
+    const newStart = cell.getAttribute("data-day");
+    if(!eventId || !newStart || !start || !end) return;
+
+    const duration = daysBetweenInclusive(start, end);
+
+    try{
+      const resp = await fetch(`{% url 'quick_move_event_api' 0 %}`.replace("/0/", `/${eventId}/`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify({
+          new_start_date: newStart
+        }),
+      });
+      const data = await resp.json();
+      if(!data.ok){
+        alert(data.error || "Не удалось переместить");
+        return;
+      }
+      window.location.reload();
+    }catch(err){
+      alert("Ошибка сети / сервера");
+    }
+  });
+
 })();
 </script>
 

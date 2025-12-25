@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import calendar as pycalendar
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import HttpRequest, HttpResponse, HttpResponseForbidden
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseForbidden,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -88,7 +93,6 @@ def _calculate_shortages(event: Event):
 
         available_own = 0
         try:
-            # inventory.models.Equipment.available_quantity(start,end)
             available_own = int(eq.available_quantity(start, end))  # type: ignore
         except Exception:
             try:
@@ -112,21 +116,15 @@ def _calculate_shortages(event: Event):
 
 
 def _calendar_filter_label(value: str) -> str:
-    mapping = {
+    return {
         "all": "Все",
         "confirmed": "Только подтверждённые",
         "mine": "Только мои",
-    }
-    return mapping.get(value, "Все")
+    }.get(value, "Все")
 
 
 @login_required
 def calendar_view(request: HttpRequest) -> HttpResponse:
-    """
-    1) Листание месяцев (?year=...&month=...)
-    2) Фильтр: all / confirmed / mine
-    3) Многодневные события раскладываются по дням + флаги start/mid/end для "полоски"
-    """
     year, month = _parse_year_month(request)
     month_start, month_end = _month_bounds(year, month)
 
@@ -137,7 +135,7 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
     qs = (
         Event.objects
         .filter(start_date__lte=month_end, end_date__gte=month_start)
-        .select_related("responsible")
+        .select_related("responsible")  # client у тебя строка, НЕ FK
         .order_by("start_date", "id")
     )
 
@@ -146,17 +144,16 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
     elif cal_filter == "mine":
         qs = qs.filter(responsible=request.user)
 
-    # день -> список элементов {event, is_start, is_end, is_single, has_problem}
-    events_by_day: dict[date, list[dict]] = defaultdict(list)
-
-    # Чтобы не считать shortages дорого, делаем только признак "есть проблема"
-    # (и только если надо показать обводку). Мягко.
+    # event_id -> has_problem
     event_problem: dict[int, bool] = {}
     for e in qs:
         try:
             event_problem[e.id] = bool(_calculate_shortages(e))
         except Exception:
             event_problem[e.id] = False
+
+    # day -> list[dict]
+    events_by_day: dict[date, list[dict]] = defaultdict(list)
 
     for e in qs:
         start = max(e.start_date, month_start)
@@ -168,10 +165,8 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
             is_end = (d == e.end_date)
             is_single = (e.start_date == e.end_date)
 
-            # если событие началось до месяца — в текущем месяце первый день считаем как "start" для полоски
             if e.start_date < month_start and d == month_start:
                 is_start = True
-            # если событие заканчивается после месяца — последний день месяца считаем как "end"
             if e.end_date > month_end and d == month_end:
                 is_end = True
 
@@ -184,9 +179,8 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
             })
             d = d + timedelta(days=1)
 
-    # в каждом дне отсортируем по времени/названию (стабильно)
-    for day_key in events_by_day:
-        events_by_day[day_key].sort(key=lambda x: (x["event"].start_date, x["event"].id))
+    for k in events_by_day:
+        events_by_day[k].sort(key=lambda x: (x["event"].start_date, x["event"].id))
 
     month_days = list(pycalendar.Calendar(firstweekday=0).monthdatescalendar(year, month))
 
@@ -199,7 +193,7 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
 
         "filter": cal_filter,
         "filter_label": _calendar_filter_label(cal_filter),
-        "can_create_event": can_edit_event_card(request.user),  # для клика по дню
+        "can_create_event": can_edit_event_card(request.user),
     }
     return render(request, "events/calendar.html", ctx)
 
@@ -244,47 +238,33 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
 
 
 @login_required
-def event_create_view(request):
+def event_create_view(request: HttpRequest) -> HttpResponse:
     if not can_edit_event_card(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
-    # initial данные (из календаря / модалки)
     initial = {}
+    sd = (request.GET.get("start_date") or "").strip()
+    ed = (request.GET.get("end_date") or "").strip()
+    nm = (request.GET.get("name") or "").strip()
 
-    start_date = (request.GET.get("start_date") or "").strip()
-    end_date = (request.GET.get("end_date") or "").strip()
-    name = (request.GET.get("name") or "").strip()
-
-    if start_date:
-        initial["start_date"] = start_date
-        initial["end_date"] = end_date or start_date
-
-    if name:
-        initial["name"] = name
+    if sd:
+        initial["start_date"] = sd
+        initial["end_date"] = ed or sd
+    if nm:
+        initial["name"] = nm
 
     if request.method == "POST":
         form = EventForm(request.POST)
         if form.is_valid():
             event = form.save()
-            log_action(
-                user=request.user,
-                action="create",
-                obj=event,
-                details="Создано мероприятие",
-            )
+            log_action(user=request.user, action="create", obj=event, details="Создано мероприятие")
             messages.success(request, "Мероприятие создано.")
             return redirect("event_detail", event_id=event.id)
     else:
         form = EventForm(initial=initial)
 
-    return render(
-        request,
-        "events/event_form.html",
-        {
-            "form": form,
-            "title": "Создать мероприятие",
-        },
-    )
+    return render(request, "events/event_form.html", {"form": form, "title": "Создать мероприятие"})
+
 
 @login_required
 def event_update_view(request: HttpRequest, event_id: int) -> HttpResponse:
@@ -469,3 +449,98 @@ def event_rented_delete_view(request: HttpRequest, event_id: int, item_id: int) 
         log_action(user=request.user, action="delete", obj=event, details=f"Удалена аренда: {eq}")
         messages.success(request, "Удалено.")
     return redirect("event_detail", event_id=event.id)
+
+
+# ---------------------------
+# API: Quick create (modal save)
+# ---------------------------
+
+@login_required
+def quick_create_event_api(request: HttpRequest) -> HttpResponse:
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Method not allowed"}, status=405)
+
+    if not can_edit_event_card(request.user):
+        return JsonResponse({"ok": False, "error": "Forbidden"}, status=403)
+
+    try:
+        import json
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Bad JSON"}, status=400)
+
+    name = (payload.get("name") or "").strip()
+    start = (payload.get("start_date") or "").strip()
+    end = (payload.get("end_date") or "").strip()
+
+    if not name:
+        return JsonResponse({"ok": False, "error": "Название обязательно"}, status=400)
+    if not start:
+        return JsonResponse({"ok": False, "error": "Дата начала обязательна"}, status=400)
+
+    try:
+        sd = datetime.strptime(start, "%Y-%m-%d").date()
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Неверный формат start_date"}, status=400)
+
+    if end:
+        try:
+            ed = datetime.strptime(end, "%Y-%m-%d").date()
+        except Exception:
+            return JsonResponse({"ok": False, "error": "Неверный формат end_date"}, status=400)
+    else:
+        ed = sd
+
+    if ed < sd:
+        return JsonResponse({"ok": False, "error": "Дата окончания раньше даты начала"}, status=400)
+
+    event = Event.objects.create(
+        name=name,
+        start_date=sd,
+        end_date=ed,
+        responsible=request.user,
+        status="draft",
+    )
+
+    log_action(user=request.user, action="create", obj=event, details="Создано из календаря (модалка)")
+
+    return JsonResponse({"ok": True, "id": event.id})
+
+
+# ---------------------------
+# API: Move event (drag&drop)
+# ---------------------------
+
+@login_required
+def quick_move_event_api(request: HttpRequest, event_id: int) -> HttpResponse:
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Method not allowed"}, status=405)
+
+    if not can_edit_event_card(request.user):
+        return JsonResponse({"ok": False, "error": "Forbidden"}, status=403)
+
+    event = get_object_or_404(Event, id=event_id)
+
+    try:
+        import json
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Bad JSON"}, status=400)
+
+    new_start = (payload.get("new_start_date") or "").strip()
+    if not new_start:
+        return JsonResponse({"ok": False, "error": "new_start_date required"}, status=400)
+
+    try:
+        ns = datetime.strptime(new_start, "%Y-%m-%d").date()
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Bad date format"}, status=400)
+
+    duration = (event.end_date - event.start_date).days
+    event.start_date = ns
+    event.end_date = ns + timedelta(days=duration)
+    event.save(update_fields=["start_date", "end_date"])
+
+    log_action(user=request.user, action="update", obj=event, details=f"Перенос (drag&drop) на {ns}")
+
+    return JsonResponse({"ok": True})
