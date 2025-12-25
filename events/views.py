@@ -1,41 +1,49 @@
 from __future__ import annotations
 
 import calendar as pycalendar
-from datetime import date, datetime, timedelta
+from collections import defaultdict
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Prefetch
-from django.http import HttpResponseForbidden, HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from accounts.permissions import (
-    can_edit_event_card,
-    can_edit_event_equipment,
-)
+from accounts.permissions import can_edit_event_card, can_edit_event_equipment
 
-# Если у тебя подключено логирование (audit app) — используем.
-# Если нет — просто не упадём.
+# audit логирование (если есть)
 try:
     from audit.utils import log_action  # type: ignore
 except Exception:  # pragma: no cover
     def log_action(*args, **kwargs):  # type: ignore
         return None
 
+from .forms import EventEquipmentForm, EventForm, EventRentedEquipmentForm
+from .models import Event, EventEquipment, EventRentedEquipment
 
-from .models import Event, EventEquipment, EventRentedEquipment  # поправь импорт, если у тебя иначе
-from .forms import EventForm, EventEquipmentForm, EventRentedEquipmentForm  # поправь импорт, если у тебя иначе
-
-
-# ---------- helpers ----------
 
 def _safe_int(v, default=0) -> int:
     try:
         return int(v)
     except Exception:
         return default
+
+
+def _parse_year_month(request: HttpRequest) -> tuple[int, int]:
+    today = timezone.localdate()
+    year = _safe_int(request.GET.get("year"), today.year)
+    month = _safe_int(request.GET.get("month"), today.month)
+    if month < 1:
+        month = 1
+    if month > 12:
+        month = 12
+    if year < 1970:
+        year = 1970
+    if year > 2100:
+        year = 2100
+    return year, month
 
 
 def _month_bounds(year: int, month: int) -> tuple[date, date]:
@@ -47,15 +55,8 @@ def _month_bounds(year: int, month: int) -> tuple[date, date]:
 
 def _calculate_shortages(event: Event):
     """
-    Возвращает список строк:
-    {
-      equipment: Equipment,
-      required: int,
-      available_own: int,
-      rented: int,
-      shortage: int
-    }
-    Если какие-то поля/методы отличаются — не падаем, а возвращаем [].
+    Мягкий расчёт нехватки, чтобы не ронять карточку/календарь.
+    Возвращает список для шаблона (или [] если что-то не так).
     """
     try:
         start = event.start_date
@@ -87,10 +88,9 @@ def _calculate_shortages(event: Event):
 
         available_own = 0
         try:
-            # У тебя в inventory.models.Equipment есть available_quantity(start,end)
+            # inventory.models.Equipment.available_quantity(start,end)
             available_own = int(eq.available_quantity(start, end))  # type: ignore
         except Exception:
-            # если метода нет — попробуем по quantity_total хотя бы
             try:
                 available_own = int(getattr(eq, "quantity_total", 0) or 0)
             except Exception:
@@ -111,83 +111,107 @@ def _calculate_shortages(event: Event):
     return out
 
 
-def _parse_year_month(request: HttpRequest) -> tuple[int, int]:
-    """
-    Берём year/month из query (?year=2025&month=12), иначе текущие.
-    """
-    today = timezone.localdate()
-    year = _safe_int(request.GET.get("year"), today.year)
-    month = _safe_int(request.GET.get("month"), today.month)
-    if month < 1:
-        month = 1
-    if month > 12:
-        month = 12
-    if year < 1970:
-        year = 1970
-    if year > 2100:
-        year = 2100
-    return year, month
+def _calendar_filter_label(value: str) -> str:
+    mapping = {
+        "all": "Все",
+        "confirmed": "Только подтверждённые",
+        "mine": "Только мои",
+    }
+    return mapping.get(value, "Все")
 
-
-# ---------- views ----------
 
 @login_required
 def calendar_view(request: HttpRequest) -> HttpResponse:
+    """
+    1) Листание месяцев (?year=...&month=...)
+    2) Фильтр: all / confirmed / mine
+    3) Многодневные события раскладываются по дням + флаги start/mid/end для "полоски"
+    """
     year, month = _parse_year_month(request)
     month_start, month_end = _month_bounds(year, month)
 
-    # Вытаскиваем события, которые пересекают месяц:
-    # start_date <= month_end AND end_date >= month_start
-    events_qs = (
+    cal_filter = (request.GET.get("filter") or "all").strip()
+    if cal_filter not in {"all", "confirmed", "mine"}:
+        cal_filter = "all"
+
+    qs = (
         Event.objects
         .filter(start_date__lte=month_end, end_date__gte=month_start)
-        .select_related("responsible")  # responsible у тебя FK, client — НЕ FK, поэтому НЕ трогаем
-        .order_by("start_date")
+        .select_related("responsible")
+        .order_by("start_date", "id")
     )
 
-    # Разложим по дням месяца (ключ = date)
-    events_by_day: dict[date, list[Event]] = {}
-    for e in events_qs:
+    if cal_filter == "confirmed":
+        qs = qs.filter(status="confirmed")
+    elif cal_filter == "mine":
+        qs = qs.filter(responsible=request.user)
+
+    # день -> список элементов {event, is_start, is_end, is_single, has_problem}
+    events_by_day: dict[date, list[dict]] = defaultdict(list)
+
+    # Чтобы не считать shortages дорого, делаем только признак "есть проблема"
+    # (и только если надо показать обводку). Мягко.
+    event_problem: dict[int, bool] = {}
+    for e in qs:
         try:
-            cur = max(e.start_date, month_start)
-            end = min(e.end_date, month_end)
-            while cur <= end:
-                events_by_day.setdefault(cur, []).append(e)
-                cur = cur + timedelta(days=1)  # <- важно, без replace(day=day+1)
+            event_problem[e.id] = bool(_calculate_shortages(e))
         except Exception:
-            continue
+            event_problem[e.id] = False
 
-    cal = pycalendar.Calendar(firstweekday=0)
-    month_days = list(cal.monthdatescalendar(year, month))
+    for e in qs:
+        start = max(e.start_date, month_start)
+        end = min(e.end_date, month_end)
 
-    # Флаги проблем по мероприятиям (нехватка)
-    event_has_problem: dict[int, bool] = {}
-    try:
-        for e in events_qs:
-            shortages = _calculate_shortages(e)
-            event_has_problem[e.id] = bool(shortages)
-    except Exception:
-        event_has_problem = {}
+        d = start
+        while d <= end:
+            is_start = (d == e.start_date)
+            is_end = (d == e.end_date)
+            is_single = (e.start_date == e.end_date)
+
+            # если событие началось до месяца — в текущем месяце первый день считаем как "start" для полоски
+            if e.start_date < month_start and d == month_start:
+                is_start = True
+            # если событие заканчивается после месяца — последний день месяца считаем как "end"
+            if e.end_date > month_end and d == month_end:
+                is_end = True
+
+            events_by_day[d].append({
+                "event": e,
+                "is_start": is_start,
+                "is_end": is_end,
+                "is_single": is_single,
+                "has_problem": event_problem.get(e.id, False),
+            })
+            d = d + timedelta(days=1)
+
+    # в каждом дне отсортируем по времени/названию (стабильно)
+    for day_key in events_by_day:
+        events_by_day[day_key].sort(key=lambda x: (x["event"].start_date, x["event"].id))
+
+    month_days = list(pycalendar.Calendar(firstweekday=0).monthdatescalendar(year, month))
 
     ctx = {
         "year": year,
         "month": month,
         "month_name": pycalendar.month_name[month],
         "month_days": month_days,
-        "events_by_day": events_by_day,
-        "event_has_problem": event_has_problem,
+        "events_by_day": dict(events_by_day),
+
+        "filter": cal_filter,
+        "filter_label": _calendar_filter_label(cal_filter),
+        "can_create_event": can_edit_event_card(request.user),  # для клика по дню
     }
     return render(request, "events/calendar.html", ctx)
 
 
 @login_required
-def event_list_view(request):
-    events = Event.objects.all().order_by("-start_date")
-
-    return render(request, "events/event_list.html", {
-        "events": events,
+def event_list_view(request: HttpRequest) -> HttpResponse:
+    qs = Event.objects.all().select_related("responsible").order_by("-start_date", "-id")
+    ctx = {
+        "events": qs,
         "can_create_event": can_edit_event_card(request.user),
-    })
+    }
+    return render(request, "events/event_list.html", ctx)
 
 
 @login_required
@@ -213,12 +237,9 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
         "equipment_items": equipment_items,
         "rented_items": rented_items,
         "shortages": _calculate_shortages(event),
-        "can_modify": can_edit_event_card(request.user),              # для кнопок статуса/редактирования
-        "can_edit_equipment": can_edit_event_equipment(request.user), # для оборудования/аренды
+        "can_modify": can_edit_event_card(request.user),
+        "can_edit_equipment": can_edit_event_equipment(request.user),
     }
-    # ВАЖНО: твой шаблон event_detail.html сейчас проверяет can_modify.
-    # Если ты хочешь: карточка только менеджер, а оборудование может старший инженер —
-    # то в шаблоне надо использовать can_edit_equipment для таблиц оборудования/аренды.
     return render(request, "events/event_detail.html", ctx)
 
 
@@ -226,6 +247,23 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
 def event_create_view(request: HttpRequest) -> HttpResponse:
     if not can_edit_event_card(request.user):
         return HttpResponseForbidden("Недостаточно прав")
+
+    # ✅ Пункт (1): клик по дню в календаре передаёт start_date/end_date в GET.
+    initial = {}
+    sd = (request.GET.get("start_date") or "").strip()
+    ed = (request.GET.get("end_date") or "").strip()
+
+    # ожидаем формат YYYY-MM-DD
+    try:
+        if sd:
+            initial["start_date"] = sd
+        if ed:
+            initial["end_date"] = ed
+        elif sd:
+            # если end не передали — однодневное
+            initial["end_date"] = sd
+    except Exception:
+        initial = {}
 
     if request.method == "POST":
         form = EventForm(request.POST)
@@ -235,7 +273,7 @@ def event_create_view(request: HttpRequest) -> HttpResponse:
             messages.success(request, "Мероприятие создано.")
             return redirect("event_detail", event_id=event.id)
     else:
-        form = EventForm()
+        form = EventForm(initial=initial)
 
     return render(request, "events/event_form.html", {"form": form, "title": "Создать мероприятие"})
 
@@ -265,7 +303,7 @@ def event_set_status_view(request: HttpRequest, event_id: int, status: str) -> H
     if not can_edit_event_card(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
-    allowed = {c[0] for c in getattr(Event, "STATUS_CHOICES", [])} or {"draft", "confirmed", "cancelled", "closed"}
+    allowed = {"draft", "confirmed", "cancelled", "closed"}
     if status not in allowed:
         messages.error(request, "Некорректный статус.")
         return redirect("event_detail", event_id=event.id)
@@ -282,15 +320,12 @@ def event_set_status_view(request: HttpRequest, event_id: int, status: str) -> H
 @login_required
 def event_equipment_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
     event = get_object_or_404(Event, id=event_id)
-
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
     if request.method == "POST":
         form = EventEquipmentForm(request.POST, event=event)
         if form.is_valid():
-            # Ключевой момент: EventEquipmentForm у тебя, судя по ошибкам, требует event,
-            # а также может НЕ ставить event автоматически. Поэтому ставим вручную.
             equipment = form.cleaned_data.get("equipment")
             qty = int(form.cleaned_data.get("quantity") or 0)
 
@@ -359,7 +394,6 @@ def event_equipment_delete_view(request: HttpRequest, event_id: int, item_id: in
 @login_required
 def event_rented_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
     event = get_object_or_404(Event, id=event_id)
-
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 

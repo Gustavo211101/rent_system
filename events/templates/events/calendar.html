@@ -3,20 +3,118 @@
 
 {% block content %}
 
-<div class="calendar-header" style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-  {% if month > 1 %}
-    <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"-1" }}">←</a>
-  {% else %}
-    <a class="btn-secondary" href="?year={{ year|add:"-1" }}&month=12">←</a>
-  {% endif %}
+<style>
+  /* Мини-стили только для модалки календаря */
+  .cal-modal-backdrop{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    padding:16px;
+  }
+  .cal-modal{
+    background:#fff;
+    border-radius:16px;
+    width:min(520px, 100%);
+    box-shadow:0 18px 50px rgba(0,0,0,.25);
+    overflow:hidden;
+  }
+  .cal-modal__head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px;
+    border-bottom:1px solid rgba(0,0,0,.08);
+  }
+  .cal-modal__title{
+    font-size:16px;
+    font-weight:700;
+    margin:0;
+  }
+  .cal-modal__close{
+    border:0;
+    background:transparent;
+    font-size:18px;
+    cursor:pointer;
+    padding:6px 10px;
+    border-radius:10px;
+  }
+  .cal-modal__close:hover{ background:rgba(0,0,0,.06); }
+  .cal-modal__body{ padding:16px; }
+  .cal-modal__row{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    margin-top:10px;
+  }
+  .cal-modal__row label{ min-width:120px; }
+  .cal-modal__row input{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid rgba(0,0,0,.15);
+    border-radius:10px;
+    outline:none;
+  }
+  .cal-modal__row input:focus{
+    border-color:rgba(0,0,0,.35);
+  }
+  .cal-modal__actions{
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    padding:14px 16px;
+    border-top:1px solid rgba(0,0,0,.08);
+    background:rgba(0,0,0,.02);
+  }
+  .day-cell{
+    cursor:pointer;
+  }
+  .day-cell.other-month{
+    cursor:default;
+  }
+  .day-cell.other-month:hover{
+    background:inherit;
+  }
+  .day-cell:hover{
+    background:rgba(0,0,0,.02);
+  }
+  .day-cell a{ color:inherit; }
+  .event a{ color:inherit; }
+</style>
 
-  <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
+<div class="calendar-top" style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px;">
+  <!-- Навигация по месяцам -->
+  <div class="calendar-header" style="display:flex; align-items:center; gap:12px;">
+    {% if month > 1 %}
+      <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"-1" }}&filter={{ filter }}">←</a>
+    {% else %}
+      <a class="btn-secondary" href="?year={{ year|add:"-1" }}&month=12&filter={{ filter }}">←</a>
+    {% endif %}
 
-  {% if month < 12 %}
-    <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"1" }}">→</a>
-  {% else %}
-    <a class="btn-secondary" href="?year={{ year|add:"1" }}&month=1">→</a>
-  {% endif %}
+    <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
+
+    {% if month < 12 %}
+      <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"1" }}&filter={{ filter }}">→</a>
+    {% else %}
+      <a class="btn-secondary" href="?year={{ year|add:"1" }}&month=1&filter={{ filter }}">→</a>
+    {% endif %}
+  </div>
+
+  <!-- Фильтр -->
+  <form method="get" style="display:flex; align-items:center; gap:10px;">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+
+    <label class="muted" for="filter" style="white-space:nowrap;">Фильтр:</label>
+    <select id="filter" name="filter" onchange="this.form.submit()">
+      <option value="all" {% if filter == "all" %}selected{% endif %}>Все</option>
+      <option value="confirmed" {% if filter == "confirmed" %}selected{% endif %}>Только подтверждённые</option>
+      <option value="mine" {% if filter == "mine" %}selected{% endif %}>Только мои</option>
+    </select>
+    <noscript><button class="btn-secondary" type="submit">OK</button></noscript>
+  </form>
 </div>
 
 <table class="calendar">
@@ -31,26 +129,164 @@
       <th>Вс</th>
     </tr>
   </thead>
+
   <tbody>
     {% for week in month_days %}
       <tr>
         {% for day in week %}
-          <td class="{% if day.month != month %}other-month{% endif %}">
-            <div class="day-number">{{ day.day }}</div>
+          {# data-day нужен для модалки #}
+          <td
+            class="day-cell {% if day.month != month %}other-month{% endif %}"
+            data-day="{{ day|date:'Y-m-d' }}"
+          >
+            <div class="day-number" style="display:flex; align-items:center; justify-content:space-between;">
+              <span>{{ day.day }}</span>
+            </div>
 
-            {% for event in events_by_day|get_item:day %}
-              <div class="event status-{{ event.status }}">
-                <a href="{% url 'event_detail' event.id %}">
-                  {{ event.name }}
-                </a>
-              </div>
-            {% empty %}
+            {% for item in events_by_day|get_item:day %}
+              {% with e=item.event %}
+                <div
+                  class="event status-{{ e.status }}"
+                  style="
+                    margin-top:6px;
+                    padding:6px 8px;
+                    {% if item.is_single %}
+                      border-radius:999px;
+                    {% else %}
+                      border-top-left-radius:{% if item.is_start %}999px{% else %}6px{% endif %};
+                      border-bottom-left-radius:{% if item.is_start %}999px{% else %}6px{% endif %};
+                      border-top-right-radius:{% if item.is_end %}999px{% else %}6px{% endif %};
+                      border-bottom-right-radius:{% if item.is_end %}999px{% else %}6px{% endif %};
+                    {% endif %}
+                    {% if item.has_problem %}
+                      outline:2px solid rgba(0,0,0,0.35);
+                      outline-offset:1px;
+                    {% endif %}
+                  "
+                >
+                  <a href="{% url 'event_detail' e.id %}" style="text-decoration:none;">
+                    {{ e.name }}
+                  </a>
+                </div>
+              {% endwith %}
             {% endfor %}
+
           </td>
         {% endfor %}
       </tr>
     {% endfor %}
   </tbody>
 </table>
+
+{# ===== MODAL ===== #}
+<div id="calModalBackdrop" class="cal-modal-backdrop" aria-hidden="true">
+  <div class="cal-modal" role="dialog" aria-modal="true" aria-labelledby="calModalTitle">
+    <div class="cal-modal__head">
+      <h3 id="calModalTitle" class="cal-modal__title">Создать мероприятие</h3>
+      <button type="button" class="cal-modal__close" id="calModalClose" aria-label="Закрыть">✕</button>
+    </div>
+
+    <div class="cal-modal__body">
+      <div class="muted" style="margin-bottom:10px;">
+        Дата выбрана: <strong id="calModalDateText"></strong>
+      </div>
+
+      <div class="cal-modal__row">
+        <label>Название</label>
+        <input id="calModalName" type="text" placeholder="Например: Съёмка / мероприятие / выезд">
+      </div>
+
+      <div class="cal-modal__row">
+        <label>Конец (опц.)</label>
+        <input id="calModalEnd" type="date">
+      </div>
+    </div>
+
+    <div class="cal-modal__actions">
+      <button type="button" class="btn-secondary" id="calModalCancel">Отмена</button>
+      <button type="button" class="btn" id="calModalGo">Перейти к созданию</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const canCreate = {{ can_create_event|yesno:"true,false" }};
+  const backdrop = document.getElementById("calModalBackdrop");
+  const closeBtn = document.getElementById("calModalClose");
+  const cancelBtn = document.getElementById("calModalCancel");
+  const goBtn = document.getElementById("calModalGo");
+  const dateText = document.getElementById("calModalDateText");
+  const nameInput = document.getElementById("calModalName");
+  const endInput = document.getElementById("calModalEnd");
+
+  let selectedDay = null;
+
+  function openModal(dayStr){
+    selectedDay = dayStr;
+    dateText.textContent = dayStr;
+    endInput.value = dayStr;
+    nameInput.value = "";
+    backdrop.style.display = "flex";
+    backdrop.setAttribute("aria-hidden","false");
+    setTimeout(()=>nameInput.focus(), 50);
+  }
+
+  function closeModal(){
+    backdrop.style.display = "none";
+    backdrop.setAttribute("aria-hidden","true");
+    selectedDay = null;
+  }
+
+  function isClickOnLink(e){
+    return e.target && (e.target.tagName === "A" || e.target.closest("a"));
+  }
+
+  document.addEventListener("click", function(e){
+    const cell = e.target.closest(".day-cell");
+    if(!cell) return;
+
+    // клики по ссылкам события не должны открывать модалку
+    if(isClickOnLink(e)) return;
+
+    // запретим модалку на "других месяцах"
+    if(cell.classList.contains("other-month")) return;
+
+    if(!canCreate) return;
+
+    const dayStr = cell.getAttribute("data-day");
+    if(!dayStr) return;
+
+    openModal(dayStr);
+  });
+
+  backdrop.addEventListener("click", function(e){
+    if(e.target === backdrop) closeModal();
+  });
+
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && backdrop.style.display === "flex"){
+      closeModal();
+    }
+  });
+
+  goBtn.addEventListener("click", function(){
+    if(!selectedDay) return;
+
+    const name = (nameInput.value || "").trim();
+    const end = (endInput.value || "").trim() || selectedDay;
+
+    const url = new URL("{% url 'event_create' %}", window.location.origin);
+    url.searchParams.set("start_date", selectedDay);
+    url.searchParams.set("end_date", end);
+    if(name) url.searchParams.set("name", name);
+
+    window.location.href = url.toString();
+  });
+})();
+</script>
 
 {% endblock %}
