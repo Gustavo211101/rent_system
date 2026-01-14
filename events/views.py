@@ -7,18 +7,12 @@ from datetime import date, datetime, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import (
-    HttpRequest,
-    HttpResponse,
-    HttpResponseForbidden,
-    JsonResponse,
-)
+from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from accounts.permissions import can_edit_event_card, can_edit_event_equipment
 
-# audit логирование (если есть)
 try:
     from audit.utils import log_action  # type: ignore
 except Exception:  # pragma: no cover
@@ -27,6 +21,7 @@ except Exception:  # pragma: no cover
 
 from .forms import EventEquipmentForm, EventForm, EventRentedEquipmentForm
 from .models import Event, EventEquipment, EventRentedEquipment
+from .utils import auto_close_past_events, calculate_shortages
 
 
 def _safe_int(v, default=0) -> int:
@@ -44,10 +39,6 @@ def _parse_year_month(request: HttpRequest) -> tuple[int, int]:
         month = 1
     if month > 12:
         month = 12
-    if year < 1970:
-        year = 1970
-    if year > 2100:
-        year = 2100
     return year, month
 
 
@@ -58,73 +49,10 @@ def _month_bounds(year: int, month: int) -> tuple[date, date]:
     return first, last
 
 
-def _calculate_shortages(event: Event):
-    """
-    Мягкий расчёт нехватки, чтобы не ронять карточку/календарь.
-    Возвращает список для шаблона (или [] если что-то не так).
-    """
-    try:
-        start = event.start_date
-        end = event.end_date
-        required_rows = (
-            EventEquipment.objects
-            .filter(event=event)
-            .select_related("equipment")
-        )
-        rented_rows = (
-            EventRentedEquipment.objects
-            .filter(event=event)
-            .select_related("equipment")
-        )
-    except Exception:
-        return []
-
-    rented_map: dict[int, int] = {}
-    for r in rented_rows:
-        try:
-            rented_map[r.equipment_id] = rented_map.get(r.equipment_id, 0) + int(r.quantity or 0)
-        except Exception:
-            pass
-
-    out = []
-    for row in required_rows:
-        eq = row.equipment
-        required = int(getattr(row, "quantity", 0) or 0)
-
-        available_own = 0
-        try:
-            available_own = int(eq.available_quantity(start, end))  # type: ignore
-        except Exception:
-            try:
-                available_own = int(getattr(eq, "quantity_total", 0) or 0)
-            except Exception:
-                available_own = 0
-
-        rented = rented_map.get(row.equipment_id, 0)
-        shortage = required - (available_own + rented)
-        if shortage > 0:
-            out.append(
-                {
-                    "equipment": eq,
-                    "required": required,
-                    "available_own": available_own,
-                    "rented": rented,
-                    "shortage": shortage,
-                }
-            )
-    return out
-
-
-def _calendar_filter_label(value: str) -> str:
-    return {
-        "all": "Все",
-        "confirmed": "Только подтверждённые",
-        "mine": "Только мои",
-    }.get(value, "Все")
-
-
 @login_required
 def calendar_view(request: HttpRequest) -> HttpResponse:
+    auto_close_past_events()
+
     year, month = _parse_year_month(request)
     month_start, month_end = _month_bounds(year, month)
 
@@ -135,7 +63,7 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
     qs = (
         Event.objects
         .filter(start_date__lte=month_end, end_date__gte=month_start)
-        .select_related("responsible")  # client у тебя строка, НЕ FK
+        .select_related("responsible")
         .order_by("start_date", "id")
     )
 
@@ -144,15 +72,10 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
     elif cal_filter == "mine":
         qs = qs.filter(responsible=request.user)
 
-    # event_id -> has_problem
     event_problem: dict[int, bool] = {}
     for e in qs:
-        try:
-            event_problem[e.id] = bool(_calculate_shortages(e))
-        except Exception:
-            event_problem[e.id] = False
+        event_problem[e.id] = bool(calculate_shortages(e))
 
-    # day -> list[dict]
     events_by_day: dict[date, list[dict]] = defaultdict(list)
 
     for e in qs:
@@ -192,7 +115,6 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
         "events_by_day": dict(events_by_day),
 
         "filter": cal_filter,
-        "filter_label": _calendar_filter_label(cal_filter),
         "can_create_event": can_edit_event_card(request.user),
     }
     return render(request, "events/calendar.html", ctx)
@@ -201,11 +123,10 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
 @login_required
 def event_list_view(request: HttpRequest) -> HttpResponse:
     qs = Event.objects.all().select_related("responsible").order_by("-start_date", "-id")
-    ctx = {
+    return render(request, "events/event_list.html", {
         "events": qs,
         "can_create_event": can_edit_event_card(request.user),
-    }
-    return render(request, "events/event_list.html", ctx)
+    })
 
 
 @login_required
@@ -226,15 +147,16 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
         .order_by("equipment__name")
     )
 
-    ctx = {
+    shortages = calculate_shortages(event)
+
+    return render(request, "events/event_detail.html", {
         "event": event,
         "equipment_items": equipment_items,
         "rented_items": rented_items,
-        "shortages": _calculate_shortages(event),
+        "shortages": shortages,
         "can_modify": can_edit_event_card(request.user),
         "can_edit_equipment": can_edit_event_equipment(request.user),
-    }
-    return render(request, "events/event_detail.html", ctx)
+    })
 
 
 @login_required
@@ -303,8 +225,6 @@ def event_set_status_view(request: HttpRequest, event_id: int, status: str) -> H
     return redirect("event_detail", event_id=event.id)
 
 
-# --------- Equipment inside Event (НЕ аренда) ---------
-
 @login_required
 def event_equipment_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
     event = get_object_or_404(Event, id=event_id)
@@ -314,24 +234,24 @@ def event_equipment_add_view(request: HttpRequest, event_id: int) -> HttpRespons
     if request.method == "POST":
         form = EventEquipmentForm(request.POST, event=event)
         if form.is_valid():
-            equipment = form.cleaned_data.get("equipment")
+            equipment = form.cleaned_data["equipment"]
             qty = int(form.cleaned_data.get("quantity") or 0)
+            if qty <= 0:
+                return redirect("event_detail", event_id=event.id)
 
-            if not equipment or qty <= 0:
-                messages.error(request, "Выбери оборудование и количество > 0.")
-                return redirect("event_equipment_add", event_id=event.id)
+            item, created = EventEquipment.objects.get_or_create(
+                event=event,
+                equipment=equipment,
+                defaults={"quantity": 0},
+            )
+            if not created:
+                item.quantity = int(item.quantity or 0) + qty
+                item.save(update_fields=["quantity"])
+            else:
+                item.quantity = qty
+                item.save(update_fields=["quantity"])
 
-            with transaction.atomic():
-                item, created = EventEquipment.objects.select_for_update().get_or_create(
-                    event=event,
-                    equipment=equipment,
-                    defaults={"quantity": qty},
-                )
-                if not created:
-                    item.quantity = int(item.quantity or 0) + qty
-                    item.save(update_fields=["quantity"])
-
-            log_action(user=request.user, action="add", obj=event, details=f"Добавлено оборудование: {equipment} x{qty}")
+            log_action(user=request.user, action="update", obj=event, details=f"Добавлено оборудование: {equipment.name} +{qty}")
             messages.success(request, "Оборудование добавлено.")
             return redirect("event_detail", event_id=event.id)
     else:
@@ -352,13 +272,10 @@ def event_equipment_update_qty_view(request: HttpRequest, event_id: int, item_id
         qty = _safe_int(request.POST.get("quantity"), 0)
         if qty <= 0:
             item.delete()
-            log_action(user=request.user, action="delete", obj=event, details=f"Удалено оборудование: {item.equipment}")
-            messages.success(request, "Позиция удалена.")
         else:
             item.quantity = qty
             item.save(update_fields=["quantity"])
-            log_action(user=request.user, action="update", obj=event, details=f"Изменено оборудование: {item.equipment} -> {qty}")
-            messages.success(request, "Количество обновлено.")
+
     return redirect("event_detail", event_id=event.id)
 
 
@@ -370,14 +287,9 @@ def event_equipment_delete_view(request: HttpRequest, event_id: int, item_id: in
 
     item = get_object_or_404(EventEquipment, id=item_id, event=event)
     if request.method == "POST":
-        eq = item.equipment
         item.delete()
-        log_action(user=request.user, action="delete", obj=event, details=f"Удалено оборудование: {eq}")
-        messages.success(request, "Удалено.")
     return redirect("event_detail", event_id=event.id)
 
-
-# --------- Rented equipment inside Event ---------
 
 @login_required
 def event_rented_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
@@ -385,33 +297,39 @@ def event_rented_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
+    shortages = calculate_shortages(event)
+
     if request.method == "POST":
         form = EventRentedEquipmentForm(request.POST, event=event)
         if form.is_valid():
-            equipment = form.cleaned_data.get("equipment")
+            equipment = form.cleaned_data["equipment"]
             qty = int(form.cleaned_data.get("quantity") or 0)
+            if qty <= 0:
+                return redirect("event_detail", event_id=event.id)
 
-            if not equipment or qty <= 0:
-                messages.error(request, "Выбери оборудование и количество > 0.")
-                return redirect("event_rented_add", event_id=event.id)
+            item, created = EventRentedEquipment.objects.get_or_create(
+                event=event,
+                equipment=equipment,
+                defaults={"quantity": 0},
+            )
+            if not created:
+                item.quantity = int(item.quantity or 0) + qty
+                item.save(update_fields=["quantity"])
+            else:
+                item.quantity = qty
+                item.save(update_fields=["quantity"])
 
-            with transaction.atomic():
-                item, created = EventRentedEquipment.objects.select_for_update().get_or_create(
-                    event=event,
-                    equipment=equipment,
-                    defaults={"quantity": qty},
-                )
-                if not created:
-                    item.quantity = int(item.quantity or 0) + qty
-                    item.save(update_fields=["quantity"])
-
-            log_action(user=request.user, action="add", obj=event, details=f"Добавлена аренда: {equipment} x{qty}")
             messages.success(request, "Аренда добавлена.")
             return redirect("event_detail", event_id=event.id)
     else:
         form = EventRentedEquipmentForm(event=event)
 
-    return render(request, "events/event_rented_add.html", {"event": event, "form": form})
+    return render(request, "events/event_rented_add.html", {
+        "event": event,
+        "form": form,
+        "shortages": shortages,
+        "has_shortage": bool(shortages),
+    })
 
 
 @login_required
@@ -426,13 +344,10 @@ def event_rented_update_qty_view(request: HttpRequest, event_id: int, item_id: i
         qty = _safe_int(request.POST.get("quantity"), 0)
         if qty <= 0:
             item.delete()
-            log_action(user=request.user, action="delete", obj=event, details=f"Удалена аренда: {item.equipment}")
-            messages.success(request, "Позиция удалена.")
         else:
             item.quantity = qty
             item.save(update_fields=["quantity"])
-            log_action(user=request.user, action="update", obj=event, details=f"Изменена аренда: {item.equipment} -> {qty}")
-            messages.success(request, "Количество обновлено.")
+
     return redirect("event_detail", event_id=event.id)
 
 
@@ -444,15 +359,12 @@ def event_rented_delete_view(request: HttpRequest, event_id: int, item_id: int) 
 
     item = get_object_or_404(EventRentedEquipment, id=item_id, event=event)
     if request.method == "POST":
-        eq = item.equipment
         item.delete()
-        log_action(user=request.user, action="delete", obj=event, details=f"Удалена аренда: {eq}")
-        messages.success(request, "Удалено.")
     return redirect("event_detail", event_id=event.id)
 
 
 # ---------------------------
-# API: Quick create (modal save)
+# API: quick-create (modal)
 # ---------------------------
 
 @login_required
@@ -501,15 +413,9 @@ def quick_create_event_api(request: HttpRequest) -> HttpResponse:
         responsible=request.user,
         status="draft",
     )
-
     log_action(user=request.user, action="create", obj=event, details="Создано из календаря (модалка)")
-
     return JsonResponse({"ok": True, "id": event.id})
 
-
-# ---------------------------
-# API: Move event (drag&drop)
-# ---------------------------
 
 @login_required
 def quick_move_event_api(request: HttpRequest, event_id: int) -> HttpResponse:
@@ -540,7 +446,5 @@ def quick_move_event_api(request: HttpRequest, event_id: int) -> HttpResponse:
     event.start_date = ns
     event.end_date = ns + timedelta(days=duration)
     event.save(update_fields=["start_date", "end_date"])
-
     log_action(user=request.user, action="update", obj=event, details=f"Перенос (drag&drop) на {ns}")
-
     return JsonResponse({"ok": True})

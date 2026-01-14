@@ -2,62 +2,43 @@
 
 {% block content %}
 <h1>Взято в аренду</h1>
-<p><strong>Мероприятие:</strong> <a href="{% url 'event_detail' event.id %}">{{ event.name }}</a></p>
+<div class="muted">Мероприятие: <strong>{{ event.name }}</strong></div>
 
-{% if shortages %}
-    <div style="padding:12px; border:1px solid #f59e0b; background:#fffbeb; border-radius:12px; margin-bottom:16px;">
-        <strong>⚠️ Нехватка, которую можно покрыть арендой:</strong>
-        <ul style="margin:8px 0 0 18px;">
-            {% for s in shortages %}
-                <li>
-                    {{ s.equipment.name }} — не хватает {{ s.shortage }}
-                </li>
-            {% endfor %}
-        </ul>
+{% if has_shortage %}
+  <div class="alert alert-warning" style="margin-top:14px;">
+    <strong>⚠️ Есть нехватка оборудования</strong>
+    <div style="margin-top:8px;">
+      {% for row in shortages %}
+        <div style="margin-top:4px;">
+          {{ row.equipment.name }}: нужно {{ row.required }},
+          своё доступно {{ row.available_own }},
+          в аренде {{ row.rented }},
+          <strong>не хватает {{ row.shortage }}</strong>
+        </div>
+      {% endfor %}
     </div>
+  </div>
 {% else %}
-    <div style="padding:12px; border:1px solid #10b981; background:#ecfdf5; border-radius:12px; margin-bottom:16px;">
-        <strong>✅ Нехватки нет.</strong>
-    </div>
+  <div class="alert alert-success" style="margin-top:14px;">
+    ✅ Нехватки нет.
+  </div>
 {% endif %}
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn">Добавить аренду</button>
+<form method="post" style="margin-top:14px;" class="card">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div style="display:flex; gap:10px;">
+    <button class="btn" type="submit">Добавить аренду</button>
     <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Назад</a>
+  </div>
 </form>
 
-<hr>
-
-<h2>Уже добавлено (аренда)</h2>
-
-{% if rented_items %}
-    <table class="list-table">
-        <thead>
-            <tr>
-                <th>Позиция</th>
-                <th style="width:120px;">Кол-во</th>
-                <th style="width:140px;">Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in rented_items %}
-            <tr>
-                <td>{{ item.equipment.name }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>
-                    <form method="post" action="{% url 'event_rented_delete' event.id item.id %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-secondary">Удалить</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>Пока ничего не арендовано.</p>
-{% endif %}
-
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Уже добавлено (аренда)</h2>
+  {% if event.rented_items.all %}
+    <div class="muted">Открой карточку мероприятия, чтобы менять количество/удалять.</div>
+  {% else %}
+    <div class="muted">Пока ничего не арендовано.</div>
+  {% endif %}
+</div>
 {% endblock %}
