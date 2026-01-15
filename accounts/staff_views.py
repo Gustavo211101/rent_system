@@ -45,23 +45,27 @@ def staff_users_view(request):
 
     if q:
         users = users.filter(
-            Q(username__icontains=q) |
-            Q(first_name__icontains=q) |
-            Q(last_name__icontains=q) |
-            Q(email__icontains=q)
+            Q(username__icontains=q)
+            | Q(first_name__icontains=q)
+            | Q(last_name__icontains=q)
+            | Q(email__icontains=q)
         )
 
-    roles = Group.objects.all().orderney_by("name") if hasattr(Group.objects, "orderney_by") else Group.objects.all().order_by("name")
+    roles = Group.objects.all().order_by("name")
     if role_id.isdigit():
         users = users.filter(groups__id=int(role_id))
 
-    return render(request, "accounts/staff_users.html", {
-        "tab": "users",
-        "users": users,
-        "roles": roles,
-        "q": q,
-        "role": role_id,
-    })
+    return render(
+        request,
+        "accounts/staff_users.html",
+        {
+            "tab": "users",
+            "users": users,
+            "roles": roles,
+            "q": q,
+            "role": role_id,
+        },
+    )
 
 
 @login_required
@@ -96,6 +100,7 @@ def staff_user_add_view(request):
             user.email = email
         user.save()
 
+        # 1 роль = 1 группа
         user.groups.clear()
         if role_id.isdigit():
             grp = Group.objects.filter(id=int(role_id)).first()
@@ -105,12 +110,16 @@ def staff_user_add_view(request):
         messages.success(request, "Пользователь создан.")
         return redirect("staff_users")
 
-    return render(request, "accounts/staff_user_form.html", {
-        "tab": "users",
-        "roles": roles,
-        "user_obj": None,
-        "current_role": None,
-    })
+    return render(
+        request,
+        "accounts/staff_user_form.html",
+        {
+            "tab": "users",
+            "roles": roles,
+            "user_obj": None,
+            "current_role": None,
+        },
+    )
 
 
 @login_required
@@ -153,12 +162,16 @@ def staff_user_edit_view(request, user_id: int):
 
     current_role = user_obj.groups.first()
 
-    return render(request, "accounts/staff_user_form.html", {
-        "tab": "users",
-        "roles": roles,
-        "user_obj": user_obj,
-        "current_role": current_role,
-    })
+    return render(
+        request,
+        "accounts/staff_user_form.html",
+        {
+            "tab": "users",
+            "roles": roles,
+            "user_obj": user_obj,
+            "current_role": current_role,
+        },
+    )
 
 
 @login_required
@@ -180,10 +193,14 @@ def staff_user_delete_view(request, user_id: int):
         messages.success(request, "Пользователь удалён.")
         return redirect("staff_users")
 
-    return render(request, "accounts/staff_user_confirm_delete.html", {
-        "tab": "users",
-        "user_obj": user_obj,
-    })
+    return render(
+        request,
+        "accounts/staff_user_confirm_delete.html",
+        {
+            "tab": "users",
+            "user_obj": user_obj,
+        },
+    )
 
 
 @login_required
@@ -220,12 +237,11 @@ def staff_role_add_view(request):
         messages.success(request, "Роль создана.")
         return redirect("staff_roles")
 
-    return render(request, "accounts/staff_role_form.html", {
-        "tab": "roles",
-        "perms": perms,
-        "role": None,
-        "current_codes": set(),
-    })
+    return render(
+        request,
+        "accounts/staff_role_form.html",
+        {"tab": "roles", "perms": perms, "role": None, "current_codes": set()},
+    )
 
 
 @login_required
@@ -247,9 +263,11 @@ def staff_role_edit_view(request, group_id: int):
 
         if not name:
             messages.error(request, "Название роли обязательно.")
-            return render(request, "accounts/staff_role_form.html", {
-                "tab": "roles", "role": role, "perms": perms, "current_codes": current_codes
-            })
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "role": role, "perms": perms, "current_codes": current_codes},
+            )
 
         role.name = name
         role.save()
@@ -262,12 +280,11 @@ def staff_role_edit_view(request, group_id: int):
         messages.success(request, "Роль обновлена.")
         return redirect("staff_roles")
 
-    return render(request, "accounts/staff_role_form.html", {
-        "tab": "roles",
-        "role": role,
-        "perms": perms,
-        "current_codes": current_codes,
-    })
+    return render(
+        request,
+        "accounts/staff_role_form.html",
+        {"tab": "roles", "role": role, "perms": perms, "current_codes": current_codes},
+    )
 
 
 @login_required
@@ -277,12 +294,24 @@ def staff_role_delete_view(request, group_id: int):
 
     role = get_object_or_404(Group, id=group_id)
 
+    # ✅ Защита: если роль назначена пользователям — не даём удалить
+    if User.objects.filter(groups=role).exists():
+        if request.method == "POST":
+            messages.error(request, "Нельзя удалить роль: она назначена пользователям.")
+            return redirect("staff_roles")
+        return render(
+            request,
+            "accounts/staff_role_confirm_delete.html",
+            {"tab": "roles", "role": role, "has_users": True},
+        )
+
     if request.method == "POST":
         role.delete()
         messages.success(request, "Роль удалена.")
         return redirect("staff_roles")
 
-    return render(request, "accounts/staff_role_confirm_delete.html", {
-        "tab": "roles",
-        "role": role,
-    })
+    return render(
+        request,
+        "accounts/staff_role_confirm_delete.html",
+        {"tab": "roles", "role": role, "has_users": False},
+    )
