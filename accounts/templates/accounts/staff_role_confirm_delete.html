@@ -1,19 +1,17 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="toolbar">
-  <a class="btn-secondary" href="{% url 'staff_roles' %}">← Назад</a>
-</div>
+{% include "accounts/staff_base_tabs.html" %}
 
-<h1>Удалить роль</h1>
+<h1 style="margin-top:14px;">Удалить роль?</h1>
 
 <div class="card" style="max-width:720px;">
-  <p>Точно удалить роль <strong>{{ role.name }}</strong>?</p>
-
+  <p>Удалить роль <strong>{{ role.name }}</strong>?</p>
   <form method="post">
     {% csrf_token %}
-    <button class="btn" type="submit">Да, удалить</button>
-    <a class="btn-secondary" href="{% url 'staff_roles' %}">Отмена</a>
+    <div style="display:flex; gap:10px;">
+      <button class="btn" type="submit">Да, удалить</button>
+      <a class="btn-secondary" href="{% url 'staff_roles' %}">Отмена</a>
+    </div>
   </form>
 </div>
 {% endblock %}

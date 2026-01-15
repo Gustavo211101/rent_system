@@ -1,42 +1,29 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h1>Персонал</h1>
-
 {% include "accounts/staff_base_tabs.html" %}
 
-<div class="toolbar" style="gap:12px; align-items:flex-end;">
-  <form method="get" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-    <div>
-      <label style="display:block; font-size:12px; opacity:.7;">Поиск</label>
-      <input type="text" name="q" value="{{ q }}" placeholder="Имя / логин / email" />
-    </div>
+<h1 style="margin-top:14px;">Персонал</h1>
 
-    <div>
-      <label style="display:block; font-size:12px; opacity:.7;">Роль</label>
-      <select name="role">
-        <option value="">Все</option>
-        {% for r in roles %}
-          <option value="{{ r.id }}" {% if role_id|add:"0" == r.id|stringformat:"s" %}selected{% endif %}>
-            {{ r.name }} ({{ r.user_count }})
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <button class="btn-secondary" type="submit">Фильтр</button>
-    <a class="btn-secondary" href="{% url 'staff_users' %}">Сброс</a>
-  </form>
+<form method="get" style="display:flex; gap:10px; align-items:center; margin: 12px 0;">
+  <input type="text" name="q" value="{{ q }}" placeholder="Поиск: username/имя/email" style="width:280px;">
+  <select name="role">
+    <option value="">Все роли</option>
+    {% for r in roles %}
+      <option value="{{ r.id }}" {% if role == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn-secondary" type="submit">Фильтр</button>
+  <a class="btn-secondary" href="{% url 'staff_users' %}">Сброс</a>
 
   <div style="margin-left:auto;">
     <a class="btn" href="{% url 'staff_user_add' %}">➕ Добавить пользователя</a>
   </div>
-</div>
+</form>
 
 <table class="list-table">
   <thead>
     <tr>
-      <th>Логин</th>
+      <th>Username</th>
       <th>Имя</th>
       <th>Email</th>
       <th>Роль</th>
@@ -48,19 +35,11 @@
       <tr>
         <td>{{ u.username }}</td>
         <td>{{ u.first_name }} {{ u.last_name }}</td>
-        <td>{{ u.email }}</td>
+        <td>{{ u.email|default:"—" }}</td>
+        <td>{% if u.groups.first %}{{ u.groups.first.name }}{% else %}—{% endif %}</td>
         <td>
-          {% with g=u.groups.first %}
-            {% if g %}{{ g.name }}{% else %}—{% endif %}
-          {% endwith %}
-        </td>
-        <td>
-          {% if not u.is_superuser %}
-            <a class="btn-secondary" href="{% url 'staff_user_edit' u.id %}">Редактировать</a>
-            <a class="btn-secondary" href="{% url 'staff_user_delete' u.id %}">Удалить</a>
-          {% else %}
-            <span style="opacity:.6;">суперпользователь</span>
-          {% endif %}
+          <a class="btn-secondary" href="{% url 'staff_user_edit' u.id %}">Редактировать</a>
+          <a class="btn-secondary" href="{% url 'staff_user_delete' u.id %}">Удалить</a>
         </td>
       </tr>
     {% empty %}

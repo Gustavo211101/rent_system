@@ -4,21 +4,26 @@ from django.core.exceptions import ValidationError
 
 from inventory.models import Equipment
 
-
 User = settings.AUTH_USER_MODEL
 
 
 class Event(models.Model):
-    STATUS_DRAFT = 'draft'
-    STATUS_CONFIRMED = 'confirmed'
-    STATUS_CANCELLED = 'cancelled'
-    STATUS_CLOSED = 'closed'
+    class Meta:
+        permissions = [
+            ("edit_event_card", "Can edit event card (dates/status/etc)"),
+            ("edit_event_equipment", "Can edit event equipment (own/rented)"),
+        ]
+
+    STATUS_DRAFT = "draft"
+    STATUS_CONFIRMED = "confirmed"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_CLOSED = "closed"
 
     STATUS_CHOICES = (
-        (STATUS_DRAFT, 'Черновик'),
-        (STATUS_CONFIRMED, 'Подтверждено'),
-        (STATUS_CANCELLED, 'Отменено'),
-        (STATUS_CLOSED, 'Закрыто'),
+        (STATUS_DRAFT, "Черновик"),
+        (STATUS_CONFIRMED, "Подтверждено"),
+        (STATUS_CANCELLED, "Отменено"),
+        (STATUS_CLOSED, "Закрыто"),
     )
 
     name = models.CharField(max_length=200)
@@ -34,19 +39,18 @@ class Event(models.Model):
         User,
         on_delete=models.SET_NULL,
         null=True,
-        related_name='events'
+        related_name="events",
     )
 
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default=STATUS_DRAFT
+        default=STATUS_DRAFT,
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
-        # end_date по умолчанию = start_date
         if not self.end_date:
             self.end_date = self.start_date
 
@@ -67,41 +71,27 @@ class EventEquipment(models.Model):
     event = models.ForeignKey(
         Event,
         on_delete=models.CASCADE,
-        related_name='equipment_items'
+        related_name="equipment_items",
     )
     equipment = models.ForeignKey(
         Equipment,
         on_delete=models.PROTECT,
-        related_name='event_items'
+        related_name="event_items",
     )
     quantity = models.PositiveIntegerField()
 
     class Meta:
-        unique_together = ('event', 'equipment')
+        unique_together = ("event", "equipment")
 
     def __str__(self):
         return f"{self.equipment.name} × {self.quantity}"
 
     def clean(self):
-        # проверка на доступность в пересечении дат
-        start = self.event.start_date
-        end = self.event.end_date
-
-        available = self.equipment.available_quantity(start, end)
-
-        # если редактируем существующую строку — возвращаем старое количество в доступность
-        if self.pk:
-            old_quantity = EventEquipment.objects.get(pk=self.pk).quantity
-            available += old_quantity
-
-        # мы разрешаем добавлять больше, чем доступно (ты просил),
-        # но ValidationError не бросаем — нехватку покажем как предупреждение.
-        # Поэтому clean здесь больше не ограничивает.
-        # (оставляем как точку расширения)
+        # раньше тут была проверка доступности.
+        # сейчас НЕ блокируем сохранение — нехватку показываем как предупреждение в UI.
         return
 
     def save(self, *args, **kwargs):
-        # не full_clean, чтобы не блокировать “не хватает”
         super().save(*args, **kwargs)
 
 
@@ -109,17 +99,17 @@ class EventRentedEquipment(models.Model):
     event = models.ForeignKey(
         Event,
         on_delete=models.CASCADE,
-        related_name='rented_items'
+        related_name="rented_items",
     )
     equipment = models.ForeignKey(
         Equipment,
         on_delete=models.PROTECT,
-        related_name='rented_event_items'
+        related_name="rented_event_items",
     )
     quantity = models.PositiveIntegerField()
 
     class Meta:
-        unique_together = ('event', 'equipment')
+        unique_together = ("event", "equipment")
 
     def __str__(self):
         return f"Аренда: {self.equipment.name} × {self.quantity}"

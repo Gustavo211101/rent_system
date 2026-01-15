@@ -1,7 +1,6 @@
+from __future__ import annotations
+
 from .permissions import (
-    is_manager,
-    is_senior_engineer,
-    is_engineer,
     can_manage_staff,
     can_edit_event_card,
     can_edit_event_equipment,
@@ -12,11 +11,15 @@ from .permissions import (
 def authz_flags(request):
     user = getattr(request, "user", None)
     return {
-        "is_manager": is_manager(user),
-        "is_senior_engineer": is_senior_engineer(user),
-        "is_engineer": is_engineer(user),
+        # кто видит "Персонал" и "Журнал"
         "can_manage_staff": can_manage_staff(user),
+
+        # кто может создавать/редактировать карточки мероприятий/менять статусы
         "can_edit_event_card": can_edit_event_card(user),
+
+        # кто может менять оборудование/аренду внутри мероприятия
         "can_edit_event_equipment": can_edit_event_equipment(user),
+
+        # кто может CRUD инвентаря
         "can_edit_inventory": can_edit_inventory(user),
     }

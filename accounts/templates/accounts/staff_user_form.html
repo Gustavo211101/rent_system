@@ -1,15 +1,50 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h1>{{ title }}</h1>
-
 {% include "accounts/staff_base_tabs.html" %}
+
+<h1 style="margin-top:14px;">
+  {% if user_obj %}Редактировать пользователя{% else %}Добавить пользователя{% endif %}
+</h1>
 
 <form method="post" class="card" style="max-width:720px;">
   {% csrf_token %}
-  {{ form.as_p }}
 
-  <div class="toolbar" style="justify-content:flex-start; gap:10px;">
+  {% if not user_obj %}
+    <p><label>Username</label><br>
+      <input type="text" name="username" required style="width:100%;">
+    </p>
+    <p><label>Пароль</label><br>
+      <input type="password" name="password" required style="width:100%;">
+    </p>
+  {% else %}
+    <p><strong>Username:</strong> {{ user_obj.username }}</p>
+    <p><label>Новый пароль (необязательно)</label><br>
+      <input type="password" name="password" style="width:100%;">
+    </p>
+  {% endif %}
+
+  <p><label>Имя</label><br>
+    <input type="text" name="first_name" value="{{ user_obj.first_name|default:'' }}" style="width:100%;">
+  </p>
+  <p><label>Фамилия</label><br>
+    <input type="text" name="last_name" value="{{ user_obj.last_name|default:'' }}" style="width:100%;">
+  </p>
+  <p><label>Email</label><br>
+    <input type="email" name="email" value="{{ user_obj.email|default:'' }}" style="width:100%;">
+  </p>
+
+  <p><label>Роль</label><br>
+    <select name="role_id" style="width:100%;">
+      <option value="">— без роли —</option>
+      {% for r in roles %}
+        <option value="{{ r.id }}"
+          {% if current_role and current_role.id == r.id %}selected{% endif %}
+        >{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </p>
+
+  <div style="display:flex; gap:10px;">
     <button class="btn" type="submit">Сохранить</button>
     <a class="btn-secondary" href="{% url 'staff_users' %}">Отмена</a>
   </div>

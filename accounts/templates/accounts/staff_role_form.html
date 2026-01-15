@@ -1,15 +1,40 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h1>{{ title }}</h1>
-
 {% include "accounts/staff_base_tabs.html" %}
+
+<h1 style="margin-top:14px;">
+  {% if role %}Редактировать роль{% else %}Добавить роль{% endif %}
+</h1>
 
 <form method="post" class="card" style="max-width:720px;">
   {% csrf_token %}
-  {{ form.as_p }}
 
-  <div class="toolbar" style="justify-content:flex-start; gap:10px;">
+  <p>
+    <label>Название роли</label><br>
+    <input type="text" name="name" value="{{ role.name|default:'' }}" required style="width:100%;">
+  </p>
+
+  <div style="margin-top:14px;">
+    <strong>Права роли</strong>
+    <div class="muted" style="margin-top:6px;">Отметь галочки, которые должна иметь роль</div>
+
+    <div style="margin-top:10px; display:grid; gap:8px;">
+      {% for code, label, perm in perms %}
+        <label style="display:flex; gap:10px; align-items:center;">
+          <input type="checkbox" name="perms" value="{{ code }}"
+            {% if current_codes and code in current_codes %}checked{% endif %}
+            {% if not perm %}disabled{% endif %}
+          >
+          <span>{{ label }}</span>
+          {% if not perm %}
+            <span class="muted"> (permission ещё не создан — проверь миграции)</span>
+          {% endif %}
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="display:flex; gap:10px; margin-top:16px;">
     <button class="btn" type="submit">Сохранить</button>
     <a class="btn-secondary" href="{% url 'staff_roles' %}">Отмена</a>
   </div>
