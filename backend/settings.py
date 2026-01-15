@@ -135,3 +135,6 @@ AUTH_USER_MODEL = 'accounts.User'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'calendar'
 LOGOUT_REDIRECT_URL = 'login'
+
+ALLOWED_HOSTS = ["*"]
+CSRF_TRUSTED_ORIGINS = ["https://*.trycloudflare.com"]
