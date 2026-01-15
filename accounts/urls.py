@@ -13,6 +13,6 @@ urlpatterns = [
         name="logout",
     ),
 
-    # Персонал (менеджер)
-    path("personnel/", include("accounts.staff_urls")),
+    # Персонал
+    path("staff/", include("accounts.staff_urls")),
 ]
