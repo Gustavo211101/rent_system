@@ -40,11 +40,11 @@ a:hover {
 .topbar-inner {
     max-width: 1100px;
     margin: 0 auto;
-    padding: 10px 20px; /* чуть компактнее под крупный логотип */
+    padding: 12px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 20px;
 }
 
 /* ---------- Brand / Logo ---------- */
@@ -53,13 +53,13 @@ a:hover {
     align-items: center;
 }
 
-/* ---------- Vidium Logo ---------- */
+/* ---------- Vidium Logo (BIG) ---------- */
 .nav-logo {
     display: inline-flex;
     align-items: center;
-    margin-right: 18px;
-    padding: 4px 6px;
-    border-radius: 10px;
+    margin-right: 20px;
+    padding: 6px 8px;
+    border-radius: 12px;
     line-height: 1;
 }
 
@@ -69,7 +69,7 @@ a:hover {
 }
 
 .logo-img {
-    height: 56px;        /* увеличенный размер */
+    height: 56px;
     width: auto;
     display: block;
 }
@@ -110,11 +110,21 @@ a:hover {
     font-weight: 700;
     cursor: pointer;
     text-decoration: none;
+
+    /* micro-interactions */
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 
 .btn:hover {
     background: #f3f4f6;
     text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.06);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: none;
 }
 
 .btn-secondary {
@@ -128,11 +138,20 @@ a:hover {
     font-weight: 600;
     text-decoration: none;
     margin-right: 8px;
+
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .btn-secondary:hover {
     background: #f3f4f6;
     text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.05);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+    box-shadow: none;
 }
 
 /* ---------- Toolbar ---------- */
@@ -226,4 +245,205 @@ a:hover {
 
 .list-table tr:last-child td {
     border-bottom: 0;
+}
+
+/* ---------- Auth (Login) Page ---------- */
+
+/* subtle animated gradient background */
+@keyframes authBgShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.auth-page {
+    min-height: 100vh;
+
+    /* layered gradient: calm + “brand-ish” */
+    background:
+        radial-gradient(1200px 600px at 20% 10%, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0) 55%),
+        radial-gradient(900px 500px at 85% 20%, rgba(34, 197, 94, 0.16), rgba(34, 197, 94, 0) 55%),
+        linear-gradient(120deg, #f5f7fb, #f0f9ff, #f5f7fb);
+    background-size: 200% 200%;
+    animation: authBgShift 12s ease-in-out infinite;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-wrapper {
+    width: 100%;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 18px;
+    padding: 34px 30px 38px;
+    text-align: center;
+
+    /* glass-ish */
+    border: 1px solid rgba(229, 231, 235, 0.7);
+    backdrop-filter: blur(10px);
+
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.10);
+}
+
+.auth-logo {
+    margin-bottom: 18px;
+}
+
+.auth-logo img {
+    height: 78px;
+    width: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+.auth-title {
+    margin: 0 0 22px;
+    font-size: 22px;
+    font-weight: 850;
+    letter-spacing: 0.01em;
+}
+
+.auth-field {
+    text-align: left;
+    margin-bottom: 16px;
+}
+
+.auth-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #374151;
+}
+
+.auth-field input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.9);
+
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.auth-field input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
+}
+
+.auth-error {
+    background: rgba(254, 226, 226, 0.95);
+    color: #991b1b;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    border: 1px solid rgba(239, 68, 68, 0.20);
+}
+
+.auth-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 10px;
+    font-size: 15px;
+    padding: 10px 12px;
+    border-radius: 12px;
+}
+
+/* ---------- Animations (card + logo entrance) ---------- */
+@keyframes authCardIn {
+    0% {
+        opacity: 0;
+        transform: translateY(18px) scale(0.985);
+        box-shadow: 0 0 0 rgba(0,0,0,0);
+        filter: blur(2px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.10);
+        filter: blur(0);
+    }
+}
+
+@keyframes authLogoPop {
+    0% {
+        opacity: 0;
+        transform: translateY(8px) scale(0.90);
+        filter: blur(1px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+/* very subtle logo pulse (once per ~5s) */
+@keyframes authLogoPulse {
+    0%, 84% {
+        transform: scale(1);
+    }
+    88% {
+        transform: scale(1.035);
+    }
+    92% {
+        transform: scale(1);
+    }
+    96% {
+        transform: scale(1.018);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.auth-animate {
+    animation: authCardIn 560ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.auth-logo-animate {
+    animation: authLogoPop 560ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+    animation-delay: 90ms;
+}
+
+.auth-logo-pulse {
+    /* separate animation channel to not conflict with entrance animation */
+}
+
+.auth-logo-pulse img {
+    transform-origin: center center;
+    animation: authLogoPulse 5s ease-in-out infinite;
+    animation-delay: 1.2s;
+}
+
+/* ---------- Accessibility: disable motion if user prefers ---------- */
+@media (prefers-reduced-motion: reduce) {
+    .auth-page {
+        animation: none !important;
+        background-size: auto !important;
+    }
+
+    .auth-animate,
+    .auth-logo-animate,
+    .auth-logo-pulse img,
+    .btn,
+    .btn-secondary,
+    .auth-field input {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
 }
