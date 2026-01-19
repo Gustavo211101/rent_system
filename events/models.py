@@ -43,20 +43,20 @@ class Event(models.Model):
     )
 
     # Команда мероприятия
-    senior_engineer = models.ForeignKey(
+    # Старший инженер (один)
+    s_engineer = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="events_as_senior",
-        verbose_name="Старший инженер",
+        related_name="senior_events",
     )
 
+    # Инженеры (много)
     engineers = models.ManyToManyField(
         User,
         blank=True,
-        related_name="events_as_engineer",
-        verbose_name="Инженеры",
+        related_name="engineer_events",
     )
 
     status = models.CharField(

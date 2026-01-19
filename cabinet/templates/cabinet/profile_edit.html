@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Редактирование профиля</h1>
+
+<div style="margin-bottom: 12px;">
+  <div><strong>Роль:</strong>
+    {% if role_names %}
+      {{ role_names|join:", " }}
+    {% else %}
+      —
+    {% endif %}
+  </div>
+  <div style="font-size: 12px; opacity: 0.8;">
+    Роль меняется только администратором / менеджером, здесь её изменить нельзя.
+  </div>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div style="padding:10px; border:1px solid #d33; margin-bottom:12px;">
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <div class="form-row">
+    <label>Имя</label>
+    {{ form.first_name }}
+    {{ form.first_name.errors }}
+  </div>
+
+  <div class="form-row">
+    <label>Фамилия</label>
+    {{ form.last_name }}
+    {{ form.last_name.errors }}
+  </div>
+
+  <div class="form-row">
+    <label>Email</label>
+    {{ form.email }}
+    {{ form.email.errors }}
+  </div>
+
+  <div style="margin-top:16px;">
+    <button class="btn" type="submit">Сохранить</button>
+    <a class="btn-secondary" href="{% url 'cabinet:dashboard' %}">Отмена</a>
+  </div>
+</form>
+
+{% endblock %}

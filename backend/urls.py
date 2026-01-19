@@ -21,4 +21,7 @@ urlpatterns = [
     path("audit/", include("audit.urls")),
 
     path("admin/", admin.site.urls),
+
+    # cabinet
+    path("cabinet/", include("cabinet.urls")),
 ]

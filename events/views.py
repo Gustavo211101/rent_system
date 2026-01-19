@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -63,14 +64,19 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
     qs = (
         Event.objects
         .filter(start_date__lte=month_end, end_date__gte=month_start)
-        .select_related("responsible")
+        .select_related("responsible", "s_engineer")
+        .prefetch_related("engineers")
         .order_by("start_date", "id")
     )
 
     if cal_filter == "confirmed":
         qs = qs.filter(status="confirmed")
     elif cal_filter == "mine":
-        qs = qs.filter(responsible=request.user)
+        qs = qs.filter(
+            Q(responsible=request.user)
+            | Q(s_engineer=request.user)
+            | Q(engineers=request.user)
+        ).distinct()
 
     event_problem: dict[int, bool] = {}
     for e in qs:
@@ -122,7 +128,13 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def event_list_view(request: HttpRequest) -> HttpResponse:
-    qs = Event.objects.all().select_related("responsible").order_by("-start_date", "-id")
+    qs = (
+        Event.objects
+        .all()
+        .select_related("responsible", "s_engineer")
+        .prefetch_related("engineers")
+        .order_by("-start_date", "-id")
+    )
     return render(request, "events/event_list.html", {
         "events": qs,
         "can_create_event": can_edit_event_card(request.user),
@@ -131,15 +143,10 @@ def event_list_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
-    event = (
-        Event.objects
-        .select_related("responsible", "senior_engineer")
-        .prefetch_related("engineers")
-        .filter(id=event_id)
-        .first()
+    event = get_object_or_404(
+        Event.objects.select_related("responsible", "s_engineer").prefetch_related("engineers"),
+        id=event_id,
     )
-    if not event:
-        event = get_object_or_404(Event, id=event_id)
 
     equipment_items = (
         EventEquipment.objects

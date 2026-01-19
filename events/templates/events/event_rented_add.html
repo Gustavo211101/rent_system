@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Взято в аренду</h1>
+<div class="muted">Мероприятие: <strong>{{ event.name }}</strong></div>
+
+{% if has_shortage %}
+  <div class="alert alert-warning" style="margin-top:14px;">
+    <strong>⚠️ Есть нехватка оборудования</strong>
+    <div style="margin-top:8px;">
+      {% for row in shortages %}
+        <div style="margin-top:4px;">
+          {{ row.equipment.name }}: нужно {{ row.required }},
+          своё доступно {{ row.available_own }},
+          в аренде {{ row.rented }},
+          <strong>не хватает {{ row.shortage }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% else %}
+  <div class="alert alert-success" style="margin-top:14px;">
+    ✅ Нехватки нет.
+  </div>
+{% endif %}
+
+<form method="post" style="margin-top:14px;" class="card">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div style="display:flex; gap:10px;">
+    <button class="btn" type="submit">Добавить аренду</button>
+    <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Назад</a>
+  </div>
+</form>
+
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Уже добавлено (аренда)</h2>
+  {% if event.rented_items.all %}
+    <div class="muted">Открой карточку мероприятия, чтобы менять количество/удалять.</div>
+  {% else %}
+    <div class="muted">Пока ничего не арендовано.</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Кабинет</h1>
+
+<div style="margin-bottom: 16px;">
+  <div><strong>Пользователь:</strong> {{ request.user.username }}</div>
+  <div><strong>Имя:</strong> {{ request.user.first_name|default:"—" }} {{ request.user.last_name|default:"" }}</div>
+  <div><strong>Email:</strong> {{ request.user.email|default:"—" }}</div>
+  <div><strong>Роль:</strong>
+    {% if role_names %}
+      {{ role_names|join:", " }}
+    {% else %}
+      —
+    {% endif %}
+  </div>
+
+  <div style="margin-top: 12px;">
+    <a class="btn" href="{% url 'cabinet:profile_edit' %}">Редактировать профиль</a>
+    <a class="btn-secondary" href="{% url 'cabinet:password_change' %}">Сменить пароль</a>
+  </div>
+</div>
+
+<hr>
+
+<h2>Мои мероприятия</h2>
+
+{% if events %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Название</th>
+        <th>Роли</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in events %}
+        <tr>
+          <td>
+            {% if e.start_date == e.end_date or not e.end_date %}
+              {{ e.start_date }}
+            {% else %}
+              {{ e.start_date }} – {{ e.end_date }}
+            {% endif %}
+          </td>
+          <td>{{ e.name }}</td>
+          <td>
+            {% if e.responsible_id == request.user.id %}ответственный{% endif %}
+            {% if e.s_engineer_id == request.user.id %}{% if e.responsible_id == request.user.id %}, {% endif %}старший инженер{% endif %}
+            {% if request.user in e.engineers.all %}{% if e.responsible_id == request.user.id or e.s_engineer_id == request.user.id %}, {% endif %}инженер{% endif %}
+          </td>
+          <td>
+            <a href="{% url 'event_detail' e.id %}">Открыть</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>Вы пока не прикреплены ни к одному мероприятию.</p>
+{% endif %}
+
+{% endblock %}

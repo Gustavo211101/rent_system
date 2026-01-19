@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'inventory',
     'events',
     'audit',
+    'cabinet'
 ]
 
 MIDDLEWARE = [

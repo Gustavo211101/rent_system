@@ -2,16 +2,24 @@
 <!doctype html>
 <html lang="ru">
 <head>
+  <link rel="icon"
+      type="image/svg+xml"
+      href="{% static 'images/VidiumLogo.svg' %}">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Прокат</title>
+  <title>VIDIUM</title>
   <link rel="stylesheet" href="{% static 'css/base.css' %}">
   <link rel="stylesheet" href="{% static 'css/calendar.css' %}">
 </head>
 <body>
   <header class="topbar">
     <div class="container topbar-inner">
-      <div class="brand">Прокат</div>
+
+<a href="{% url 'calendar' %}" class="nav-logo">
+    <img src="{% static 'images/VidiumLogo.svg' %}"
+         alt="Vidium"
+         class="logo-img">
+</a>
 
       {% if user.is_authenticated %}
         <nav class="nav">
@@ -24,6 +32,7 @@
             <a class="nav-link" href="{% url 'personnel' %}">👥 Персонал</a>
             <a class="nav-link" href="{% url 'audit_list' %}">📒 Журнал</a>
           {% endif %}
+          <a href="{% url 'cabinet:dashboard' %}">⚙️ Кабинет</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline;">
   {% csrf_token %}
   <button type="submit" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">
