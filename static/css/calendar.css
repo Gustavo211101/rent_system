@@ -50,6 +50,10 @@
 .event.status-draft {
     background: #fdd835;
     color: #222;
+
+    /* ✅ КРАСНАЯ ОБВОДКА ДЛЯ "НЕ ОК" */
+    outline: 2px solid #ef4444;
+    outline-offset: 1px;
 }
 
 .event.status-confirmed {
@@ -71,6 +75,7 @@
     color: #fff;
     opacity: 0.9;
 }
+
 /* Плашки событий в календаре */
 .event-pill {
   display: inline-block;

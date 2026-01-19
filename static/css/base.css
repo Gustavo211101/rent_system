@@ -447,3 +447,139 @@ a:hover {
         box-shadow: none !important;
     }
 }
+/* ===========================
+   CABINET PAGE
+=========================== */
+
+.cabinet-page {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.cabinet-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e5e7eb;
+}
+
+.cabinet-profile-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.cabinet-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #22c55e);
+    color: white;
+    font-size: 28px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cabinet-profile-info {
+    flex: 1;
+}
+
+.cabinet-title {
+    margin: 0 0 12px;
+    font-size: 26px;
+}
+
+.cabinet-user-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 6px 20px;
+    font-size: 14px;
+    color: #374151;
+}
+
+.cabinet-role {
+    margin-left: auto;
+}
+
+.role-badge {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    background: #e5e7eb;
+}
+
+.role-superadmin { background: #ede9fe; color: #5b21b6; }
+.role-manager { background: #e0f2fe; color: #0369a1; }
+.role-s_engineer { background: #dcfce7; color: #166534; }
+.role-engineer { background: #fef9c3; color: #92400e; }
+
+.cabinet-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 12px;
+}
+
+/* === STATS === */
+
+.cabinet-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #f9fafb, #ffffff);
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid #e5e7eb;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 26px;
+    font-weight: 900;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+/* === EVENTS === */
+
+.cabinet-section-title {
+    margin: 0 0 16px;
+    font-size: 20px;
+}
+
+.cabinet-subtitle {
+    margin: 20px 0 8px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.cabinet-subtitle-muted {
+    color: #6b7280;
+}
+
+.role-pill {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #e5e7eb;
+}
+
+.role-muted {
+    opacity: 0.6;
+}
+
+.list-table-muted {
+    opacity: 0.75;
+}

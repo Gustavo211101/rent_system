@@ -1,0 +1,3689 @@
+[
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "admin",
+    "model": "logentry"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "auth",
+    "model": "permission"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "auth",
+    "model": "group"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "contenttypes",
+    "model": "contenttype"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "sessions",
+    "model": "session"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "accounts",
+    "model": "user"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "inventory",
+    "model": "equipmentcategory"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "inventory",
+    "model": "equipment"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "events",
+    "model": "event"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "events",
+    "model": "eventequipment"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "events",
+    "model": "eventrentedequipment"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "audit",
+    "model": "auditlog"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "0ni273yvx9t3wtdqe0ue7m512tpelh3v",
+  "fields": {
+    "session_data": ".eJxVjMEOwiAQBf-FsyHQpQt49N5vILCAVA0kpT0Z_9026UGvM_Pemzm_rcVtPS1ujuzKFLv8suDpmeoh4sPXe-PU6rrMgR8JP23nU4vpdTvbv4Pie9nXZCmhAgA02ppxUBnIWiLIAeSYKSOARhEwojFIOxyMDz6hlFkLIdnnC9JcN1I:1vgV5d:WXxET8OZP6syesbkF9_vQtjqIaTscTF0W2bptrP1qog",
+    "expire_date": "2026-01-29T21:41:13.285Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "12r4ee3oyez4w57tamtw4xz8yi046qya",
+  "fields": {
+    "session_data": ".eJxVjMsOwiAQRf-FtSEgjwGX7vsNZIBBqgaS0q6M_65NutDtPefcFwu4rTVsg5YwZ3Zhkp1-t4jpQW0H-Y7t1nnqbV3myHeFH3TwqWd6Xg_376DiqN86kZcKSnGFHHg6ayeMMGBBOEcKvSxQlCaHxhtLVDSCVF6lGEFLKwx7fwDUhDc_:1vgLNa:Z-s465iLFvVPzRoiDn6rptmv6HQCWqAbuqviFh4IxVw",
+    "expire_date": "2026-01-29T11:19:06.490Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "2hhhiqo2cb1py8ejqc6hjdqf62btd30k",
+  "fields": {
+    "session_data": ".eJxVjE0OwiAYBe_C2hCgIOjSfc9Avh-QqoGktCvj3W2TLnT7Zua9RYR1KXHtaY4Ti6sw4vS7IdAz1R3wA-q9SWp1mSeUuyIP2uXYOL1uh_t3UKCXrfZBn53S9uKDwww86IxoncmEFHwwGyOtFBNanwbSDMwaTPZWobPsxOcL1KA36A:1vgOWF:rF1GlkuOG1vmrK1V5enZB51PxxboYZEiR9tSQrPcy1o",
+    "expire_date": "2026-01-29T14:40:15.314Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "3ouhaosooafeychy5gtcgyczk96wa2zu",
+  "fields": {
+    "session_data": ".eJxVjE0OwiAYBe_C2hCgIOjSfc9Avh-QqoGktCvj3W2TLnT7Zua9RYR1KXHtaY4Ti6sw4vS7IdAz1R3wA-q9SWp1mSeUuyIP2uXYOL1uh_t3UKCXrfZBn53S9uKDwww86IxoncmEFHwwGyOtFBNanwbSDMwaTPZWobPsxOcL1KA36A:1vYnRP:7jrCGzyYs9JZVtGHgDHRUjEsIZ4jcPrpcdux6dxzvTY",
+    "expire_date": "2026-01-08T15:39:51.614Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "6crj5amlp2nwdha26mat284v0cmz6chx",
+  "fields": {
+    "session_data": ".eJxVjE0OwiAYBe_C2hCgIOjSfc9Avh-QqoGktCvj3W2TLnT7Zua9RYR1KXHtaY4Ti6sw4vS7IdAz1R3wA-q9SWp1mSeUuyIP2uXYOL1uh_t3UKCXrfZBn53S9uKDwww86IxoncmEFHwwGyOtFBNanwbSDMwaTPZWobPsxOcL1KA36A:1vhnLA:lRxru75zkVf1I3owY9PvqSeTnpmdXetarYiyq1MxOT4",
+    "expire_date": "2026-02-02T11:22:36.404Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "bhsvosqxugv192q4d8h3ti0p3w49ep6l",
+  "fields": {
+    "session_data": ".eJxVjMEOwiAQBf-FsyHQpQt49N5vILCAVA0kpT0Z_9026UGvM_Pemzm_rcVtPS1ujuzKFLv8suDpmeoh4sPXe-PU6rrMgR8JP23nU4vpdTvbv4Pie9nXZCmhAgA02ppxUBnIWiLIAeSYKSOARhEwojFIOxyMDz6hlFkLIdnnC9JcN1I:1vgV4o:6rDWeLLHIQm8mR3_Na5E_IgyR961tr_6CShan263GsQ",
+    "expire_date": "2026-01-29T21:40:22.401Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "dm1nniuvaauln2jtdx4dp16dz3tcfya2",
+  "fields": {
+    "session_data": ".eJxVjE0OwiAYBe_C2hCgIOjSfc9Avh-QqoGktCvj3W2TLnT7Zua9RYR1KXHtaY4Ti6sw4vS7IdAz1R3wA-q9SWp1mSeUuyIP2uXYOL1uh_t3UKCXrfZBn53S9uKDwww86IxoncmEFHwwGyOtFBNanwbSDMwaTPZWobPsxOcL1KA36A:1vgUqW:mzCKJVZRVcL3C8jyZGkezslOr71LukxI2rHpnY6w4mU",
+    "expire_date": "2026-01-29T21:25:36.473Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "emiyma49iy3uxgroptnr2c3lrv3fyejw",
+  "fields": {
+    "session_data": ".eJxVjE0OwiAYBe_C2hCgIOjSfc9Avh-QqoGktCvj3W2TLnT7Zua9RYR1KXHtaY4Ti6sw4vS7IdAz1R3wA-q9SWp1mSeUuyIP2uXYOL1uh_t3UKCXrfZBn53S9uKDwww86IxoncmEFHwwGyOtFBNanwbSDMwaTPZWobPsxOcL1KA36A:1vgYto:cF8X3QIKFufRZ1JVpVjNRoh47i1Bbvr-pswZmpv3q4E",
+    "expire_date": "2026-01-30T01:45:16.688Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "lo8is47990nyku0hjou7rzso321hbf5n",
+  "fields": {
+    "session_data": ".eJxVjE0OwiAYBe_C2hCgIOjSfc9Avh-QqoGktCvj3W2TLnT7Zua9RYR1KXHtaY4Ti6sw4vS7IdAz1R3wA-q9SWp1mSeUuyIP2uXYOL1uh_t3UKCXrfZBn53S9uKDwww86IxoncmEFHwwGyOtFBNanwbSDMwaTPZWobPsxOcL1KA36A:1vhmWw:tzAPPyjLoKmsb3Pf4kH_BsZDTyHT5gxz-lPkDNaIYHs",
+    "expire_date": "2026-02-02T10:30:42.316Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "n52qaz1qshy7g1d8miceur1qiqn9dp68",
+  "fields": {
+    "session_data": ".eJxVjE0OwiAYBe_C2hCgIOjSfc9Avh-QqoGktCvj3W2TLnT7Zua9RYR1KXHtaY4Ti6sw4vS7IdAz1R3wA-q9SWp1mSeUuyIP2uXYOL1uh_t3UKCXrfZBn53S9uKDwww86IxoncmEFHwwGyOtFBNanwbSDMwaTPZWobPsxOcL1KA36A:1vhlzE:pRcKM8MsbuLTbSHDCbNF8aNF5zvjMwBWkB9yYAYScoc",
+    "expire_date": "2026-02-02T09:55:52.081Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "r3u1jq2b9yqw785j9bvts9ffokcnhqls",
+  "fields": {
+    "session_data": ".eJxVjMsOwiAQRf-FtSEgjwGX7vsNZIBBqgaS0q6M_65NutDtPefcFwu4rTVsg5YwZ3Zhkp1-t4jpQW0H-Y7t1nnqbV3myHeFH3TwqWd6Xg_376DiqN86kZcKSnGFHHg6ayeMMGBBOEcKvSxQlCaHxhtLVDSCVF6lGEFLKwx7fwDUhDc_:1vXdBZ:8XYj_IExsBGYmh27IPd79co3En1BK6nsTTUSSrdvv3c",
+    "expire_date": "2026-01-05T10:30:41.060Z"
+  }
+},
+{
+  "model": "inventory.equipmentcategory",
+  "pk": 1,
+  "fields": {
+    "name": "Категория 12"
+  }
+},
+{
+  "model": "inventory.equipmentcategory",
+  "pk": 2,
+  "fields": {
+    "name": "Категория 2"
+  }
+},
+{
+  "model": "inventory.equipmentcategory",
+  "pk": 3,
+  "fields": {
+    "name": "Категория 3"
+  }
+},
+{
+  "model": "inventory.equipmentcategory",
+  "pk": 4,
+  "fields": {
+    "name": "Тест 4"
+  }
+},
+{
+  "model": "inventory.equipmentcategory",
+  "pk": 5,
+  "fields": {
+    "name": "уцй"
+  }
+},
+{
+  "model": "inventory.equipmentcategory",
+  "pk": 6,
+  "fields": {
+    "name": "5678"
+  }
+},
+{
+  "model": "inventory.equipmentcategory",
+  "pk": 9,
+  "fields": {
+    "name": "категориђ 1"
+  }
+},
+{
+  "model": "inventory.equipmentcategory",
+  "pk": 10,
+  "fields": {
+    "name": "Тест кладовщик"
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 1,
+  "fields": {
+    "name": "Предмет 1",
+    "category": 2,
+    "serial_number": null,
+    "quantity_total": 15,
+    "location": "Склад",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 2,
+  "fields": {
+    "name": "Предмет 2",
+    "category": 1,
+    "serial_number": null,
+    "quantity_total": 9,
+    "location": "1",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 3,
+  "fields": {
+    "name": "Предмет 3",
+    "category": 2,
+    "serial_number": null,
+    "quantity_total": 5,
+    "location": "1",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 4,
+  "fields": {
+    "name": "Предмет 4",
+    "category": 3,
+    "serial_number": null,
+    "quantity_total": 2,
+    "location": "1",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 9,
+  "fields": {
+    "name": "678",
+    "category": 3,
+    "serial_number": null,
+    "quantity_total": 6,
+    "location": "7",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 10,
+  "fields": {
+    "name": "тест кат 4",
+    "category": 4,
+    "serial_number": null,
+    "quantity_total": 2,
+    "location": "2",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 13,
+  "fields": {
+    "name": "21",
+    "category": 1,
+    "serial_number": null,
+    "quantity_total": 12,
+    "location": "1",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 15,
+  "fields": {
+    "name": "камера",
+    "category": 9,
+    "serial_number": "345678",
+    "quantity_total": 3,
+    "location": "склад",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "inventory.equipment",
+  "pk": 16,
+  "fields": {
+    "name": "Тестовое кладовщик",
+    "category": 10,
+    "serial_number": null,
+    "quantity_total": 3,
+    "location": "",
+    "status": "available",
+    "notes": ""
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 1,
+  "fields": {
+    "event": 2,
+    "equipment": 2,
+    "quantity": 7
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 3,
+  "fields": {
+    "event": 7,
+    "equipment": 1,
+    "quantity": 21
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 5,
+  "fields": {
+    "event": 1,
+    "equipment": 2,
+    "quantity": 2
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 6,
+  "fields": {
+    "event": 1,
+    "equipment": 1,
+    "quantity": 2
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 7,
+  "fields": {
+    "event": 9,
+    "equipment": 1,
+    "quantity": 11
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 8,
+  "fields": {
+    "event": 10,
+    "equipment": 1,
+    "quantity": 5
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 9,
+  "fields": {
+    "event": 1,
+    "equipment": 3,
+    "quantity": 3
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 10,
+  "fields": {
+    "event": 10,
+    "equipment": 2,
+    "quantity": 2
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 12,
+  "fields": {
+    "event": 22,
+    "equipment": 1,
+    "quantity": 8
+  }
+},
+{
+  "model": "events.eventequipment",
+  "pk": 13,
+  "fields": {
+    "event": 23,
+    "equipment": 3,
+    "quantity": 10
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 1,
+  "fields": {
+    "event": 2,
+    "equipment": 2,
+    "quantity": 1
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 4,
+  "fields": {
+    "event": 7,
+    "equipment": 1,
+    "quantity": 6
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 6,
+  "fields": {
+    "event": 1,
+    "equipment": 2,
+    "quantity": 2
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 7,
+  "fields": {
+    "event": 9,
+    "equipment": 1,
+    "quantity": 10
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 8,
+  "fields": {
+    "event": 1,
+    "equipment": 1,
+    "quantity": 2
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 9,
+  "fields": {
+    "event": 15,
+    "equipment": 9,
+    "quantity": 2
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 10,
+  "fields": {
+    "event": 10,
+    "equipment": 1,
+    "quantity": 1
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 11,
+  "fields": {
+    "event": 9,
+    "equipment": 9,
+    "quantity": 1
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 12,
+  "fields": {
+    "event": 10,
+    "equipment": 2,
+    "quantity": 2
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 13,
+  "fields": {
+    "event": 10,
+    "equipment": 3,
+    "quantity": 2
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 14,
+  "fields": {
+    "event": 10,
+    "equipment": 13,
+    "quantity": 1
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 16,
+  "fields": {
+    "event": 17,
+    "equipment": 2,
+    "quantity": 1
+  }
+},
+{
+  "model": "events.eventrentedequipment",
+  "pk": 17,
+  "fields": {
+    "event": 23,
+    "equipment": 3,
+    "quantity": 1
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add log entry",
+    "content_type": [
+      "admin",
+      "logentry"
+    ],
+    "codename": "add_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change log entry",
+    "content_type": [
+      "admin",
+      "logentry"
+    ],
+    "codename": "change_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete log entry",
+    "content_type": [
+      "admin",
+      "logentry"
+    ],
+    "codename": "delete_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view log entry",
+    "content_type": [
+      "admin",
+      "logentry"
+    ],
+    "codename": "view_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add permission",
+    "content_type": [
+      "auth",
+      "permission"
+    ],
+    "codename": "add_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change permission",
+    "content_type": [
+      "auth",
+      "permission"
+    ],
+    "codename": "change_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete permission",
+    "content_type": [
+      "auth",
+      "permission"
+    ],
+    "codename": "delete_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view permission",
+    "content_type": [
+      "auth",
+      "permission"
+    ],
+    "codename": "view_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add group",
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "codename": "add_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change group",
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "codename": "change_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete group",
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "codename": "delete_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view group",
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "codename": "view_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add content type",
+    "content_type": [
+      "contenttypes",
+      "contenttype"
+    ],
+    "codename": "add_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change content type",
+    "content_type": [
+      "contenttypes",
+      "contenttype"
+    ],
+    "codename": "change_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete content type",
+    "content_type": [
+      "contenttypes",
+      "contenttype"
+    ],
+    "codename": "delete_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view content type",
+    "content_type": [
+      "contenttypes",
+      "contenttype"
+    ],
+    "codename": "view_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add session",
+    "content_type": [
+      "sessions",
+      "session"
+    ],
+    "codename": "add_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change session",
+    "content_type": [
+      "sessions",
+      "session"
+    ],
+    "codename": "change_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete session",
+    "content_type": [
+      "sessions",
+      "session"
+    ],
+    "codename": "delete_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view session",
+    "content_type": [
+      "sessions",
+      "session"
+    ],
+    "codename": "view_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add user",
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "codename": "add_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change user",
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "codename": "change_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete user",
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "codename": "delete_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view user",
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "codename": "view_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add equipment category",
+    "content_type": [
+      "inventory",
+      "equipmentcategory"
+    ],
+    "codename": "add_equipmentcategory"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change equipment category",
+    "content_type": [
+      "inventory",
+      "equipmentcategory"
+    ],
+    "codename": "change_equipmentcategory"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete equipment category",
+    "content_type": [
+      "inventory",
+      "equipmentcategory"
+    ],
+    "codename": "delete_equipmentcategory"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view equipment category",
+    "content_type": [
+      "inventory",
+      "equipmentcategory"
+    ],
+    "codename": "view_equipmentcategory"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add equipment",
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "codename": "add_equipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change equipment",
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "codename": "change_equipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete equipment",
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "codename": "delete_equipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view equipment",
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "codename": "view_equipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add event",
+    "content_type": [
+      "events",
+      "event"
+    ],
+    "codename": "add_event"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change event",
+    "content_type": [
+      "events",
+      "event"
+    ],
+    "codename": "change_event"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete event",
+    "content_type": [
+      "events",
+      "event"
+    ],
+    "codename": "delete_event"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view event",
+    "content_type": [
+      "events",
+      "event"
+    ],
+    "codename": "view_event"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add event equipment",
+    "content_type": [
+      "events",
+      "eventequipment"
+    ],
+    "codename": "add_eventequipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change event equipment",
+    "content_type": [
+      "events",
+      "eventequipment"
+    ],
+    "codename": "change_eventequipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete event equipment",
+    "content_type": [
+      "events",
+      "eventequipment"
+    ],
+    "codename": "delete_eventequipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view event equipment",
+    "content_type": [
+      "events",
+      "eventequipment"
+    ],
+    "codename": "view_eventequipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add event rented equipment",
+    "content_type": [
+      "events",
+      "eventrentedequipment"
+    ],
+    "codename": "add_eventrentedequipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change event rented equipment",
+    "content_type": [
+      "events",
+      "eventrentedequipment"
+    ],
+    "codename": "change_eventrentedequipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete event rented equipment",
+    "content_type": [
+      "events",
+      "eventrentedequipment"
+    ],
+    "codename": "delete_eventrentedequipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view event rented equipment",
+    "content_type": [
+      "events",
+      "eventrentedequipment"
+    ],
+    "codename": "view_eventrentedequipment"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add audit log",
+    "content_type": [
+      "audit",
+      "auditlog"
+    ],
+    "codename": "add_auditlog"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change audit log",
+    "content_type": [
+      "audit",
+      "auditlog"
+    ],
+    "codename": "change_auditlog"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete audit log",
+    "content_type": [
+      "audit",
+      "auditlog"
+    ],
+    "codename": "delete_auditlog"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view audit log",
+    "content_type": [
+      "audit",
+      "auditlog"
+    ],
+    "codename": "view_auditlog"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can manage staff (users/roles)",
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "codename": "manage_staff"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can manage inventory",
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "codename": "manage_inventory"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can edit event card (dates/status/etc)",
+    "content_type": [
+      "events",
+      "event"
+    ],
+    "codename": "edit_event_card"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can edit event equipment (own/rented)",
+    "content_type": [
+      "events",
+      "event"
+    ],
+    "codename": "edit_event_equipment"
+  }
+},
+{
+  "model": "auth.group",
+  "fields": {
+    "name": "Менеджер",
+    "permissions": [
+      [
+        "manage_staff",
+        "accounts",
+        "user"
+      ],
+      [
+        "edit_event_card",
+        "events",
+        "event"
+      ],
+      [
+        "edit_event_equipment",
+        "events",
+        "event"
+      ],
+      [
+        "manage_inventory",
+        "inventory",
+        "equipment"
+      ]
+    ]
+  }
+},
+{
+  "model": "auth.group",
+  "fields": {
+    "name": "Старший инженер",
+    "permissions": [
+      [
+        "edit_event_equipment",
+        "events",
+        "event"
+      ]
+    ]
+  }
+},
+{
+  "model": "auth.group",
+  "fields": {
+    "name": "Инженер",
+    "permissions": [
+      [
+        "view_event",
+        "events",
+        "event"
+      ],
+      [
+        "view_eventequipment",
+        "events",
+        "eventequipment"
+      ],
+      [
+        "view_eventrentedequipment",
+        "events",
+        "eventrentedequipment"
+      ],
+      [
+        "view_equipment",
+        "inventory",
+        "equipment"
+      ],
+      [
+        "view_equipmentcategory",
+        "inventory",
+        "equipmentcategory"
+      ]
+    ]
+  }
+},
+{
+  "model": "auth.group",
+  "fields": {
+    "name": "Кладовщик",
+    "permissions": [
+      [
+        "manage_inventory",
+        "inventory",
+        "equipment"
+      ]
+    ]
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$W18gXtg2g9FdNfltYEKbIz$6CZq/3LE2fsqvfW4ouRMzeRENe0qcq+qoBu3HKuUsm4=",
+    "last_login": "2026-01-19T11:50:58.357Z",
+    "is_superuser": true,
+    "username": "andrey",
+    "first_name": "Andrey",
+    "last_name": "Astashkin",
+    "email": "aastashkin2001@gmail.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2025-12-21T18:25:53Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$DpZ3NwMyWkDuwaDymhqQpy$q5n5tpSYz3pWRazIpaodPIn3kYXf6gLezJqZd4N0aQA=",
+    "last_login": "2026-01-19T11:59:59.815Z",
+    "is_superuser": false,
+    "username": "manager",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-12-22T08:21:23Z",
+    "groups": [
+      [
+        "Менеджер"
+      ]
+    ],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$jGU17q14PBWprUaiapNJ5k$2fYuDccLx2s0Y9TMVyakvENtCT2YRMhTNZBmH2IoOHw=",
+    "last_login": "2026-01-03T09:47:59.871Z",
+    "is_superuser": false,
+    "username": "s_engineer",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-12-22T11:55:02Z",
+    "groups": [
+      [
+        "Старший инженер"
+      ]
+    ],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$axj3fDNTBjazIx2yb8WMu1$TwJ6smD7ex/X4OpbZBaJYPhIovzlKrxkr8qktdNa7/M=",
+    "last_login": "2026-01-19T11:39:39.293Z",
+    "is_superuser": false,
+    "username": "engineer",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-12-22T11:55:22Z",
+    "groups": [
+      [
+        "Инженер"
+      ]
+    ],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$eYIWpNTsWgXM31jNKmHXzn$EjbYMahkkishs22q5J/WilPSeuv/KYPw9E/kRii6EMM=",
+    "last_login": "2026-01-15T11:05:16.403Z",
+    "is_superuser": false,
+    "username": "ware@vidium.org",
+    "first_name": "Кладовщик",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-01-15T11:03:51.310Z",
+    "groups": [
+      [
+        "Кладовщик"
+      ]
+    ],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$8AWpZrL2jjvdBonRqIZWbl$StwukeX3nwj3WbtztCOhPWz11afviU4lZw/W1MZlynw=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "test1",
+    "first_name": "Тестовый старший",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-01-19T10:28:45.224Z",
+    "groups": [
+      [
+        "Старший инженер"
+      ]
+    ],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$N6C0wgQtiRs8yguArLqhnx$4gDlzK2CbfHvEYRg8B3+6srs0zSu5PnDFgi57TA5TjM=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "test2",
+    "first_name": "Тестовый инженер",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-01-19T10:29:06.606Z",
+    "groups": [
+      [
+        "Инженер"
+      ]
+    ],
+    "user_permissions": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 1,
+  "fields": {
+    "name": "Тестовое мероприятие",
+    "start_date": "2025-12-21",
+    "end_date": "2025-12-24",
+    "client": "Т",
+    "location": "Т",
+    "responsible": [
+      "engineer"
+    ],
+    "s_engineer": null,
+    "status": "cancelled",
+    "created_at": "2025-12-21T18:27:49.049Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 2,
+  "fields": {
+    "name": "Тестовое мероприятие",
+    "start_date": "2025-12-21",
+    "end_date": "2025-12-22",
+    "client": "Т",
+    "location": "Т",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-21T18:27:53.331Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 3,
+  "fields": {
+    "name": "Тестовое мероприятие",
+    "start_date": "2025-12-21",
+    "end_date": "2025-12-22",
+    "client": "Т",
+    "location": "Т",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-21T18:27:56.845Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 4,
+  "fields": {
+    "name": "Тестовое мероприятие",
+    "start_date": "2025-12-21",
+    "end_date": "2025-12-22",
+    "client": "Т",
+    "location": "Т",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-21T18:27:58.854Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 5,
+  "fields": {
+    "name": "Тестик",
+    "start_date": "2025-12-21",
+    "end_date": "2025-12-21",
+    "client": "1",
+    "location": "2",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-21T18:34:46.107Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 6,
+  "fields": {
+    "name": "123",
+    "start_date": "2025-12-22",
+    "end_date": "2025-12-22",
+    "client": "2",
+    "location": "2",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-21T19:57:17.983Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 7,
+  "fields": {
+    "name": "23",
+    "start_date": "2025-12-24",
+    "end_date": "2025-12-24",
+    "client": "2",
+    "location": "2",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-21T21:45:01.153Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 8,
+  "fields": {
+    "name": "345",
+    "start_date": "2025-12-30",
+    "end_date": "2025-12-30",
+    "client": "3",
+    "location": "5r",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-22T09:27:37.598Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 9,
+  "fields": {
+    "name": "767",
+    "start_date": "2025-12-31",
+    "end_date": "2025-12-31",
+    "client": "2",
+    "location": "22",
+    "responsible": [
+      "engineer"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-22T13:26:00.813Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 10,
+  "fields": {
+    "name": "4124125",
+    "start_date": "2025-12-31",
+    "end_date": "2025-12-31",
+    "client": "32",
+    "location": "32",
+    "responsible": [
+      "engineer"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-22T13:26:52.319Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 11,
+  "fields": {
+    "name": "ntcnj",
+    "start_date": "2025-12-24",
+    "end_date": "2025-12-24",
+    "client": "2",
+    "location": "2",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-23T15:06:10.829Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 12,
+  "fields": {
+    "name": "e456",
+    "start_date": "2025-12-24",
+    "end_date": "2025-12-24",
+    "client": "e4",
+    "location": "5",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-23T22:41:51.395Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 13,
+  "fields": {
+    "name": "7654",
+    "start_date": "2025-12-25",
+    "end_date": "2025-12-25",
+    "client": "6",
+    "location": "5",
+    "responsible": [
+      "manager"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-24T01:04:56.369Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 14,
+  "fields": {
+    "name": "66666",
+    "start_date": "2025-12-26",
+    "end_date": "2025-12-26",
+    "client": "45",
+    "location": "6",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-25T09:29:52.378Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 15,
+  "fields": {
+    "name": "Тест 251225_дом",
+    "start_date": "2025-12-25",
+    "end_date": "2025-12-25",
+    "client": "в",
+    "location": "в",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-25T11:08:25.185Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 16,
+  "fields": {
+    "name": "45678",
+    "start_date": "2025-12-26",
+    "end_date": "2025-12-26",
+    "client": "4567",
+    "location": "rty",
+    "responsible": [
+      "manager"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-25T14:18:02.532Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 17,
+  "fields": {
+    "name": "3412",
+    "start_date": "2025-12-31",
+    "end_date": "2025-12-31",
+    "client": "21",
+    "location": "21",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-25T15:30:47.233Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 18,
+  "fields": {
+    "name": "тесты",
+    "start_date": "2025-12-17",
+    "end_date": "2025-12-17",
+    "client": "",
+    "location": "",
+    "responsible": [
+      "manager"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-25T15:50:30.126Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 19,
+  "fields": {
+    "name": "Тестики",
+    "start_date": "2025-12-18",
+    "end_date": "2025-12-18",
+    "client": "",
+    "location": "",
+    "responsible": [
+      "manager"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-25T15:57:26.396Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 20,
+  "fields": {
+    "name": "567",
+    "start_date": "2025-12-03",
+    "end_date": "2025-12-14",
+    "client": "",
+    "location": "",
+    "responsible": [
+      "manager"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-25T16:06:02.489Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 21,
+  "fields": {
+    "name": "123",
+    "start_date": "2025-12-25",
+    "end_date": "2025-12-25",
+    "client": "21",
+    "location": "21",
+    "responsible": [
+      "andrey"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2025-12-25T16:38:48.722Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 22,
+  "fields": {
+    "name": "Test",
+    "start_date": "2026-01-08",
+    "end_date": "2026-01-08",
+    "client": "",
+    "location": "",
+    "responsible": [
+      "manager"
+    ],
+    "s_engineer": null,
+    "status": "closed",
+    "created_at": "2026-01-03T09:49:38.830Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 23,
+  "fields": {
+    "name": "сбер",
+    "start_date": "2026-01-30",
+    "end_date": "2026-02-06",
+    "client": "",
+    "location": "",
+    "responsible": [
+      "manager"
+    ],
+    "s_engineer": null,
+    "status": "draft",
+    "created_at": "2026-01-10T11:00:54.823Z",
+    "engineers": []
+  }
+},
+{
+  "model": "events.event",
+  "pk": 24,
+  "fields": {
+    "name": "Дорошев",
+    "start_date": "2026-01-29",
+    "end_date": "2026-01-29",
+    "client": "Сбер",
+    "location": "Сбер звук",
+    "responsible": [
+      "manager"
+    ],
+    "s_engineer": [
+      "s_engineer"
+    ],
+    "status": "confirmed",
+    "created_at": "2026-01-19T10:28:15.021Z",
+    "engineers": [
+      [
+        "engineer"
+      ],
+      [
+        "test2"
+      ]
+    ]
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 1,
+  "fields": {
+    "created_at": "2025-12-25T09:29:37.431Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Equipment",
+    "entity_id": "8",
+    "entity_repr": "",
+    "message": "Изменено оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 2,
+  "fields": {
+    "created_at": "2025-12-25T09:29:52.381Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "14",
+    "entity_repr": "",
+    "message": "Создано мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 3,
+  "fields": {
+    "created_at": "2025-12-25T09:45:33.666Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Equipment",
+    "entity_id": "8",
+    "entity_repr": "",
+    "message": "Изменено оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 4,
+  "fields": {
+    "created_at": "2025-12-25T10:08:55.889Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "create",
+    "entity_type": "Equipment",
+    "entity_id": "9",
+    "entity_repr": "",
+    "message": "Создано оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 5,
+  "fields": {
+    "created_at": "2025-12-25T10:18:26.453Z",
+    "actor": [
+      "s_engineer"
+    ],
+    "action": "update",
+    "entity_type": "Equipment",
+    "entity_id": "2",
+    "entity_repr": "",
+    "message": "Изменено оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 6,
+  "fields": {
+    "created_at": "2025-12-25T11:07:43.099Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "13",
+    "entity_repr": "",
+    "message": "Сменён статус на: Подтверждено",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 7,
+  "fields": {
+    "created_at": "2025-12-25T11:07:44.653Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "13",
+    "entity_repr": "",
+    "message": "Сменён статус на: Отменено",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 8,
+  "fields": {
+    "created_at": "2025-12-25T11:07:45.802Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "13",
+    "entity_repr": "",
+    "message": "Сменён статус на: Черновик",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 9,
+  "fields": {
+    "created_at": "2025-12-25T11:07:47.106Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "13",
+    "entity_repr": "",
+    "message": "Сменён статус на: Подтверждено",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 10,
+  "fields": {
+    "created_at": "2025-12-25T11:08:25.188Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "15",
+    "entity_repr": "",
+    "message": "Создано мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 11,
+  "fields": {
+    "created_at": "2025-12-25T11:08:49.322Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "15",
+    "entity_repr": "",
+    "message": "Добавлена аренда: 678 (+2)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 12,
+  "fields": {
+    "created_at": "2025-12-25T11:09:55.883Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "4",
+    "entity_repr": "",
+    "message": "Создана категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 13,
+  "fields": {
+    "created_at": "2025-12-25T11:10:09.730Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Equipment",
+    "entity_id": "10",
+    "entity_repr": "",
+    "message": "Создано оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 14,
+  "fields": {
+    "created_at": "2025-12-25T11:18:18.381Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "10",
+    "entity_repr": "",
+    "message": "Добавлена аренда: Предмет 1 (+1)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 15,
+  "fields": {
+    "created_at": "2025-12-25T11:18:23.498Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "5",
+    "entity_repr": "",
+    "message": "Создана категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 16,
+  "fields": {
+    "created_at": "2025-12-25T11:18:38.089Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Equipment",
+    "entity_id": "11",
+    "entity_repr": "",
+    "message": "Создано оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 17,
+  "fields": {
+    "created_at": "2025-12-25T12:31:50.020Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "1",
+    "entity_repr": "",
+    "message": "Изменена категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 18,
+  "fields": {
+    "created_at": "2025-12-25T12:31:56.407Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Equipment",
+    "entity_id": "2",
+    "entity_repr": "",
+    "message": "Изменено оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 19,
+  "fields": {
+    "created_at": "2025-12-25T14:01:37.545Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "6",
+    "entity_repr": "",
+    "message": "Создана категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 20,
+  "fields": {
+    "created_at": "2025-12-25T14:01:52.510Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Equipment",
+    "entity_id": "12",
+    "entity_repr": "",
+    "message": "Создано оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 21,
+  "fields": {
+    "created_at": "2025-12-25T14:18:41.272Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "6",
+    "entity_repr": "",
+    "message": "Изменена категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 22,
+  "fields": {
+    "created_at": "2025-12-25T14:18:47.865Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Equipment",
+    "entity_id": "12",
+    "entity_repr": "",
+    "message": "Изменено оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 23,
+  "fields": {
+    "created_at": "2025-12-25T14:43:38.077Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "add",
+    "entity_type": "EventRentedEquipment",
+    "entity_id": "12",
+    "entity_repr": "",
+    "message": "Добавлена аренда в мероприятие: Предмет 2 (9) (+2)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 24,
+  "fields": {
+    "created_at": "2025-12-25T14:59:41.430Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "add",
+    "entity_type": "Event",
+    "entity_id": "10",
+    "entity_repr": "",
+    "message": "Добавлено оборудование: Предмет 2 (9) x2",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 25,
+  "fields": {
+    "created_at": "2025-12-25T14:59:50.924Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "add",
+    "entity_type": "Event",
+    "entity_id": "10",
+    "entity_repr": "",
+    "message": "Добавлена аренда: Предмет 3 (5) x2",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 26,
+  "fields": {
+    "created_at": "2025-12-25T14:59:52.554Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "10",
+    "entity_repr": "",
+    "message": "Статус: confirmed",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 27,
+  "fields": {
+    "created_at": "2025-12-25T15:30:47.241Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "17",
+    "entity_repr": "",
+    "message": "Создано мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 28,
+  "fields": {
+    "created_at": "2025-12-25T15:50:30.134Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "18",
+    "entity_repr": "",
+    "message": "Создано мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 29,
+  "fields": {
+    "created_at": "2025-12-25T15:50:33.162Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "18",
+    "entity_repr": "",
+    "message": "Статус: confirmed",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 30,
+  "fields": {
+    "created_at": "2025-12-25T15:57:12.445Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "1",
+    "entity_repr": "",
+    "message": "Перенос (drag&drop) на 2025-12-20",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 31,
+  "fields": {
+    "created_at": "2025-12-25T15:57:14.214Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "1",
+    "entity_repr": "",
+    "message": "Перенос (drag&drop) на 2025-12-19",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 32,
+  "fields": {
+    "created_at": "2025-12-25T15:57:15.530Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "1",
+    "entity_repr": "",
+    "message": "Перенос (drag&drop) на 2025-12-20",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 33,
+  "fields": {
+    "created_at": "2025-12-25T15:57:16.575Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "1",
+    "entity_repr": "",
+    "message": "Перенос (drag&drop) на 2025-12-21",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 34,
+  "fields": {
+    "created_at": "2025-12-25T15:57:26.399Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "19",
+    "entity_repr": "",
+    "message": "Создано из календаря (модалка)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 35,
+  "fields": {
+    "created_at": "2025-12-25T16:06:02.503Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "20",
+    "entity_repr": "",
+    "message": "Создано из календаря (модалка)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 36,
+  "fields": {
+    "created_at": "2025-12-25T16:06:09.067Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "20",
+    "entity_repr": "",
+    "message": "Статус: cancelled",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 37,
+  "fields": {
+    "created_at": "2025-12-25T16:06:09.815Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "20",
+    "entity_repr": "",
+    "message": "Статус: draft",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 38,
+  "fields": {
+    "created_at": "2025-12-25T16:06:11.365Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "20",
+    "entity_repr": "",
+    "message": "Статус: confirmed",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 39,
+  "fields": {
+    "created_at": "2025-12-25T16:06:26.460Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "20",
+    "entity_repr": "",
+    "message": "Изменено мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 40,
+  "fields": {
+    "created_at": "2025-12-25T16:38:48.729Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "21",
+    "entity_repr": "",
+    "message": "Создано мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 41,
+  "fields": {
+    "created_at": "2025-12-25T16:38:50.070Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "21",
+    "entity_repr": "",
+    "message": "Статус: confirmed",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 42,
+  "fields": {
+    "created_at": "2025-12-25T16:39:03.727Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "7",
+    "entity_repr": "",
+    "message": "Создана категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 43,
+  "fields": {
+    "created_at": "2025-12-25T16:39:11.875Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Equipment",
+    "entity_id": "13",
+    "entity_repr": "",
+    "message": "Создано оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 44,
+  "fields": {
+    "created_at": "2025-12-25T16:58:18.498Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "add",
+    "entity_type": "Event",
+    "entity_id": "10",
+    "entity_repr": "",
+    "message": "Добавлена аренда: 21 (12) x1",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 45,
+  "fields": {
+    "created_at": "2025-12-25T17:05:16.368Z",
+    "actor": [
+      "s_engineer"
+    ],
+    "action": "add",
+    "entity_type": "Event",
+    "entity_id": "17",
+    "entity_repr": "",
+    "message": "Добавлена аренда: 21 (12) x1",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 46,
+  "fields": {
+    "created_at": "2025-12-25T17:08:23.746Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "create",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "8",
+    "entity_repr": "",
+    "message": "Создана категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 47,
+  "fields": {
+    "created_at": "2025-12-25T17:08:34.587Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "create",
+    "entity_type": "Equipment",
+    "entity_id": "14",
+    "entity_repr": "",
+    "message": "Создано оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 48,
+  "fields": {
+    "created_at": "2025-12-25T17:09:06.434Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Equipment",
+    "entity_id": "2",
+    "entity_repr": "",
+    "message": "Изменено оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 49,
+  "fields": {
+    "created_at": "2026-01-03T09:46:58.552Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "17",
+    "entity_repr": "",
+    "message": "Статус: confirmed",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 50,
+  "fields": {
+    "created_at": "2026-01-03T09:46:59.951Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "17",
+    "entity_repr": "",
+    "message": "Статус: draft",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 51,
+  "fields": {
+    "created_at": "2026-01-03T09:48:10.823Z",
+    "actor": [
+      "s_engineer"
+    ],
+    "action": "delete",
+    "entity_type": "Event",
+    "entity_id": "17",
+    "entity_repr": "",
+    "message": "Удалена аренда: 21 (12)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 52,
+  "fields": {
+    "created_at": "2026-01-03T09:48:16.879Z",
+    "actor": [
+      "s_engineer"
+    ],
+    "action": "add",
+    "entity_type": "Event",
+    "entity_id": "17",
+    "entity_repr": "",
+    "message": "Добавлена аренда: Предмет 2 (9) x1",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 53,
+  "fields": {
+    "created_at": "2026-01-03T09:49:38.833Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Создано из календаря (модалка)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 54,
+  "fields": {
+    "created_at": "2026-01-03T09:49:42.856Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "status",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Статус: confirmed",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 55,
+  "fields": {
+    "created_at": "2026-01-10T11:00:54.864Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "23",
+    "entity_repr": "",
+    "message": "Создано из календаря (модалка)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 56,
+  "fields": {
+    "created_at": "2026-01-10T11:03:42.054Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "18",
+    "entity_repr": "",
+    "message": "Перенос (drag&drop) на 2025-12-16",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 57,
+  "fields": {
+    "created_at": "2026-01-10T11:03:43.639Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "18",
+    "entity_repr": "",
+    "message": "Перенос (drag&drop) на 2025-12-17",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 58,
+  "fields": {
+    "created_at": "2026-01-10T11:14:39.045Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "9",
+    "entity_repr": "",
+    "message": "Создана категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 59,
+  "fields": {
+    "created_at": "2026-01-10T11:15:05.470Z",
+    "actor": [
+      "manager"
+    ],
+    "action": "create",
+    "entity_type": "Equipment",
+    "entity_id": "15",
+    "entity_repr": "",
+    "message": "Создано оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 60,
+  "fields": {
+    "created_at": "2026-01-14T13:40:32.201Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Перенос (drag&drop) на 2026-01-07",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 61,
+  "fields": {
+    "created_at": "2026-01-14T13:40:33.333Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Перенос (drag&drop) на 2026-01-08",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 62,
+  "fields": {
+    "created_at": "2026-01-14T13:46:29.986Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "add",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Добавлено оборудование: 678 (6) x2",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 63,
+  "fields": {
+    "created_at": "2026-01-14T13:46:39.517Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 20",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 64,
+  "fields": {
+    "created_at": "2026-01-14T13:46:59.870Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 6",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 65,
+  "fields": {
+    "created_at": "2026-01-14T13:47:03.539Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 2",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 66,
+  "fields": {
+    "created_at": "2026-01-14T13:47:05.763Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 3",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 67,
+  "fields": {
+    "created_at": "2026-01-14T13:47:07.512Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 4",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 68,
+  "fields": {
+    "created_at": "2026-01-14T13:47:16.908Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 10",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 69,
+  "fields": {
+    "created_at": "2026-01-14T13:47:20.793Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 4",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 70,
+  "fields": {
+    "created_at": "2026-01-14T13:47:27.080Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 10",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 71,
+  "fields": {
+    "created_at": "2026-01-14T13:47:31.801Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 4",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 72,
+  "fields": {
+    "created_at": "2026-01-14T13:47:52.040Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: 678 (6) -> 10",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 73,
+  "fields": {
+    "created_at": "2026-01-14T13:51:48.592Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "add",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Добавлено оборудование: Предмет 1 (15) x2",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 74,
+  "fields": {
+    "created_at": "2026-01-14T13:51:52.852Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: Предмет 1 (15) -> 15",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 75,
+  "fields": {
+    "created_at": "2026-01-14T13:51:59.314Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: Предмет 1 (15) -> 10",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 76,
+  "fields": {
+    "created_at": "2026-01-14T13:52:02.536Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: Предмет 1 (15) -> 11",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 77,
+  "fields": {
+    "created_at": "2026-01-14T13:52:05.721Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: Предмет 1 (15) -> 12",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 78,
+  "fields": {
+    "created_at": "2026-01-14T13:54:24.709Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "delete",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Удалено оборудование: 678 (6)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 79,
+  "fields": {
+    "created_at": "2026-01-14T13:54:26.821Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: Предмет 1 (15) -> 11",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 80,
+  "fields": {
+    "created_at": "2026-01-14T13:54:28.830Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: Предмет 1 (15) -> 8",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 81,
+  "fields": {
+    "created_at": "2026-01-14T13:54:30.775Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: Предмет 1 (15) -> 6",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 82,
+  "fields": {
+    "created_at": "2026-01-14T13:54:32.848Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "22",
+    "entity_repr": "",
+    "message": "Изменено оборудование: Предмет 1 (15) -> 8",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 83,
+  "fields": {
+    "created_at": "2026-01-14T14:15:25.292Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "23",
+    "entity_repr": "",
+    "message": "Добавлено оборудование: Предмет 3 +4",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 84,
+  "fields": {
+    "created_at": "2026-01-15T11:05:36.124Z",
+    "actor": [
+      "ware@vidium.org"
+    ],
+    "action": "create",
+    "entity_type": "EquipmentCategory",
+    "entity_id": "10",
+    "entity_repr": "",
+    "message": "Создана категория",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 85,
+  "fields": {
+    "created_at": "2026-01-15T11:05:52.622Z",
+    "actor": [
+      "ware@vidium.org"
+    ],
+    "action": "create",
+    "entity_type": "Equipment",
+    "entity_id": "16",
+    "entity_repr": "",
+    "message": "Создано оборудование",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 86,
+  "fields": {
+    "created_at": "2026-01-19T10:28:15.024Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "create",
+    "entity_type": "Event",
+    "entity_id": "24",
+    "entity_repr": "",
+    "message": "Создано из календаря (модалка)",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 87,
+  "fields": {
+    "created_at": "2026-01-19T10:35:46.605Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "24",
+    "entity_repr": "",
+    "message": "Изменено мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 88,
+  "fields": {
+    "created_at": "2026-01-19T10:36:08.582Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "24",
+    "entity_repr": "",
+    "message": "Изменено мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 89,
+  "fields": {
+    "created_at": "2026-01-19T10:36:14.877Z",
+    "actor": [
+      "andrey"
+    ],
+    "action": "update",
+    "entity_type": "Event",
+    "entity_id": "24",
+    "entity_repr": "",
+    "message": "Изменено мероприятие",
+    "meta": {}
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 1,
+  "fields": {
+    "action_time": "2025-12-21T18:26:29.047Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "inventory",
+      "equipmentcategory"
+    ],
+    "object_id": "1",
+    "object_repr": "Категория 1",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 2,
+  "fields": {
+    "action_time": "2025-12-21T18:26:32.116Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "inventory",
+      "equipmentcategory"
+    ],
+    "object_id": "2",
+    "object_repr": "Категория 2",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 3,
+  "fields": {
+    "action_time": "2025-12-21T18:26:35.047Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "inventory",
+      "equipmentcategory"
+    ],
+    "object_id": "3",
+    "object_repr": "Категория 3",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 4,
+  "fields": {
+    "action_time": "2025-12-21T18:26:47.597Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "object_id": "1",
+    "object_repr": "Предмет 1 (10)",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 5,
+  "fields": {
+    "action_time": "2025-12-21T18:26:58.907Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "object_id": "2",
+    "object_repr": "Предмет 2 (5)",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 6,
+  "fields": {
+    "action_time": "2025-12-21T18:27:09.150Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "object_id": "3",
+    "object_repr": "Предмет 3 (5)",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 7,
+  "fields": {
+    "action_time": "2025-12-21T18:27:16.492Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "inventory",
+      "equipment"
+    ],
+    "object_id": "4",
+    "object_repr": "Предмет 4 (2)",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 8,
+  "fields": {
+    "action_time": "2025-12-21T20:54:58.089Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "object_id": "4",
+    "object_repr": "Администратор",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 9,
+  "fields": {
+    "action_time": "2025-12-22T08:21:24.332Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "2",
+    "object_repr": "test",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 10,
+  "fields": {
+    "action_time": "2025-12-22T08:22:45.234Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "2",
+    "object_repr": "test",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Groups\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 11,
+  "fields": {
+    "action_time": "2025-12-22T10:17:53.660Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "1",
+    "object_repr": "andrey",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Groups\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 12,
+  "fields": {
+    "action_time": "2025-12-22T10:27:46.394Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "1",
+    "object_repr": "andrey",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Groups\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 13,
+  "fields": {
+    "action_time": "2025-12-22T10:30:56.895Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "1",
+    "object_repr": "andrey",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Groups\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 14,
+  "fields": {
+    "action_time": "2025-12-22T10:39:01.575Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "1",
+    "object_repr": "andrey",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Groups\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 15,
+  "fields": {
+    "action_time": "2025-12-22T10:40:25.861Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "1",
+    "object_repr": "andrey",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Groups\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 16,
+  "fields": {
+    "action_time": "2025-12-22T10:42:05.291Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "events",
+      "event"
+    ],
+    "object_id": "4",
+    "object_repr": "Тестовое мероприятие (21.12.2025–22.12.2025)",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 17,
+  "fields": {
+    "action_time": "2025-12-22T11:54:12.743Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "2",
+    "object_repr": "manager",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Username\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 18,
+  "fields": {
+    "action_time": "2025-12-22T11:54:43.374Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "2",
+    "object_repr": "manager",
+    "action_flag": 2,
+    "change_message": "[]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 19,
+  "fields": {
+    "action_time": "2025-12-22T11:55:02.660Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "3",
+    "object_repr": "s_enginer",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 20,
+  "fields": {
+    "action_time": "2025-12-22T11:55:12.557Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "3",
+    "object_repr": "s_enginer",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Groups\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 21,
+  "fields": {
+    "action_time": "2025-12-22T11:55:22.127Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "4",
+    "object_repr": "engineer",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 22,
+  "fields": {
+    "action_time": "2025-12-22T11:55:44.779Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "4",
+    "object_repr": "engineer",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Groups\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 23,
+  "fields": {
+    "action_time": "2025-12-22T11:56:19.344Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "4",
+    "object_repr": "engineer",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"password\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 24,
+  "fields": {
+    "action_time": "2025-12-22T11:56:33.655Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "2",
+    "object_repr": "manager",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"password\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 25,
+  "fields": {
+    "action_time": "2025-12-22T11:56:45.600Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "3",
+    "object_repr": "s_enginer",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"password\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 26,
+  "fields": {
+    "action_time": "2025-12-22T12:00:27.346Z",
+    "user": [
+      "andrey"
+    ],
+    "content_type": [
+      "accounts",
+      "user"
+    ],
+    "object_id": "3",
+    "object_repr": "s_engineer",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Username\"]}}]"
+  }
+}
+]
