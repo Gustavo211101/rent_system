@@ -131,7 +131,15 @@ def event_list_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = (
+        Event.objects
+        .select_related("responsible", "senior_engineer")
+        .prefetch_related("engineers")
+        .filter(id=event_id)
+        .first()
+    )
+    if not event:
+        event = get_object_or_404(Event, id=event_id)
 
     equipment_items = (
         EventEquipment.objects

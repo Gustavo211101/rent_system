@@ -42,6 +42,23 @@ class Event(models.Model):
         related_name="events",
     )
 
+    # Команда мероприятия
+    senior_engineer = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="events_as_senior",
+        verbose_name="Старший инженер",
+    )
+
+    engineers = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="events_as_engineer",
+        verbose_name="Инженеры",
+    )
+
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,

@@ -16,6 +16,19 @@
       <div style="margin-top:4px;"><strong>Клиент:</strong> {{ event.client|default:"—" }}</div>
       <div style="margin-top:4px;"><strong>Локация:</strong> {{ event.location|default:"—" }}</div>
       <div style="margin-top:4px;"><strong>Ответственный:</strong> {{ event.responsible|default:"—" }}</div>
+      <div style="margin-top:4px;"><strong>Старший инженер:</strong> {{ event.senior_engineer|default:"—" }}</div>
+      <div style="margin-top:4px;">
+        <strong>Инженеры:</strong>
+        {% with engs=event.engineers.all %}
+          {% if engs %}
+            {% for u in engs %}
+              {{ u }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+          {% else %}
+            —
+          {% endif %}
+        {% endwith %}
+      </div>
     </div>
 
     <div style="margin-top:10px;">

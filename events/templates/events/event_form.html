@@ -43,6 +43,28 @@
             {{ form.responsible.errors }}
         </div>
 
+        <div class="form-row">
+            <label>Старший инженер</label>
+            {{ form.senior_engineer }}
+            {{ form.senior_engineer.errors }}
+        </div>
+
+        <div class="form-row" style="grid-column: 1 / -1;">
+            <label>Инженеры</label>
+            {{ form.engineers }}
+            {{ form.engineers.errors }}
+            <div class="muted" style="margin-top:6px;">
+                Можно выбрать нескольких (Ctrl/⌘ + клик).
+            </div>
+        </div>
+
+        {# статус сейчас в форме есть, но раньше не отображался #}
+        <div class="form-row">
+            <label>Статус</label>
+            {{ form.status }}
+            {{ form.status.errors }}
+        </div>
+
     </div>
 
     <div style="margin-top:16px;">
