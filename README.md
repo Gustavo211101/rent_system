@@ -1,5 +1,3 @@
-V1.0
-
 Backup instruction:  
 
 Make backup:   
