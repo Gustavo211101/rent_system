@@ -59,7 +59,7 @@
     background:#fafafa;
     color:#9ca3af;
     cursor:default;
-    opacity: 0.70; /* тише, но не скрываем */
+    opacity:0.70;
   }
   .cal-day:hover{ background:rgba(0,0,0,.02); }
   .cal-day.other-month:hover{ background:#fafafa; }
@@ -124,7 +124,7 @@
     filter: brightness(0.97);
     box-shadow: 0 6px 14px rgba(0,0,0,0.14);
     transform: translateY(-1px);
-    z-index: 5;
+    z-index:5;
   }
 
   .event-bar.cont-left{
@@ -170,7 +170,7 @@
     outline-offset:-4px;
   }
 
-  /* ===== Generic modal styles (shared) ===== */
+  /* ===== Modals ===== */
   .cal-modal-backdrop{
     position:fixed; inset:0;
     background:rgba(0,0,0,.45);
@@ -183,7 +183,7 @@
   .cal-modal{
     background:#fff;
     border-radius:16px;
-    width:min(520px, 100%);
+    width:min(560px, 100%);
     box-shadow:0 18px 50px rgba(0,0,0,.25);
     overflow:hidden;
   }
@@ -216,14 +216,14 @@
     margin-top:10px;
   }
   .cal-modal__row label{ min-width:120px; }
-  .cal-modal__row input{
+  .cal-modal__row input, .cal-modal__row select{
     width:100%;
     padding:10px 12px;
     border:1px solid rgba(0,0,0,.15);
     border-radius:10px;
     outline:none;
   }
-  .cal-modal__row input:focus{ border-color:rgba(0,0,0,.35); }
+  .cal-modal__row input:focus, .cal-modal__row select:focus{ border-color:rgba(0,0,0,.35); }
   .cal-modal__actions{
     display:flex;
     gap:10px;
@@ -231,17 +231,17 @@
     padding:14px 16px;
     border-top:1px solid rgba(0,0,0,.08);
     background:rgba(0,0,0,.02);
+    flex-wrap:wrap;
   }
-
-  /* Preview modal specifics */
-  .cal-preview-kv{
-    display:grid;
-    grid-template-columns: 110px 1fr;
-    gap:8px 12px;
-    font-size:14px;
+  .cal-modal__meta{
+    font-size:13px;
+    color:#374151;
+    margin-top:6px;
   }
-  .cal-preview-kv .k{ color:#6b7280; }
-  .cal-preview-kv .v{ color:#111827; }
+  .danger-btn{
+    border-color:#ef4444 !important;
+    color:#b91c1c !important;
+  }
 </style>
 
 <div class="cal-head">
@@ -283,10 +283,7 @@
   {% for week in month_days %}
     <div class="cal-week">
       {% for day in week %}
-        <div class="cal-day
-                    {% if day.month != month %}other-month{% endif %}
-                    {% if day|date:'Y-m-d' == today_str %}today{% endif %}"
-             data-day="{{ day|date:'Y-m-d' }}">
+        <div class="cal-day {% if day.month != month %}other-month{% endif %} {% if day|date:'Y-m-d' == today_str %}today{% endif %}" data-day="{{ day|date:'Y-m-d' }}">
           <div class="cal-day-number">{{ day.day }}</div>
         </div>
       {% endfor %}
@@ -294,20 +291,14 @@
       <div class="cal-bars">
         {% for seg in week_segments|get_item:week.0 %}
           <div
-            class="event-bar
-                   status-{{ seg.event.status }}
-                   {% if seg.has_problem %}has-problem{% endif %}
-                   {% if seg.cont_left %}cont-left{% endif %}
-                   {% if seg.cont_right %}cont-right{% endif %}"
+            class="event-bar status-{{ seg.event.status }} {% if seg.has_problem %}has-problem{% endif %} {% if seg.cont_left %}cont-left{% endif %} {% if seg.cont_right %}cont-right{% endif %}"
             style="--start: {{ seg.start_col }}; --span: {{ seg.span }}; --lane: {{ seg.lane }};"
             draggable="{% if can_create_event %}true{% else %}false{% endif %}"
             data-event-id="{{ seg.event.id }}"
+            data-event-name="{{ seg.event.name|escape }}"
             data-start="{{ seg.data_start }}"
             data-end="{{ seg.data_end }}"
-            data-url="{% url 'event_detail' seg.event.id %}"
-            data-name="{{ seg.event.name|escapejs }}"
-            data-status="{{ seg.event.get_status_display|escapejs }}"
-            data-dates="{{ seg.event.start_date|date:'d.m.Y' }} – {{ seg.event.end_date|date:'d.m.Y' }}"
+            data-status="{{ seg.event.status }}"
             title="{{ seg.event.name }} · {{ seg.event.start_date|date:'d.m.Y' }} – {{ seg.event.end_date|date:'d.m.Y' }} · {{ seg.event.get_status_display }}"
           >
             <a href="{% url 'event_detail' seg.event.id %}">{{ seg.event.name }}</a>
@@ -360,16 +351,27 @@
     </div>
 
     <div class="cal-modal__body">
-      <div class="cal-preview-kv">
-        <div class="k">Название</div><div class="v" id="pvName">—</div>
-        <div class="k">Даты</div><div class="v" id="pvDates">—</div>
-        <div class="k">Статус</div><div class="v" id="pvStatus">—</div>
+      <div style="font-weight:900; font-size:18px;" id="pvName"></div>
+      <div class="cal-modal__meta" id="pvDates"></div>
+
+      <div class="cal-modal__row">
+        <label>Статус</label>
+        <select id="pvStatus">
+          <option value="draft">Черновик</option>
+          <option value="confirmed">Подтверждено</option>
+          <option value="cancelled">Отменено</option>
+          <option value="closed">Закрыто</option>
+        </select>
       </div>
+
+      <div id="pvError" class="muted" style="margin-top:10px; color:#b00020;"></div>
     </div>
 
     <div class="cal-modal__actions">
-      <button type="button" class="btn-secondary" id="calPreviewCancel">Закрыть</button>
-      <a href="#" class="btn" id="calPreviewOpen">Открыть карточку</a>
+      <a id="pvOpen" class="btn-secondary" href="#">Открыть карточку</a>
+      <a id="pvEdit" class="btn-secondary" href="#">Редактировать</a>
+      <button type="button" class="btn" id="pvSetStatus">Сохранить статус</button>
+      <button type="button" class="btn btn-secondary danger-btn" id="pvDelete">Удалить</button>
     </div>
   </div>
 </div>
@@ -378,7 +380,6 @@
 (function(){
   const canCreate = {{ can_create_event|yesno:"true,false" }};
 
-  // ---- CSRF ----
   function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -387,7 +388,7 @@
   }
   const csrftoken = getCookie("csrftoken");
 
-  // ---- auto heights ----
+  // ---- AUTO HEIGHT: set lanes per week (so nothing gets cut) ----
   function autoWeekHeights(){
     document.querySelectorAll(".cal-week").forEach(week => {
       const bars = Array.from(week.querySelectorAll(".event-bar"));
@@ -408,7 +409,7 @@
   }
   window.requestAnimationFrame(autoWeekHeights);
 
-  // ---- Create modal wiring ----
+  // ===== Create modal =====
   const createBackdrop = document.getElementById("calCreateBackdrop");
   const createCloseBtn = document.getElementById("calCreateClose");
   const createCancelBtn = document.getElementById("calCreateCancel");
@@ -419,7 +420,7 @@
   const createErrBox = document.getElementById("calCreateError");
   let selectedDay = null;
 
-  function openCreateModal(dayStr){
+  function openCreate(dayStr){
     selectedDay = dayStr;
     createDateText.textContent = dayStr;
     createEndInput.value = dayStr;
@@ -429,96 +430,29 @@
     createBackdrop.setAttribute("aria-hidden","false");
     setTimeout(()=>createNameInput.focus(), 50);
   }
-  function closeCreateModal(){
+  function closeCreate(){
     createBackdrop.style.display = "none";
     createBackdrop.setAttribute("aria-hidden","true");
     selectedDay = null;
   }
-  createBackdrop.addEventListener("click", function(e){
-    if(e.target === createBackdrop) closeCreateModal();
-  });
-  createCloseBtn.addEventListener("click", closeCreateModal);
-  createCancelBtn.addEventListener("click", closeCreateModal);
 
-  // ---- Preview modal wiring ----
-  const pvBackdrop = document.getElementById("calPreviewBackdrop");
-  const pvCloseBtn = document.getElementById("calPreviewClose");
-  const pvCancelBtn = document.getElementById("calPreviewCancel");
-  const pvOpenBtn = document.getElementById("calPreviewOpen");
-  const pvName = document.getElementById("pvName");
-  const pvDates = document.getElementById("pvDates");
-  const pvStatus = document.getElementById("pvStatus");
+  createBackdrop.addEventListener("click", (e)=>{ if(e.target===createBackdrop) closeCreate(); });
+  createCloseBtn.addEventListener("click", closeCreate);
+  createCancelBtn.addEventListener("click", closeCreate);
 
-  function openPreviewModal(data){
-    pvName.textContent = data.name || "—";
-    pvDates.textContent = data.dates || "—";
-    pvStatus.textContent = data.status || "—";
-    pvOpenBtn.setAttribute("href", data.url || "#");
-
-    pvBackdrop.style.display = "flex";
-    pvBackdrop.setAttribute("aria-hidden","false");
-  }
-  function closePreviewModal(){
-    pvBackdrop.style.display = "none";
-    pvBackdrop.setAttribute("aria-hidden","true");
-  }
-  pvBackdrop.addEventListener("click", function(e){
-    if(e.target === pvBackdrop) closePreviewModal();
-  });
-  pvCloseBtn.addEventListener("click", closePreviewModal);
-  pvCancelBtn.addEventListener("click", closePreviewModal);
-
-  // ---- helpers ----
-  function isClickOnLink(e){
-    return e.target && (e.target.tagName === "A" || e.target.closest("a"));
-  }
-
-  // Click on day -> create modal
+  // click on empty day -> create
   document.addEventListener("click", function(e){
     const cell = e.target.closest(".cal-day");
     if(!cell) return;
-    if(isClickOnLink(e)) return;
+    if(e.target.closest(".event-bar")) return;
     if(cell.classList.contains("other-month")) return;
     if(!canCreate) return;
 
     const dayStr = cell.getAttribute("data-day");
     if(!dayStr) return;
-    openCreateModal(dayStr);
+    openCreate(dayStr);
   });
 
-  // Click on event -> preview modal (with button to open)
-  document.addEventListener("click", function(e){
-    const bar = e.target.closest(".event-bar");
-    if(!bar) return;
-
-    // allow ctrl/cmd click to open as usual
-    if(e.metaKey || e.ctrlKey) return;
-
-    // if dragging, ignore click
-    if(bar.classList.contains("dragging")) return;
-
-    // prevent navigation
-    if(e.target.tagName === "A" || e.target.closest("a")) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    openPreviewModal({
-      name: bar.getAttribute("data-name"),
-      dates: bar.getAttribute("data-dates"),
-      status: bar.getAttribute("data-status"),
-      url: bar.getAttribute("data-url"),
-    });
-  });
-
-  document.addEventListener("keydown", function(e){
-    if(e.key === "Escape"){
-      if(createBackdrop.style.display === "flex") closeCreateModal();
-      if(pvBackdrop.style.display === "flex") closePreviewModal();
-    }
-  });
-
-  // Create save
   createSaveBtn.addEventListener("click", async function(){
     if(!selectedDay) return;
     const name = (createNameInput.value || "").trim();
@@ -560,7 +494,106 @@
     }
   });
 
-  // Drag & drop move
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape"){
+      if(createBackdrop.style.display === "flex") closeCreate();
+      if(previewBackdrop.style.display === "flex") closePreview();
+    }
+  });
+
+  // ===== Preview modal =====
+  const previewBackdrop = document.getElementById("calPreviewBackdrop");
+  const pvClose = document.getElementById("calPreviewClose");
+  const pvName = document.getElementById("pvName");
+  const pvDates = document.getElementById("pvDates");
+  const pvStatus = document.getElementById("pvStatus");
+  const pvSetStatus = document.getElementById("pvSetStatus");
+  const pvOpen = document.getElementById("pvOpen");
+  const pvEdit = document.getElementById("pvEdit");
+  const pvDelete = document.getElementById("pvDelete");
+  const pvError = document.getElementById("pvError");
+
+  let pvEventId = null;
+
+  function openPreview(data){
+    pvEventId = data.id;
+    pvName.textContent = data.name;
+    pvDates.textContent = data.dates;
+    pvStatus.value = data.status;
+
+    pvOpen.href = data.openUrl;
+    pvEdit.href = data.editUrl;
+
+    pvError.textContent = "";
+    previewBackdrop.style.display = "flex";
+    previewBackdrop.setAttribute("aria-hidden","false");
+  }
+  function closePreview(){
+    previewBackdrop.style.display = "none";
+    previewBackdrop.setAttribute("aria-hidden","true");
+    pvEventId = null;
+  }
+
+  previewBackdrop.addEventListener("click", (e)=>{ if(e.target===previewBackdrop) closePreview(); });
+  pvClose.addEventListener("click", closePreview);
+
+  // click on event -> preview (do not navigate)
+  document.addEventListener("click", function(e){
+    const bar = e.target.closest(".event-bar");
+    if(!bar) return;
+
+    // allow Ctrl/Cmd click to open in new tab
+    if (e.ctrlKey || e.metaKey) return;
+
+    e.preventDefault();
+
+    const id = bar.getAttribute("data-event-id");
+    const name = bar.getAttribute("data-event-name") || "";
+    const start = bar.getAttribute("data-start");
+    const end = bar.getAttribute("data-end");
+    const status = bar.getAttribute("data-status") || "draft";
+
+    const dates = `${start} → ${end}`;
+
+    const openUrl = `{% url 'event_detail' 0 %}`.replace("/0/", `/${id}/`);
+    const editUrl = `{% url 'event_edit' 0 %}`.replace("/0/", `/${id}/`);
+
+    openPreview({id, name, dates, status, openUrl, editUrl});
+  });
+
+  pvSetStatus.addEventListener("click", async function(){
+    if(!pvEventId) return;
+    pvError.textContent = "";
+
+    // status endpoint is simple GET redirect - we'll just navigate (safe)
+    const newStatus = pvStatus.value;
+    const url = `{% url 'event_set_status' 0 'draft' %}`.replace("/0/", `/${pvEventId}/`).replace("/draft/", `/${newStatus}/`);
+    window.location.href = url;
+  });
+
+  pvDelete.addEventListener("click", async function(){
+    if(!pvEventId) return;
+    pvError.textContent = "";
+
+    if(!confirm("Удалить мероприятие? Оно попадёт в архив и будет очищено через 30 дней.")) return;
+
+    try{
+      const url = `{% url 'event_delete' 0 %}`.replace("/0/", `/${pvEventId}/`);
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {"X-CSRFToken": csrftoken},
+      });
+      if(!resp.ok){
+        pvError.textContent = "Не удалось удалить.";
+        return;
+      }
+      window.location.reload();
+    }catch(err){
+      pvError.textContent = "Ошибка сети / сервера";
+    }
+  });
+
+  // ===== Drag & drop move =====
   let draggingEl = null;
 
   document.addEventListener("dragstart", function(e){
@@ -616,14 +649,14 @@
     }catch(err){
       return;
     }
-
     if(!payload || !payload.event_id) return;
 
     const newStart = cell.getAttribute("data-day");
     if(!newStart) return;
 
     try{
-      const resp = await fetch(`{% url 'quick_move_event_api' 0 %}`.replace("/0/", `/${payload.event_id}/`), {
+      const url = `{% url 'quick_move_event_api' 0 %}`.replace("/0/", `/${payload.event_id}/`);
+      const resp = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -631,6 +664,7 @@
         },
         body: JSON.stringify({ new_start_date: newStart }),
       });
+
       const data = await resp.json();
       if(!data.ok){
         alert(data.error || "Не удалось переместить");

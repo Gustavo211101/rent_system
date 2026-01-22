@@ -95,7 +95,7 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
 
     qs = (
         Event.objects
-        .filter(start_date__lte=grid_end, end_date__gte=grid_start)
+        .filter(start_date__lte=grid_end, end_date__gte=grid_start, is_deleted=False)
         .select_related("responsible", "s_engineer")
         .prefetch_related("engineers")
         .order_by("start_date", "id")
@@ -163,6 +163,8 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
 
         "filter": cal_filter,
         "can_create_event": can_edit_event_card(request.user),
+        "can_edit": can_edit_event_card(request.user),
+        "can_delete": can_edit_event_card(request.user),
     }
     return render(request, "events/calendar.html", ctx)
 
@@ -170,8 +172,7 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
 @login_required
 def event_list_view(request: HttpRequest) -> HttpResponse:
     qs = (
-        Event.objects
-        .all()
+        Event.objects.filter(is_deleted=False)
         .select_related("responsible", "s_engineer")
         .prefetch_related("engineers")
         .order_by("-start_date", "-id")
@@ -186,10 +187,26 @@ def event_list_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
-    event = get_object_or_404(
-        Event.objects.select_related("responsible", "s_engineer").prefetch_related("engineers"),
-        id=event_id,
-    )
+    """
+    Важно: удалённые (soft-delete) события должны открываться из корзины.
+    Но показываем их только тем, кто имеет право управлять мероприятиями.
+    """
+    # менеджер/суперадмин
+    can_manage = can_edit_event_card(request.user)
+
+    # если soft-delete поля существуют, то:
+    # - обычные пользователи НЕ должны открывать удалённые события
+    # - менеджеры могут (нужно для корзины)
+    base_qs = Event.objects.select_related("responsible", "s_engineer").prefetch_related("engineers")
+
+    try:
+        # если в модели есть is_deleted, ограничим для не-менеджеров
+        if hasattr(Event, "is_deleted") and not can_manage:
+            base_qs = base_qs.filter(is_deleted=False)
+    except Exception:
+        pass
+
+    event = get_object_or_404(base_qs, id=event_id)
 
     equipment_items = (
         EventEquipment.objects
@@ -212,9 +229,10 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
         "equipment_items": equipment_items,
         "rented_items": rented_items,
         "shortages": shortages,
-        "can_modify": can_edit_event_card(request.user),
+        "can_modify": can_manage,
         "can_edit_equipment": can_edit_event_equipment(request.user),
     })
+
 
 
 @login_required
@@ -248,7 +266,7 @@ def event_create_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def event_update_view(request: HttpRequest, event_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_card(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
@@ -266,39 +284,26 @@ def event_update_view(request: HttpRequest, event_id: int) -> HttpResponse:
 
 
 @login_required
-def event_delete_view(request: HttpRequest, event_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
 
-    # Менеджер/суперадмин (то же, что и для редактирования карточки)
+@login_required
+def event_delete_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_card(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
     if request.method == "POST":
-        event_repr = str(event)
-        try:
-            event.delete()
-        except Exception:
-            # на всякий — не даём 500 пользователю
-            messages.error(request, "Не удалось удалить мероприятие.")
-            return redirect("event_list")
-
-        log_action(
-            user=request.user,
-            action="delete",
-            obj=event,
-            entity_type="Event",
-            message=f"Удалено мероприятие: {event_repr}",
-        )
-        messages.success(request, "Мероприятие удалено.")
+        event.is_deleted = True
+        event.deleted_at = timezone.now()
+        event.save(update_fields=["is_deleted", "deleted_at"])
+        log_action(user=request.user, action="delete", obj=event, details="Soft-delete мероприятия")
+        messages.success(request, "Мероприятие удалено (перемещено в архив).")
         return redirect("event_list")
 
-    # если кто-то открыл GET — покажем confirm page (можно не использовать, но пусть будет)
     return render(request, "events/event_confirm_delete.html", {"event": event})
 
 
-@login_required
 def event_set_status_view(request: HttpRequest, event_id: int, status: str) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_card(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
@@ -316,7 +321,7 @@ def event_set_status_view(request: HttpRequest, event_id: int, status: str) -> H
 
 @login_required
 def event_equipment_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
@@ -351,7 +356,7 @@ def event_equipment_add_view(request: HttpRequest, event_id: int) -> HttpRespons
 
 @login_required
 def event_equipment_update_qty_view(request: HttpRequest, event_id: int, item_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
@@ -370,7 +375,7 @@ def event_equipment_update_qty_view(request: HttpRequest, event_id: int, item_id
 
 @login_required
 def event_equipment_delete_view(request: HttpRequest, event_id: int, item_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
@@ -382,7 +387,7 @@ def event_equipment_delete_view(request: HttpRequest, event_id: int, item_id: in
 
 @login_required
 def event_rented_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
@@ -423,7 +428,7 @@ def event_rented_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
 
 @login_required
 def event_rented_update_qty_view(request: HttpRequest, event_id: int, item_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
@@ -442,7 +447,7 @@ def event_rented_update_qty_view(request: HttpRequest, event_id: int, item_id: i
 
 @login_required
 def event_rented_delete_view(request: HttpRequest, event_id: int, item_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
@@ -514,7 +519,7 @@ def quick_move_event_api(request: HttpRequest, event_id: int) -> HttpResponse:
     if not can_edit_event_card(request.user):
         return JsonResponse({"ok": False, "error": "Forbidden"}, status=403)
 
-    event = get_object_or_404(Event, id=event_id)
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
 
     try:
         import json
@@ -537,3 +542,166 @@ def quick_move_event_api(request: HttpRequest, event_id: int) -> HttpResponse:
     event.save(update_fields=["start_date", "end_date"])
     log_action(user=request.user, action="update", obj=event, details=f"Перенос (drag&drop) на {ns}")
     return JsonResponse({"ok": True})
+
+from django.utils import timezone
+
+@login_required
+def event_trash_view(request: HttpRequest) -> HttpResponse:
+    # только те, кто может править карточки (у тебя это менеджер/суперадмин)
+    if not can_edit_event_card(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    deleted_qs = (
+        Event.objects
+        .filter(is_deleted=True)
+        .select_related("responsible", "s_engineer")
+        .prefetch_related("engineers")
+        .order_by("-deleted_at", "-id")
+    )
+
+    return render(request, "events/event_trash.html", {
+        "events": deleted_qs,
+        "can_restore": True,
+    })
+
+
+@login_required
+def event_restore_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    if not can_edit_event_card(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    event = get_object_or_404(Event, id=event_id)
+
+    if request.method != "POST":
+        return HttpResponseForbidden("POST only")
+
+    # восстановление
+    event.is_deleted = False
+    event.deleted_at = None
+    event.save(update_fields=["is_deleted", "deleted_at"])
+
+    try:
+        log_action(user=request.user, action="restore", obj=event, details="Восстановлено из корзины")
+    except Exception:
+        pass
+
+    messages.success(request, "Мероприятие восстановлено.")
+    return redirect("event_trash")
+
+@login_required
+def event_delete_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    """
+    Мягкое удаление: мероприятие попадает в корзину.
+    """
+    if request.method != "POST":
+        return HttpResponseForbidden("POST only")
+
+    if not can_edit_event_card(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    event = get_object_or_404(Event, id=event_id)
+
+    # если soft-delete полей нет — fallback на hard delete
+    if not hasattr(event, "is_deleted"):
+        event.delete()
+        messages.success(request, "Мероприятие удалено.")
+        return redirect("event_list")
+
+    event.is_deleted = True
+    event.deleted_at = timezone.now()
+    event.save(update_fields=["is_deleted", "deleted_at"])
+
+    try:
+        log_action(user=request.user, action="delete", obj=event, details="Удалено (в корзину)")
+    except Exception:
+        pass
+
+    messages.success(request, "Мероприятие перемещено в корзину.")
+    return redirect("event_list")
+
+
+@login_required
+def event_trash_view(request: HttpRequest) -> HttpResponse:
+    """
+    Корзина: видят только менеджер/суперадмин.
+    """
+    if not can_edit_event_card(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    # если soft-delete нет — корзину не показываем
+    if not hasattr(Event, "is_deleted"):
+        messages.info(request, "Корзина недоступна: soft-delete не включён.")
+        return redirect("event_list")
+
+    deleted_qs = (
+        Event.objects
+        .filter(is_deleted=True)
+        .select_related("responsible", "s_engineer")
+        .prefetch_related("engineers")
+        .order_by("-deleted_at", "-id")
+    )
+
+    return render(request, "events/event_trash.html", {"events": deleted_qs})
+
+
+@login_required
+def event_restore_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    """
+    Восстановление из корзины.
+    """
+    if request.method != "POST":
+        return HttpResponseForbidden("POST only")
+
+    if not can_edit_event_card(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    if not hasattr(Event, "is_deleted"):
+        return HttpResponseForbidden("Soft-delete не включён")
+
+    event = get_object_or_404(Event, id=event_id)
+
+    event.is_deleted = False
+    event.deleted_at = None
+    event.save(update_fields=["is_deleted", "deleted_at"])
+
+    try:
+        log_action(user=request.user, action="restore", obj=event, details="Восстановлено из корзины")
+    except Exception:
+        pass
+
+    messages.success(request, "Мероприятие восстановлено.")
+    return redirect("event_trash")
+
+
+@login_required
+def event_purge_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    """
+    Жёсткое удаление навсегда. Только из корзины.
+    """
+    if request.method != "POST":
+        return HttpResponseForbidden("POST only")
+
+    if not can_edit_event_card(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    event = get_object_or_404(Event, id=event_id)
+
+    # разрешаем purge только если soft-delete и is_deleted=True
+    if hasattr(event, "is_deleted") and not event.is_deleted:
+        messages.error(request, "Нельзя удалить навсегда: мероприятие не в корзине.")
+        return redirect("event_list")
+
+    try:
+        obj_repr = str(event)
+    except Exception:
+        obj_repr = f"id={event_id}"
+
+    event.delete()
+
+    try:
+        log_action(user=request.user, action="purge", entity_type="Event", message=f"Удалено навсегда: {obj_repr}")
+    except Exception:
+        pass
+
+    messages.success(request, "Мероприятие удалено навсегда.")
+    return redirect("event_trash")

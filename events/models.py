@@ -43,7 +43,6 @@ class Event(models.Model):
     )
 
     # Команда мероприятия
-    # Старший инженер (один)
     s_engineer = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -52,12 +51,15 @@ class Event(models.Model):
         related_name="senior_events",
     )
 
-    # Инженеры (много)
     engineers = models.ManyToManyField(
         User,
         blank=True,
         related_name="engineer_events",
     )
+
+    # Soft-delete (вместо физического удаления)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     status = models.CharField(
         max_length=20,

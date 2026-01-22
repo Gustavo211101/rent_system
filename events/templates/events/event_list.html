@@ -1,66 +1,73 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Мероприятия</h1>
+<div class="toolbar">
+  <h1 style="margin:0;">Мероприятия</h1>
 
-{% if can_create_event %}
-  <div style="margin-bottom:16px;">
-    <a class="btn" href="{% url 'event_create' %}">
-      ➕ Добавить мероприятие
-    </a>
+  <div style="display:flex; gap:10px; align-items:center;">
+    {% if can_create_event %}
+      <a class="btn" href="{% url 'event_create' %}">+ Добавить мероприятие</a>
+    {% endif %}
+
+    {% if can_delete %}
+      <a class="btn-secondary" href="{% url 'event_trash' %}">🗑 Корзина</a>
+    {% endif %}
   </div>
-{% endif %}
+</div>
 
 <table class="list-table">
-    <thead>
-        <tr>
-            <th style="width:160px;">Статус</th>
-            <th>Название</th>
-            <th style="width:220px;">Период</th>
-            <th>Клиент</th>
-            <th>Локация</th>
-            <th style="width:220px;">Действия</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for event in events %}
-        <tr>
-            <td>
-                <span class="badge status-{{ event.status }}">{{ event.get_status_display }}</span>
-            </td>
-            <td>
-                <a href="{% url 'event_detail' event.id %}">{{ event.name }}</a>
-            </td>
-            <td>
-                {% if event.start_date == event.end_date %}
-                    {{ event.start_date|date:"d.m.Y" }}
-                {% else %}
-                    {{ event.start_date|date:"d.m.Y" }} – {{ event.end_date|date:"d.m.Y" }}
-                {% endif %}
-            </td>
-            <td>{{ event.client }}</td>
-            <td>{{ event.location }}</td>
-            <td>
-                <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Открыть</a>
-                {% if can_delete %}
-                  <form method="post" action="{% url 'event_delete' event.id %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-secondary"
-                            onclick="return confirm('Удалить мероприятие «{{ event.name|escapejs }}»? Это действие нельзя отменить.');">
-                      Удалить
-                    </button>
-                  </form>
-                {% endif %}
-                {% if can_edit %}
-                    <a class="btn-secondary" href="{% url 'event_edit' event.id %}">Редактировать</a>
-                {% endif %}
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="6">Мероприятий пока нет</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+  <thead>
+    <tr>
+      <th>Статус</th>
+      <th>Название</th>
+      <th>Период</th>
+      <th>Клиент</th>
+      <th>Локация</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for e in events %}
+    <tr>
+      <td>
+        <span class="status-pill status-{{ e.status }}">{{ e.get_status_display }}</span>
+      </td>
+      <td>{{ e.name }}</td>
+      <td>
+        {% if e.start_date == e.end_date or not e.end_date %}
+          {{ e.start_date|date:"d.m.Y" }}
+        {% else %}
+          {{ e.start_date|date:"d.m.Y" }} – {{ e.end_date|date:"d.m.Y" }}
+        {% endif %}
+      </td>
+      <td>{{ e.client }}</td>
+      <td>{{ e.location }}</td>
+      <td>
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+          <a class="btn-secondary" href="{% url 'event_detail' e.id %}">Открыть</a>
+
+          {% if can_edit %}
+            <a class="btn-secondary" href="{% url 'event_edit' e.id %}">Редактировать</a>
+          {% endif %}
+
+          {% if can_delete %}
+            <form method="post" action="{% url 'event_delete' e.id %}"
+                  onsubmit="return confirm('Удалить мероприятие «{{ e.name }}»? Оно попадёт в корзину на 30 дней.')">
+              {% csrf_token %}
+              <button type="submit" class="btn-secondary" style="border-color:#ef4444; color:#ef4444;">
+                Удалить
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="6" style="color:#6b7280;">Мероприятий нет.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
 </table>
 {% endblock %}

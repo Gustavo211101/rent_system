@@ -2,13 +2,11 @@
 
 {% block content %}
 <h1>Удалить мероприятие</h1>
-
 <p>Вы уверены, что хотите удалить мероприятие <strong>{{ event.name }}</strong>?</p>
-<p style="color:#6b7280;">Это действие нельзя отменить.</p>
 
 <form method="post">
   {% csrf_token %}
-  <button type="submit" class="btn">Удалить</button>
-  <a href="{% url 'event_list' %}" class="btn-secondary">Отмена</a>
+  <button class="btn" type="submit" style="border-color:#ef4444; color:#b91c1c;">Удалить</button>
+  <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Отмена</a>
 </form>
 {% endblock %}

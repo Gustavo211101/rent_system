@@ -1,10 +1,21 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from django.db.models import Sum
 
 from .models import Event, EventEquipment, EventRentedEquipment
+
+
+
+def purge_soft_deleted_events(days: int = 30) -> int:
+    """Удаляет из БД мероприятия, которые были soft-deleted более `days` дней назад."""
+    cutoff = date.today() - timedelta(days=days)
+    qs = Event.objects.filter(is_deleted=True, deleted_at__isnull=False, deleted_at__lt=cutoff)
+    count = qs.count()
+    qs.delete()
+    return count
+
 
 
 def auto_close_past_events():
@@ -13,7 +24,7 @@ def auto_close_past_events():
     если end_date < today и статус не closed/cancelled -> closed
     """
     today = date.today()
-    Event.objects.filter(end_date__lt=today).exclude(status__in=["closed", "cancelled"]).update(status="closed")
+    Event.objects.filter(end_date__lt=today, is_deleted=False).exclude(status__in=["closed", "cancelled"]).update(status="closed")
 
 
 def calculate_shortages(event: Event):

@@ -10,6 +10,7 @@ from events.models import Event
 
 
 def _get_primary_role(user):
+    """Одна основная роль по приоритету."""
     if getattr(user, "is_superuser", False):
         return ("Суперадмин", "superadmin")
 
@@ -63,14 +64,16 @@ def dashboard(request):
     today = date.today()
 
     q = Q(responsible=user)
+
     if hasattr(Event, "s_engineer"):
         q = q | Q(s_engineer=user)
+
     if hasattr(Event, "engineers"):
         q = q | Q(engineers=user)
 
     qs = (
         Event.objects
-        .filter(q)
+        .filter(q, is_deleted=False)
         .distinct()
         .order_by("start_date", "id")
     )
@@ -102,9 +105,9 @@ def dashboard(request):
         else:
             past.append(item)
 
-    # ближайшие — сверху
+    # Ближайшие — сверху (самое близкое первым)
     upcoming.sort(key=lambda x: (x["event"].start_date, x["event"].id))
-    # прошедшие — ниже, от свежих к старым
+    # Прошедшие — ниже, от свежих к старым
     past.sort(key=lambda x: (x["event"].start_date, x["event"].id), reverse=True)
 
     stats = {
