@@ -6,6 +6,7 @@
 
   <div style="display:flex; gap:10px; align-items:center;">
     <a class="btn-secondary" href="{% url 'equipment_list_categories' %}">По категориям</a>
+    <a class="btn-secondary" href="{% url 'repair_list' %}">Ремонт</a>
     {% if can_manage %}
       <a class="btn" href="{% url 'equipment_add' %}">➕ Добавить</a>
     {% endif %}

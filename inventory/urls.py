@@ -7,6 +7,12 @@ urlpatterns = [
     path("equipment/categories/", views.equipment_list_categories_view, name="equipment_list_categories"),
     path("equipment/category/<int:category_id>/", views.equipment_category_detail_view, name="equipment_category_detail"),
 
+    # ✅ ремонт
+    path("equipment/repairs/", views.repair_list_view, name="repair_list"),
+    path("equipment/repairs/add/", views.repair_create_view, name="repair_add"),
+    path("equipment/repairs/<int:repair_id>/close/", views.repair_close_view, name="repair_close"),
+    path("equipment/repairs/<int:repair_id>/delete/", views.repair_delete_view, name="repair_delete"),
+
     # CRUD оборудования (только менеджер)
     path("equipment/add/", views.equipment_create_view, name="equipment_add"),
     path("equipment/<int:equipment_id>/edit/", views.equipment_update_view, name="equipment_edit"),

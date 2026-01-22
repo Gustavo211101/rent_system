@@ -33,11 +33,12 @@
             <a class="nav-link" href="{% url 'audit_list' %}">📒 Журнал</a>
           {% endif %}
           <a class="nav-link" href="{% url 'cabinet:dashboard' %}">⚙️ Кабинет</a>
+          <a class="nav-link" href="{% url 'login' %}">🚪 Выход</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline;">
   {% csrf_token %}
-  <button type="submit" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">
+<!--  <button type="submit" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">
     🚪 Выйти
-  </button>
+  </button> -->
 </form>
           {% if user.is_superuser %}
             <a class="nav-link" href="/admin/">⚙️ Админка</a>

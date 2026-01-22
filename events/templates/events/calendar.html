@@ -354,9 +354,9 @@
       <div style="font-weight:900; font-size:18px;" id="pvName"></div>
       <div class="cal-modal__meta" id="pvDates"></div>
 
-      <div class="cal-modal__row">
-        <label>Статус</label>
-        <select id="pvStatus">
+      <div class="cal-modal__row" {% if not can_create_event %}style="display:none"{% endif %}>
+      <label>Статус</label>
+        <select id="pvStatus" {% if not can_create_event %}disabled{% endif %}>
           <option value="draft">Черновик</option>
           <option value="confirmed">Подтверждено</option>
           <option value="cancelled">Отменено</option>
@@ -369,9 +369,9 @@
 
     <div class="cal-modal__actions">
       <a id="pvOpen" class="btn-secondary" href="#">Открыть карточку</a>
-      <a id="pvEdit" class="btn-secondary" href="#">Редактировать</a>
-      <button type="button" class="btn" id="pvSetStatus">Сохранить статус</button>
-      <button type="button" class="btn btn-secondary danger-btn" id="pvDelete">Удалить</button>
+      <a id="pvEdit" class="btn-secondary" href="#" {% if not can_create_event %}style="display:none"{% endif %}>Редактировать</a>
+      <button type="button" class="btn" id="pvSetStatus" {% if not can_create_event %}style="display:none"{% endif %}>Сохранить статус</button>
+      <button type="button" class="btn btn-secondary danger-btn" id="pvDelete" {% if not can_create_event %}style="display:none"{% endif %}>Удалить</button>
     </div>
   </div>
 </div>

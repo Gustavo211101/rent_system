@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="toolbar">
+  <h1 style="margin:0;">{{ title }}</h1>
+  <div>
+    <a class="btn-secondary" href="{% url 'repair_list' %}">← Назад</a>
+  </div>
+</div>
+
+<form method="post" class="form">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div style="padding:10px; border:1px solid #d33; margin-bottom:12px;">
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <div class="form-row">
+    <label>Оборудование</label>
+    {{ form.equipment }}
+    {{ form.equipment.errors }}
+  </div>
+
+  <div class="form-row">
+    <label>Количество</label>
+    {{ form.quantity }}
+    {{ form.quantity.errors }}
+  </div>
+
+  <div class="form-row">
+    <label>Дата начала</label>
+    {{ form.start_date }}
+    {{ form.start_date.errors }}
+  </div>
+
+  <div class="form-row">
+    <label>Комментарий</label>
+    {{ form.note }}
+    {{ form.note.errors }}
+  </div>
+
+  <div style="margin-top:16px;">
+    <button class="btn" type="submit">Сохранить</button>
+    <a class="btn-secondary" href="{% url 'repair_list' %}">Отмена</a>
+  </div>
+</form>
+{% endblock %}

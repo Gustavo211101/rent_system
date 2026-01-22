@@ -4,10 +4,11 @@ from django.contrib.auth.decorators import login_required
 from django.db.models.deletion import ProtectedError
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from accounts.permissions import can_edit_inventory
 from audit.utils import log_action
-from .models import Equipment, EquipmentCategory
+from .models import Equipment, EquipmentCategory, EquipmentRepair
 
 
 # ---------- Forms (просто и надёжно) ----------
@@ -232,3 +233,111 @@ def category_delete_view(request, category_id):
         "category": obj,
         "equipment_count": equipment_count,
     })
+
+
+# ---------- Repairs (ремонт) ----------
+
+class EquipmentRepairForm(forms.ModelForm):
+    class Meta:
+        model = EquipmentRepair
+        fields = ["equipment", "quantity", "start_date", "note"]
+        widgets = {
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "note": forms.TextInput(),
+        }
+
+
+@login_required
+def repair_list_view(request):
+    # Доступ только менеджеру/суперадмину
+    if not can_edit_inventory(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    status = (request.GET.get("status") or "active").strip()
+    if status not in {"active", "closed", "all"}:
+        status = "active"
+
+    qs = (
+        EquipmentRepair.objects
+        .select_related("equipment", "equipment__category")
+        .order_by("-created_at", "-id")
+    )
+
+    if status == "active":
+        qs = qs.filter(status=EquipmentRepair.STATUS_IN_REPAIR)
+    elif status == "closed":
+        qs = qs.filter(status=EquipmentRepair.STATUS_RETURNED)
+
+    return render(request, "inventory/repair_list.html", {
+        "repairs": qs,
+        "status": status,
+        "can_manage": True,
+    })
+
+
+@login_required
+def repair_create_view(request):
+    if not can_edit_inventory(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    if request.method == "POST":
+        form = EquipmentRepairForm(request.POST)
+        if form.is_valid():
+            repair = form.save(commit=False)
+
+            # защита: нельзя отправить в ремонт больше, чем всего есть
+            if repair.quantity <= 0:
+                messages.error(request, "Количество должно быть больше 0.")
+                return render(request, "inventory/repair_form.html", {"form": form, "title": "В ремонт"})
+
+            if repair.quantity > repair.equipment.quantity_total:
+                messages.error(request, "Количество в ремонте не может превышать общее количество.")
+                return render(request, "inventory/repair_form.html", {"form": form, "title": "В ремонт"})
+
+            repair.status = EquipmentRepair.STATUS_IN_REPAIR
+            repair.end_date = None
+            repair.save()
+
+            log_action(user=request.user, action="create", obj=repair, details="Оборудование отправлено в ремонт")
+            messages.success(request, "Добавлено в ремонт.")
+            return redirect("repair_list")
+    else:
+        form = EquipmentRepairForm()
+
+    return render(request, "inventory/repair_form.html", {"form": form, "title": "В ремонт"})
+
+
+@login_required
+def repair_close_view(request, repair_id):
+    if not can_edit_inventory(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    repair = get_object_or_404(EquipmentRepair, id=repair_id)
+
+    if request.method == "POST":
+        repair.status = EquipmentRepair.STATUS_RETURNED
+        repair.end_date = timezone.localdate()
+        repair.save(update_fields=["status", "end_date"])
+
+        log_action(user=request.user, action="update", obj=repair, details="Возврат из ремонта")
+        messages.success(request, "Возвращено из ремонта.")
+        return redirect("repair_list")
+
+    # GET: подтверждение (простая)
+    return render(request, "inventory/repair_close_confirm.html", {"repair": repair})
+
+
+@login_required
+def repair_delete_view(request, repair_id):
+    if not can_edit_inventory(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    repair = get_object_or_404(EquipmentRepair, id=repair_id)
+
+    if request.method == "POST":
+        log_action(user=request.user, action="delete", obj=repair, details="Удалена запись ремонта")
+        repair.delete()
+        messages.success(request, "Запись ремонта удалена.")
+        return redirect("repair_list")
+
+    return render(request, "inventory/repair_delete_confirm.html", {"repair": repair})
