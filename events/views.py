@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -49,36 +50,31 @@ def _month_bounds(year: int, month: int) -> tuple[date, date]:
     return first, last
 
 
-def _format_date_range(start: date, end: date) -> str:
-    if not end or end == start:
-        return start.strftime("%d.%m.%Y")
-    return f"{start.strftime('%d.%m.%Y')}–{end.strftime('%d.%m.%Y')}"
-
-
-def _lane_pack(segments: list[dict]) -> list[dict]:
+def _pack_lanes(segments: list[dict]) -> list[dict]:
     """
-    Раскладывает сегменты недели по линиям (lane), чтобы они не пересекались по дням.
-    segment: {start_col,end_col,...}
+    Раскладываем сегменты недели по "линиям" (lane), чтобы они не пересекались по колонкам.
+    seg: {"start_col": int, "end_col": int, ...}
     """
     lanes: list[list[tuple[int, int]]] = []
 
-    for s in sorted(segments, key=lambda x: (x["start_col"], x["end_col"], x["event"].id)):
+    for seg in sorted(segments, key=lambda s: (s["start_col"], s["end_col"], s["event"].id)):
         placed = False
-        for lane_idx, intervals in enumerate(lanes):
+
+        for lane_idx, used in enumerate(lanes):
             conflict = False
-            for a, b in intervals:
-                if not (s["end_col"] < a or s["start_col"] > b):
+            for a, b in used:
+                if not (seg["end_col"] < a or seg["start_col"] > b):
                     conflict = True
                     break
             if not conflict:
-                s["lane"] = lane_idx
-                intervals.append((s["start_col"], s["end_col"]))
+                seg["lane"] = lane_idx
+                used.append((seg["start_col"], seg["end_col"]))
                 placed = True
                 break
 
         if not placed:
-            s["lane"] = len(lanes)
-            lanes.append([(s["start_col"], s["end_col"])])
+            seg["lane"] = len(lanes)
+            lanes.append([(seg["start_col"], seg["end_col"])])
 
     return segments
 
@@ -88,17 +84,15 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
     auto_close_past_events()
 
     year, month = _parse_year_month(request)
-
     cal_filter = (request.GET.get("filter") or "all").strip()
     if cal_filter not in {"all", "confirmed", "mine"}:
         cal_filter = "all"
 
-    # Сетка календаря (включая хвосты соседних месяцев)
+    # Сетка календаря (включая дни соседних месяцев)
     month_days = list(pycalendar.Calendar(firstweekday=0).monthdatescalendar(year, month))
     grid_start = month_days[0][0]
     grid_end = month_days[-1][-1]
 
-    # ВАЖНО: фильтруем по видимой сетке, а не только по месяцу
     qs = (
         Event.objects
         .filter(start_date__lte=grid_end, end_date__gte=grid_start)
@@ -116,50 +110,47 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
             | Q(engineers=request.user)
         ).distinct()
 
+    # “не всё ок”
     event_problem: dict[int, bool] = {}
     for e in qs:
         event_problem[e.id] = bool(calculate_shortages(e))
 
-    # Вместо events_by_day делаем сегменты на неделю (единая полоса по неделе)
-    segments_starting: dict[date, list[dict]] = defaultdict(list)
+    # Ключ: week_start(date) -> список сегментов на эту неделю
+    week_segments: dict[date, list[dict]] = {}
 
     for week in month_days:
         week_start = week[0]
         week_end = week[-1]
 
-        week_segments: list[dict] = []
+        segs: list[dict] = []
 
         for e in qs:
+            # пересечение события с неделей (в пределах видимой сетки)
             seg_start = max(e.start_date, week_start, grid_start)
             seg_end = min(e.end_date, week_end, grid_end)
             if seg_end < seg_start:
                 continue
 
-            start_col = (seg_start - week_start).days
-            end_col = (seg_end - week_start).days
-            span = end_col - start_col + 1
+            start_col = week.index(seg_start)  # 0..6
+            end_col = week.index(seg_end)
 
-            week_segments.append({
+            segs.append({
                 "event": e,
                 "start_col": start_col,
                 "end_col": end_col,
-                "span": span,
+                "span": (end_col - start_col + 1),
+
+                "cont_left": e.start_date < week_start,   # продолжается из прошлой недели
+                "cont_right": e.end_date > week_end,      # уходит в следующую неделю
+
                 "has_problem": event_problem.get(e.id, False),
-                "date_display": _format_date_range(e.start_date, e.end_date),
+
                 "data_start": e.start_date.strftime("%Y-%m-%d"),
                 "data_end": e.end_date.strftime("%Y-%m-%d"),
             })
 
-        week_segments = _lane_pack(week_segments)
-
-        for s in week_segments:
-            start_day = week[s["start_col"]]
-            segments_starting[start_day].append(s)
-
-        # стабилизируем порядок рисования
-        for day in week:
-            if day in segments_starting:
-                segments_starting[day].sort(key=lambda x: (x["lane"], x["end_col"], x["event"].id))
+        segs = _pack_lanes(segs)
+        week_segments[week_start] = segs
 
     ctx = {
         "year": year,
@@ -167,7 +158,8 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
         "month_name": pycalendar.month_name[month],
         "month_days": month_days,
 
-        "segments_starting": dict(segments_starting),
+        # важно: теперь календарь рисуем по сегментам
+        "week_segments": week_segments,
 
         "filter": cal_filter,
         "can_create_event": can_edit_event_card(request.user),
@@ -426,6 +418,10 @@ def event_rented_delete_view(request: HttpRequest, event_id: int, item_id: int) 
         item.delete()
     return redirect("event_detail", event_id=event.id)
 
+
+# ---------------------------
+# API: quick-create (modal)
+# ---------------------------
 
 @login_required
 def quick_create_event_api(request: HttpRequest) -> HttpResponse:

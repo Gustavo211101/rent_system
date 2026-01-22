@@ -4,6 +4,155 @@
 {% block content %}
 
 <style>
+  /* ===== Calendar (grid-based, no extra table rows) ===== */
+  .cal-wrap{
+    background:#ffffff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    overflow:hidden;
+  }
+
+  .cal-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:16px;
+  }
+
+  .cal-weekdays{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    background:#f9fafb;
+    border-bottom:1px solid #eef2f7;
+  }
+  .cal-weekdays div{
+    padding:10px 12px;
+    font-size:13px;
+    color:#374151;
+    font-weight:700;
+    border-right:1px solid #eef2f7;
+  }
+  .cal-weekdays div:last-child{ border-right:0; }
+
+  .cal-week{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    border-bottom:1px solid #eef2f7;
+  }
+  .cal-week:last-child{ border-bottom:0; }
+
+  .cal-day{
+    min-height:104px;
+    padding:8px;
+    border-right:1px solid #eef2f7;
+    position:relative;
+    cursor:pointer;
+    background:#ffffff;
+  }
+  .cal-day:last-child{ border-right:0; }
+  .cal-day.other-month{
+    background:#fafafa;
+    color:#9ca3af;
+    cursor:default;
+  }
+  .cal-day:hover{ background:rgba(0,0,0,.02); }
+  .cal-day.other-month:hover{ background:#fafafa; }
+
+  .cal-day-number{
+    font-weight:700;
+    font-size:12px;
+    color:#374151;
+    margin-bottom:6px;
+    user-select:none;
+  }
+
+  /* overlay where week event bars live */
+  .cal-bars{
+    position:absolute;
+    left:0; right:0;
+    top:26px;            /* ниже линии номера дня */
+    height:78px;         /* место под 3 линии событий */
+    pointer-events:none; /* клики по ячейкам работают */
+    overflow:hidden;     /* <-- прибиваем полосы внутри недели */
+  }
+
+  .event-bar{
+    position:absolute;
+    height:22px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 10px;
+    font-size:12px;
+    line-height:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    border:1px solid transparent;
+    box-sizing:border-box;
+    border-radius:999px;
+    pointer-events:auto; /* <-- клики по полосам и drag работают */
+    user-select:none;
+
+    left: calc(var(--start) * (100% / 7));
+    width: calc(var(--span) * (100% / 7));
+    top: calc(6px + (var(--lane) * 26px));
+  }
+
+  .event-bar a{
+    color:inherit;
+    text-decoration:none;
+    width:100%;
+    text-align:center;
+    display:block;
+  }
+
+  .event-bar.cont-left{
+    border-top-left-radius:6px;
+    border-bottom-left-radius:6px;
+  }
+  .event-bar.cont-right{
+    border-top-right-radius:6px;
+    border-bottom-right-radius:6px;
+  }
+
+  .event-bar[draggable="true"]{ cursor:grab; }
+  .event-bar.dragging{ opacity:.5; }
+
+  /* Status colors */
+  .event-bar.status-draft{
+    background: rgba(255, 215, 0, .35);
+    border-color: rgba(255, 215, 0, .55);
+    color:#2a2a2a;
+  }
+  .event-bar.status-confirmed{
+    background: rgba(40, 167, 69, .20);
+    border-color: rgba(40, 167, 69, .35);
+    color:#1f3b25;
+  }
+  .event-bar.status-cancelled{
+    background: rgba(220, 53, 69, .20);
+    border-color: rgba(220, 53, 69, .35);
+    color:#4a1c20;
+  }
+  .event-bar.status-closed{
+    background: rgba(33, 37, 41, .18);
+    border-color: rgba(33, 37, 41, .28);
+    color:#1f2327;
+  }
+
+  .event-bar.has-problem{
+    outline:2px solid rgba(0,0,0,0.35);
+    outline-offset:1px;
+  }
+
+  .cal-day.drop-hover{
+    outline:2px dashed rgba(0,0,0,.25);
+    outline-offset:-4px;
+  }
+
   /* ===== Modal ===== */
   .cal-modal-backdrop{
     position:fixed; inset:0;
@@ -66,100 +215,10 @@
     border-top:1px solid rgba(0,0,0,.08);
     background:rgba(0,0,0,.02);
   }
-
-  /* ===== Calendar interactions ===== */
-  .day-cell{ cursor:pointer; position:relative; }
-  .day-cell.other-month{ cursor:default; }
-  .day-cell.other-month:hover{ background:inherit; }
-  .day-cell:hover{ background:rgba(0,0,0,.02); }
-  .day-cell.drop-hover{ outline:2px dashed rgba(0,0,0,.25); outline-offset:-4px; }
-
-  /* ===== Segment bar ===== */
-  .event-bar{
-    position:absolute;
-    left:-8px;               /* перекрываем padding ячейки */
-    top:0;
-    height:24px;
-    padding:6px 10px;
-    display:flex;
-    align-items:center;
-    justify-content:center;   /* <-- текст по центру сегмента */
-    font-size:12px;
-    line-height:1;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    border:1px solid transparent;
-    z-index:2;
-  }
-  .event-bar a{
-    color:inherit;
-    text-decoration:none;
-    width:100%;
-    text-align:center;
-    display:block;
-  }
-
-  /* ширина сегмента: span * ширина ячейки + (span-1)*(padding*2 + border) */
-  .event-bar{
-    width: calc(var(--span) * 100% + (var(--span) - 1) * 17px + 16px);
-  }
-
-  .event-bar[draggable="true"]{ cursor:grab; }
-  .event-bar.dragging{ opacity:.5; }
-
-  /* Лейны (вертикальные строки внутри недели) */
-  .lane-0{ top:24px; }
-  .lane-1{ top:52px; }
-  .lane-2{ top:80px; }
-  .lane-3{ top:108px; }
-
-  /*
-    ====== Цвета статусов в календаре ======
-  */
-  .event-bar.status-draft{
-    background: rgba(255, 215, 0, .35);
-    border-color: rgba(255, 215, 0, .55);
-    color:#2a2a2a;
-  }
-  .event-bar.status-confirmed{
-    background: rgba(40, 167, 69, .20);
-    border-color: rgba(40, 167, 69, .35);
-    color:#1f3b25;
-  }
-  .event-bar.status-cancelled{
-    background: rgba(220, 53, 69, .20);
-    border-color: rgba(220, 53, 69, .35);
-    color:#4a1c20;
-  }
-  .event-bar.status-closed{
-    background: rgba(33, 37, 41, .18);
-    border-color: rgba(33, 37, 41, .28);
-    color:#1f2327;
-  }
-
-  /* “не всё ок” — обводка (как у тебя было), можно потом красной сделать */
-  .event-bar.has-problem{
-    outline:2px solid rgba(0,0,0,0.35);
-    outline-offset:1px;
-  }
-
-  /* table calendar base */
-  .calendar{ width:100%; border-collapse:collapse; }
-  .calendar th, .calendar td{
-    border:1px solid #eef2f7;
-    vertical-align:top;
-    width:14.28%;
-    height:132px;
-    padding:8px;
-  }
-  .calendar th{ background:#f9fafb; font-size:13px; color:#374151; }
-  .other-month{ background:#fafafa; color:#9ca3af; }
-  .day-number{ font-weight:700; font-size:12px; color:#374151; margin-bottom:6px; z-index:1; position:relative; }
 </style>
 
-<div class="calendar-top" style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px;">
-  <div class="calendar-header" style="display:flex; align-items:center; gap:12px;">
+<div class="cal-head">
+  <div style="display:flex; align-items:center; gap:12px;">
     {% if month > 1 %}
       <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"-1" }}&filter={{ filter }}">←</a>
     {% else %}
@@ -189,57 +248,37 @@
   </form>
 </div>
 
-<table class="calendar">
-  <thead>
-    <tr>
-      <th>Пн</th>
-      <th>Вт</th>
-      <th>Ср</th>
-      <th>Чт</th>
-      <th>Пт</th>
-      <th>Сб</th>
-      <th>Вс</th>
-    </tr>
-  </thead>
+<div class="cal-wrap">
+  <div class="cal-weekdays">
+    <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+  </div>
 
-  <tbody>
-    {% for week in month_days %}
-      <tr>
-        {% for day in week %}
-          <td
-            class="day-cell {% if day.month != month %}other-month{% endif %}"
-            data-day="{{ day|date:'Y-m-d' }}"
+  {% for week in month_days %}
+    <div class="cal-week">
+      {% for day in week %}
+        <div class="cal-day {% if day.month != month %}other-month{% endif %}" data-day="{{ day|date:'Y-m-d' }}">
+          <div class="cal-day-number">{{ day.day }}</div>
+        </div>
+      {% endfor %}
+
+      <div class="cal-bars">
+        {% for seg in week_segments|get_item:week.0 %}
+          <div
+            class="event-bar status-{{ seg.event.status }} {% if seg.has_problem %}has-problem{% endif %} {% if seg.cont_left %}cont-left{% endif %} {% if seg.cont_right %}cont-right{% endif %}"
+            style="--start: {{ seg.start_col }}; --span: {{ seg.span }}; --lane: {{ seg.lane }};"
+            draggable="{% if can_create_event %}true{% else %}false{% endif %}"
+            data-event-id="{{ seg.event.id }}"
+            data-start="{{ seg.data_start }}"
+            data-end="{{ seg.data_end }}"
+            title="{{ seg.event.name }}"
           >
-            <div class="day-number">{{ day.day }}</div>
-
-            {# Рисуем только сегменты, которые стартуют в этой ячейке (в рамках недели) #}
-            {% for seg in segments_starting|get_item:day %}
-              <div
-                class="event-bar status-{{ seg.event.status }} lane-{{ seg.lane }} {% if seg.has_problem %}has-problem{% endif %}"
-                style="
-                  --span: {{ seg.span }};
-                  border-top-left-radius:999px;
-                  border-bottom-left-radius:999px;
-                  border-top-right-radius:{% if seg.end_col == 6 %}999px{% else %}6px{% endif %};
-                  border-bottom-right-radius:{% if seg.end_col == 6 %}999px{% else %}6px{% endif %};
-                "
-                draggable="{% if can_create_event %}true{% else %}false{% endif %}"
-                data-event-id="{{ seg.event.id }}"
-                data-start="{{ seg.data_start }}"
-                data-end="{{ seg.data_end }}"
-                title="{{ seg.event.name }} ({{ seg.date_display }})"
-              >
-                <a href="{% url 'event_detail' seg.event.id %}">
-                  {{ seg.event.name }}
-                </a>
-              </div>
-            {% endfor %}
-          </td>
+            <a href="{% url 'event_detail' seg.event.id %}">{{ seg.event.name }}</a>
+          </div>
         {% endfor %}
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+      </div>
+    </div>
+  {% endfor %}
+</div>
 
 <!-- MODAL -->
 <div id="calModalBackdrop" class="cal-modal-backdrop" aria-hidden="true">
@@ -318,7 +357,7 @@
   }
 
   document.addEventListener("click", function(e){
-    const cell = e.target.closest(".day-cell");
+    const cell = e.target.closest(".cal-day");
     if(!cell) return;
     if(isClickOnLink(e)) return;
     if(cell.classList.contains("other-month")) return;
@@ -382,11 +421,6 @@
     }
   });
 
-  function parseDate(s){
-    const [y,m,d] = s.split("-").map(x=>parseInt(x,10));
-    return new Date(y, m-1, d);
-  }
-
   document.addEventListener("dragstart", function(e){
     const ev = e.target.closest(".event-bar");
     if(!ev) return;
@@ -406,45 +440,6 @@
   document.addEventListener("dragend", function(e){
     if(draggingEl) draggingEl.classList.remove("dragging");
     draggingEl = null;
-    document.querySelectorAll(".day-cell.drop-hover").forEach(x=>x.classList.remove("drop-hover"));
-  });
-
-  document.addEventListener("dragover", function(e){
-    const cell = e.target.closest(".day-cell");
-    if(!cell) return;
-    if(cell.classList.contains("other-month")) return;
-    if(!canCreate) return;
-
-    e.preventDefault();
-    cell.classList.add("drop-hover");
-  });
-
-  document.addEventListener("dragleave", function(e){
-    const cell = e.target.closest(".day-cell");
-    if(!cell) return;
-    cell.classList.remove("drop-hover");
-  });
-
-  document.addEventListener("drop", async function(e){
-    const cell = e.target.closest(".day-cell");
-    if(!cell) return;
-    if(cell.classList.contains("other-month")) return;
-    if(!canCreate) return;
-
-    e.preventDefault();
-    cell.classList.remove("drop-hover");
-
-    let payload = null;
-    try{
-      payload = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
-    }catch(err){
-      return;
-    }
-
-    if(!payload || !payload.event_id) return;
-
-    // дальше оставляю как у тебя было (если у тебя есть endpoint на перенос — он останется)
-    // здесь специально не ломаю поведение
   });
 
 })();
