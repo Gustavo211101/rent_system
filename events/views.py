@@ -179,6 +179,8 @@ def event_list_view(request: HttpRequest) -> HttpResponse:
     return render(request, "events/event_list.html", {
         "events": qs,
         "can_create_event": can_edit_event_card(request.user),
+        "can_edit": can_edit_event_card(request.user),
+        "can_delete": can_edit_event_card(request.user),
     })
 
 
@@ -261,6 +263,37 @@ def event_update_view(request: HttpRequest, event_id: int) -> HttpResponse:
         form = EventForm(instance=event)
 
     return render(request, "events/event_form.html", {"form": form, "title": "Редактировать мероприятие"})
+
+
+@login_required
+def event_delete_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    event = get_object_or_404(Event, id=event_id)
+
+    # Менеджер/суперадмин (то же, что и для редактирования карточки)
+    if not can_edit_event_card(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    if request.method == "POST":
+        event_repr = str(event)
+        try:
+            event.delete()
+        except Exception:
+            # на всякий — не даём 500 пользователю
+            messages.error(request, "Не удалось удалить мероприятие.")
+            return redirect("event_list")
+
+        log_action(
+            user=request.user,
+            action="delete",
+            obj=event,
+            entity_type="Event",
+            message=f"Удалено мероприятие: {event_repr}",
+        )
+        messages.success(request, "Мероприятие удалено.")
+        return redirect("event_list")
+
+    # если кто-то открыл GET — покажем confirm page (можно не использовать, но пусть будет)
+    return render(request, "events/event_confirm_delete.html", {"event": event})
 
 
 @login_required

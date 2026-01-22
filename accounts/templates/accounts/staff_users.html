@@ -12,7 +12,7 @@
       <option value="{{ r.id }}" {% if role == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
     {% endfor %}
   </select>
-  <button class="btn-secondary" type="submit">Фильтр</button>
+  <button class="btn-secondary" type="submit">Применить</button>
   <a class="btn-secondary" href="{% url 'staff_users' %}">Сброс</a>
 
   <div style="margin-left:auto;">

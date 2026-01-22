@@ -6,6 +6,7 @@ from .views import (
     event_detail_view,
     event_create_view,
     event_update_view,
+    event_delete_view,
     event_set_status_view,
 
     event_equipment_add_view,
@@ -27,6 +28,7 @@ urlpatterns = [
     path("events/create/", event_create_view, name="event_create"),
     path("events/<int:event_id>/", event_detail_view, name="event_detail"),
     path("events/<int:event_id>/edit/", event_update_view, name="event_edit"),
+    path("events/<int:event_id>/delete/", event_delete_view, name="event_delete"),
     path("events/<int:event_id>/status/<str:status>/", event_set_status_view, name="event_set_status"),
 
     path("events/<int:event_id>/equipment/add/", event_equipment_add_view, name="event_equipment_add"),

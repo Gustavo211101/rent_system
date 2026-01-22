@@ -1,12 +1,12 @@
 from datetime import date
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import render, redirect
-from django.contrib import messages
 
-from events.models import Event
 from accounts.roles import ROLE_MANAGER, ROLE_SENIOR_ENGINEER, ROLE_ENGINEER
+from events.models import Event
 
 
 def _get_primary_role(user):
@@ -63,17 +63,16 @@ def dashboard(request):
     today = date.today()
 
     q = Q(responsible=user)
-
     if hasattr(Event, "s_engineer"):
         q = q | Q(s_engineer=user)
-
     if hasattr(Event, "engineers"):
         q = q | Q(engineers=user)
 
     qs = (
-        Event.objects.filter(q)
+        Event.objects
+        .filter(q)
         .distinct()
-        .order_by("-start_date", "-id")
+        .order_by("start_date", "id")
     )
 
     if hasattr(Event, "s_engineer"):
@@ -90,6 +89,7 @@ def dashboard(request):
     for ev in qs:
         end = ev.end_date or ev.start_date
         role_name, role_slug = _event_user_role(ev, user)
+
         item = {
             "event": ev,
             "date_display": _format_date_range(ev.start_date, ev.end_date),
@@ -101,6 +101,11 @@ def dashboard(request):
             upcoming.append(item)
         else:
             past.append(item)
+
+    # ближайшие — сверху
+    upcoming.sort(key=lambda x: (x["event"].start_date, x["event"].id))
+    # прошедшие — ниже, от свежих к старым
+    past.sort(key=lambda x: (x["event"].start_date, x["event"].id), reverse=True)
 
     stats = {
         "total": len(upcoming) + len(past),
@@ -119,10 +124,6 @@ def dashboard(request):
     }
     return render(request, "cabinet/dashboard.html", context)
 
-
-# =========================
-# ВРЕМЕННЫЕ ЗАГЛУШКИ
-# =========================
 
 @login_required
 def profile_edit(request):

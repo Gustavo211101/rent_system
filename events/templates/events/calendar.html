@@ -3,8 +3,9 @@
 
 {% block content %}
 
+{% now "Y-m-d" as today_str %}
+
 <style>
-  /* ===== Calendar (grid-based, no extra table rows) ===== */
   .cal-wrap{
     background:#ffffff;
     border:1px solid #e5e7eb;
@@ -40,11 +41,12 @@
     display:grid;
     grid-template-columns:repeat(7, 1fr);
     border-bottom:1px solid #eef2f7;
+    --lanes: 3;
   }
   .cal-week:last-child{ border-bottom:0; }
 
   .cal-day{
-    min-height:104px;
+    min-height:120px;
     padding:8px;
     border-right:1px solid #eef2f7;
     position:relative;
@@ -52,13 +54,21 @@
     background:#ffffff;
   }
   .cal-day:last-child{ border-right:0; }
+
   .cal-day.other-month{
     background:#fafafa;
     color:#9ca3af;
     cursor:default;
+    opacity: 0.70; /* тише, но не скрываем */
   }
   .cal-day:hover{ background:rgba(0,0,0,.02); }
   .cal-day.other-month:hover{ background:#fafafa; }
+
+  .cal-day.today{
+    background: rgba(59,130,246,0.04);
+    outline: 2px solid rgba(59,130,246,0.35);
+    outline-offset: -2px;
+  }
 
   .cal-day-number{
     font-weight:700;
@@ -68,14 +78,13 @@
     user-select:none;
   }
 
-  /* overlay where week event bars live */
   .cal-bars{
     position:absolute;
     left:0; right:0;
-    top:26px;            /* ниже линии номера дня */
-    height:78px;         /* место под 3 линии событий */
-    pointer-events:none; /* клики по ячейкам работают */
-    overflow:hidden;     /* <-- прибиваем полосы внутри недели */
+    top:26px;
+    height: calc(12px + (var(--lanes) * 26px));
+    pointer-events:none;
+    overflow:hidden;
   }
 
   .event-bar{
@@ -93,12 +102,14 @@
     border:1px solid transparent;
     box-sizing:border-box;
     border-radius:999px;
-    pointer-events:auto; /* <-- клики по полосам и drag работают */
+    pointer-events:auto;
     user-select:none;
 
     left: calc(var(--start) * (100% / 7));
     width: calc(var(--span) * (100% / 7));
     top: calc(6px + (var(--lane) * 26px));
+
+    transition: filter 140ms ease, box-shadow 140ms ease, transform 140ms ease;
   }
 
   .event-bar a{
@@ -107,6 +118,13 @@
     width:100%;
     text-align:center;
     display:block;
+  }
+
+  .event-bar:hover{
+    filter: brightness(0.97);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.14);
+    transform: translateY(-1px);
+    z-index: 5;
   }
 
   .event-bar.cont-left{
@@ -121,7 +139,6 @@
   .event-bar[draggable="true"]{ cursor:grab; }
   .event-bar.dragging{ opacity:.5; }
 
-  /* Status colors */
   .event-bar.status-draft{
     background: rgba(255, 215, 0, .35);
     border-color: rgba(255, 215, 0, .55);
@@ -153,7 +170,7 @@
     outline-offset:-4px;
   }
 
-  /* ===== Modal ===== */
+  /* ===== Generic modal styles (shared) ===== */
   .cal-modal-backdrop{
     position:fixed; inset:0;
     background:rgba(0,0,0,.45);
@@ -215,6 +232,16 @@
     border-top:1px solid rgba(0,0,0,.08);
     background:rgba(0,0,0,.02);
   }
+
+  /* Preview modal specifics */
+  .cal-preview-kv{
+    display:grid;
+    grid-template-columns: 110px 1fr;
+    gap:8px 12px;
+    font-size:14px;
+  }
+  .cal-preview-kv .k{ color:#6b7280; }
+  .cal-preview-kv .v{ color:#111827; }
 </style>
 
 <div class="cal-head">
@@ -256,7 +283,10 @@
   {% for week in month_days %}
     <div class="cal-week">
       {% for day in week %}
-        <div class="cal-day {% if day.month != month %}other-month{% endif %}" data-day="{{ day|date:'Y-m-d' }}">
+        <div class="cal-day
+                    {% if day.month != month %}other-month{% endif %}
+                    {% if day|date:'Y-m-d' == today_str %}today{% endif %}"
+             data-day="{{ day|date:'Y-m-d' }}">
           <div class="cal-day-number">{{ day.day }}</div>
         </div>
       {% endfor %}
@@ -264,13 +294,21 @@
       <div class="cal-bars">
         {% for seg in week_segments|get_item:week.0 %}
           <div
-            class="event-bar status-{{ seg.event.status }} {% if seg.has_problem %}has-problem{% endif %} {% if seg.cont_left %}cont-left{% endif %} {% if seg.cont_right %}cont-right{% endif %}"
+            class="event-bar
+                   status-{{ seg.event.status }}
+                   {% if seg.has_problem %}has-problem{% endif %}
+                   {% if seg.cont_left %}cont-left{% endif %}
+                   {% if seg.cont_right %}cont-right{% endif %}"
             style="--start: {{ seg.start_col }}; --span: {{ seg.span }}; --lane: {{ seg.lane }};"
             draggable="{% if can_create_event %}true{% else %}false{% endif %}"
             data-event-id="{{ seg.event.id }}"
             data-start="{{ seg.data_start }}"
             data-end="{{ seg.data_end }}"
-            title="{{ seg.event.name }}"
+            data-url="{% url 'event_detail' seg.event.id %}"
+            data-name="{{ seg.event.name|escapejs }}"
+            data-status="{{ seg.event.get_status_display|escapejs }}"
+            data-dates="{{ seg.event.start_date|date:'d.m.Y' }} – {{ seg.event.end_date|date:'d.m.Y' }}"
+            title="{{ seg.event.name }} · {{ seg.event.start_date|date:'d.m.Y' }} – {{ seg.event.end_date|date:'d.m.Y' }} · {{ seg.event.get_status_display }}"
           >
             <a href="{% url 'event_detail' seg.event.id %}">{{ seg.event.name }}</a>
           </div>
@@ -280,35 +318,58 @@
   {% endfor %}
 </div>
 
-<!-- MODAL -->
-<div id="calModalBackdrop" class="cal-modal-backdrop" aria-hidden="true">
-  <div class="cal-modal" role="dialog" aria-modal="true" aria-labelledby="calModalTitle">
+<!-- CREATE MODAL -->
+<div id="calCreateBackdrop" class="cal-modal-backdrop" aria-hidden="true">
+  <div class="cal-modal" role="dialog" aria-modal="true" aria-labelledby="calCreateTitle">
     <div class="cal-modal__head">
-      <h3 id="calModalTitle" class="cal-modal__title">Создать мероприятие</h3>
-      <button type="button" class="cal-modal__close" id="calModalClose" aria-label="Закрыть">✕</button>
+      <h3 id="calCreateTitle" class="cal-modal__title">Создать мероприятие</h3>
+      <button type="button" class="cal-modal__close" id="calCreateClose" aria-label="Закрыть">✕</button>
     </div>
 
     <div class="cal-modal__body">
       <div class="muted" style="margin-bottom:10px;">
-        Дата выбрана: <strong id="calModalDateText"></strong>
+        Дата выбрана: <strong id="calCreateDateText"></strong>
       </div>
 
       <div class="cal-modal__row">
         <label>Название</label>
-        <input id="calModalName" type="text" placeholder="Например: Съёмка / выезд / мероприятие">
+        <input id="calCreateName" type="text" placeholder="Например: Съёмка / выезд / мероприятие">
       </div>
 
       <div class="cal-modal__row">
         <label>Конец (опц.)</label>
-        <input id="calModalEnd" type="date">
+        <input id="calCreateEnd" type="date">
       </div>
 
-      <div id="calModalError" class="muted" style="margin-top:10px; color:#b00020;"></div>
+      <div id="calCreateError" class="muted" style="margin-top:10px; color:#b00020;"></div>
     </div>
 
     <div class="cal-modal__actions">
-      <button type="button" class="btn-secondary" id="calModalCancel">Отмена</button>
-      <button type="button" class="btn" id="calModalSave">Создать</button>
+      <button type="button" class="btn-secondary" id="calCreateCancel">Отмена</button>
+      <button type="button" class="btn" id="calCreateSave">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div id="calPreviewBackdrop" class="cal-modal-backdrop" aria-hidden="true">
+  <div class="cal-modal" role="dialog" aria-modal="true" aria-labelledby="calPreviewTitle">
+    <div class="cal-modal__head">
+      <h3 id="calPreviewTitle" class="cal-modal__title">Мероприятие</h3>
+      <button type="button" class="cal-modal__close" id="calPreviewClose" aria-label="Закрыть">✕</button>
+    </div>
+
+    <div class="cal-modal__body">
+      <div class="cal-preview-kv">
+        <div class="k">Название</div><div class="v" id="pvName">—</div>
+        <div class="k">Даты</div><div class="v" id="pvDates">—</div>
+        <div class="k">Статус</div><div class="v" id="pvStatus">—</div>
+      </div>
+    </div>
+
+    <div class="cal-modal__actions">
+      <button type="button" class="btn-secondary" id="calPreviewCancel">Закрыть</button>
+      <a href="#" class="btn" id="calPreviewOpen">Открыть карточку</a>
     </div>
   </div>
 </div>
@@ -317,18 +378,7 @@
 (function(){
   const canCreate = {{ can_create_event|yesno:"true,false" }};
 
-  const backdrop = document.getElementById("calModalBackdrop");
-  const closeBtn = document.getElementById("calModalClose");
-  const cancelBtn = document.getElementById("calModalCancel");
-  const saveBtn = document.getElementById("calModalSave");
-  const dateText = document.getElementById("calModalDateText");
-  const nameInput = document.getElementById("calModalName");
-  const endInput = document.getElementById("calModalEnd");
-  const errBox = document.getElementById("calModalError");
-
-  let selectedDay = null;
-  let draggingEl = null;
-
+  // ---- CSRF ----
   function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -337,25 +387,93 @@
   }
   const csrftoken = getCookie("csrftoken");
 
-  function openModal(dayStr){
-    selectedDay = dayStr;
-    dateText.textContent = dayStr;
-    endInput.value = dayStr;
-    nameInput.value = "";
-    errBox.textContent = "";
-    backdrop.style.display = "flex";
-    backdrop.setAttribute("aria-hidden","false");
-    setTimeout(()=>nameInput.focus(), 50);
+  // ---- auto heights ----
+  function autoWeekHeights(){
+    document.querySelectorAll(".cal-week").forEach(week => {
+      const bars = Array.from(week.querySelectorAll(".event-bar"));
+      let maxLane = -1;
+      bars.forEach(b => {
+        const lane = parseInt(getComputedStyle(b).getPropertyValue("--lane")) || 0;
+        if (lane > maxLane) maxLane = lane;
+      });
+
+      const lanes = Math.max(1, maxLane + 1);
+      week.style.setProperty("--lanes", String(lanes));
+
+      const extra = Math.max(0, lanes - 3) * 26;
+      week.querySelectorAll(".cal-day").forEach(d => {
+        d.style.minHeight = String(120 + extra) + "px";
+      });
+    });
   }
-  function closeModal(){
-    backdrop.style.display = "none";
-    backdrop.setAttribute("aria-hidden","true");
+  window.requestAnimationFrame(autoWeekHeights);
+
+  // ---- Create modal wiring ----
+  const createBackdrop = document.getElementById("calCreateBackdrop");
+  const createCloseBtn = document.getElementById("calCreateClose");
+  const createCancelBtn = document.getElementById("calCreateCancel");
+  const createSaveBtn = document.getElementById("calCreateSave");
+  const createDateText = document.getElementById("calCreateDateText");
+  const createNameInput = document.getElementById("calCreateName");
+  const createEndInput = document.getElementById("calCreateEnd");
+  const createErrBox = document.getElementById("calCreateError");
+  let selectedDay = null;
+
+  function openCreateModal(dayStr){
+    selectedDay = dayStr;
+    createDateText.textContent = dayStr;
+    createEndInput.value = dayStr;
+    createNameInput.value = "";
+    createErrBox.textContent = "";
+    createBackdrop.style.display = "flex";
+    createBackdrop.setAttribute("aria-hidden","false");
+    setTimeout(()=>createNameInput.focus(), 50);
+  }
+  function closeCreateModal(){
+    createBackdrop.style.display = "none";
+    createBackdrop.setAttribute("aria-hidden","true");
     selectedDay = null;
   }
+  createBackdrop.addEventListener("click", function(e){
+    if(e.target === createBackdrop) closeCreateModal();
+  });
+  createCloseBtn.addEventListener("click", closeCreateModal);
+  createCancelBtn.addEventListener("click", closeCreateModal);
+
+  // ---- Preview modal wiring ----
+  const pvBackdrop = document.getElementById("calPreviewBackdrop");
+  const pvCloseBtn = document.getElementById("calPreviewClose");
+  const pvCancelBtn = document.getElementById("calPreviewCancel");
+  const pvOpenBtn = document.getElementById("calPreviewOpen");
+  const pvName = document.getElementById("pvName");
+  const pvDates = document.getElementById("pvDates");
+  const pvStatus = document.getElementById("pvStatus");
+
+  function openPreviewModal(data){
+    pvName.textContent = data.name || "—";
+    pvDates.textContent = data.dates || "—";
+    pvStatus.textContent = data.status || "—";
+    pvOpenBtn.setAttribute("href", data.url || "#");
+
+    pvBackdrop.style.display = "flex";
+    pvBackdrop.setAttribute("aria-hidden","false");
+  }
+  function closePreviewModal(){
+    pvBackdrop.style.display = "none";
+    pvBackdrop.setAttribute("aria-hidden","true");
+  }
+  pvBackdrop.addEventListener("click", function(e){
+    if(e.target === pvBackdrop) closePreviewModal();
+  });
+  pvCloseBtn.addEventListener("click", closePreviewModal);
+  pvCancelBtn.addEventListener("click", closePreviewModal);
+
+  // ---- helpers ----
   function isClickOnLink(e){
     return e.target && (e.target.tagName === "A" || e.target.closest("a"));
   }
 
+  // Click on day -> create modal
   document.addEventListener("click", function(e){
     const cell = e.target.closest(".cal-day");
     if(!cell) return;
@@ -365,33 +483,54 @@
 
     const dayStr = cell.getAttribute("data-day");
     if(!dayStr) return;
-    openModal(dayStr);
+    openCreateModal(dayStr);
   });
 
-  backdrop.addEventListener("click", function(e){
-    if(e.target === backdrop) closeModal();
+  // Click on event -> preview modal (with button to open)
+  document.addEventListener("click", function(e){
+    const bar = e.target.closest(".event-bar");
+    if(!bar) return;
+
+    // allow ctrl/cmd click to open as usual
+    if(e.metaKey || e.ctrlKey) return;
+
+    // if dragging, ignore click
+    if(bar.classList.contains("dragging")) return;
+
+    // prevent navigation
+    if(e.target.tagName === "A" || e.target.closest("a")) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    openPreviewModal({
+      name: bar.getAttribute("data-name"),
+      dates: bar.getAttribute("data-dates"),
+      status: bar.getAttribute("data-status"),
+      url: bar.getAttribute("data-url"),
+    });
   });
-  closeBtn.addEventListener("click", closeModal);
-  cancelBtn.addEventListener("click", closeModal);
 
   document.addEventListener("keydown", function(e){
-    if(e.key === "Escape" && backdrop.style.display === "flex"){
-      closeModal();
+    if(e.key === "Escape"){
+      if(createBackdrop.style.display === "flex") closeCreateModal();
+      if(pvBackdrop.style.display === "flex") closePreviewModal();
     }
   });
 
-  saveBtn.addEventListener("click", async function(){
+  // Create save
+  createSaveBtn.addEventListener("click", async function(){
     if(!selectedDay) return;
-    const name = (nameInput.value || "").trim();
-    const end = (endInput.value || "").trim() || selectedDay;
+    const name = (createNameInput.value || "").trim();
+    const end = (createEndInput.value || "").trim() || selectedDay;
 
-    errBox.textContent = "";
+    createErrBox.textContent = "";
     if(!name){
-      errBox.textContent = "Название обязательно.";
+      createErrBox.textContent = "Название обязательно.";
       return;
     }
 
-    saveBtn.disabled = true;
+    createSaveBtn.disabled = true;
 
     try{
       const resp = await fetch("{% url 'quick_create_event_api' %}", {
@@ -409,17 +548,20 @@
 
       const data = await resp.json();
       if(!data.ok){
-        errBox.textContent = data.error || "Ошибка создания";
-        saveBtn.disabled = false;
+        createErrBox.textContent = data.error || "Ошибка создания";
+        createSaveBtn.disabled = false;
         return;
       }
 
       window.location.reload();
     }catch(err){
-      errBox.textContent = "Ошибка сети / сервера";
-      saveBtn.disabled = false;
+      createErrBox.textContent = "Ошибка сети / сервера";
+      createSaveBtn.disabled = false;
     }
   });
+
+  // Drag & drop move
+  let draggingEl = null;
 
   document.addEventListener("dragstart", function(e){
     const ev = e.target.closest(".event-bar");
@@ -440,6 +582,64 @@
   document.addEventListener("dragend", function(e){
     if(draggingEl) draggingEl.classList.remove("dragging");
     draggingEl = null;
+    document.querySelectorAll(".cal-day.drop-hover").forEach(x=>x.classList.remove("drop-hover"));
+  });
+
+  document.addEventListener("dragover", function(e){
+    const cell = e.target.closest(".cal-day");
+    if(!cell) return;
+    if(cell.classList.contains("other-month")) return;
+    if(!canCreate) return;
+
+    e.preventDefault();
+    cell.classList.add("drop-hover");
+  });
+
+  document.addEventListener("dragleave", function(e){
+    const cell = e.target.closest(".cal-day");
+    if(!cell) return;
+    cell.classList.remove("drop-hover");
+  });
+
+  document.addEventListener("drop", async function(e){
+    const cell = e.target.closest(".cal-day");
+    if(!cell) return;
+    if(cell.classList.contains("other-month")) return;
+    if(!canCreate) return;
+
+    e.preventDefault();
+    cell.classList.remove("drop-hover");
+
+    let payload = null;
+    try{
+      payload = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
+    }catch(err){
+      return;
+    }
+
+    if(!payload || !payload.event_id) return;
+
+    const newStart = cell.getAttribute("data-day");
+    if(!newStart) return;
+
+    try{
+      const resp = await fetch(`{% url 'quick_move_event_api' 0 %}`.replace("/0/", `/${payload.event_id}/`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify({ new_start_date: newStart }),
+      });
+      const data = await resp.json();
+      if(!data.ok){
+        alert(data.error || "Не удалось переместить");
+        return;
+      }
+      window.location.reload();
+    }catch(err){
+      alert("Ошибка сети / сервера");
+    }
   });
 
 })();

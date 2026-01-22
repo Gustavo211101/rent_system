@@ -42,6 +42,15 @@
             <td>{{ event.location }}</td>
             <td>
                 <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Открыть</a>
+                {% if can_delete %}
+                  <form method="post" action="{% url 'event_delete' event.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-secondary"
+                            onclick="return confirm('Удалить мероприятие «{{ event.name|escapejs }}»? Это действие нельзя отменить.');">
+                      Удалить
+                    </button>
+                  </form>
+                {% endif %}
                 {% if can_edit %}
                     <a class="btn-secondary" href="{% url 'event_edit' event.id %}">Редактировать</a>
                 {% endif %}

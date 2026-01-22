@@ -190,27 +190,45 @@ def category_update_view(request, category_id):
 
 
 @login_required
+@login_required
 def category_delete_view(request, category_id):
     if not can_edit_inventory(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
     obj = get_object_or_404(EquipmentCategory, id=category_id)
+    equipment_count = Equipment.objects.filter(category=obj).count()
 
     if request.method == "POST":
+        # Если в категории есть оборудование — удалять нельзя
+        if equipment_count > 0:
+            messages.error(
+                request,
+                f"Нельзя удалить категорию: в ней {equipment_count} шт. оборудования. Сначала перенесите или удалите предметы."
+            )
+            return redirect("equipment_list_categories")
+
         obj_repr = str(obj)
         obj_id = str(obj.id)
-        obj.delete()
+
+        try:
+            obj.delete()
+        except ProtectedError:
+            messages.error(
+                request,
+                "Нельзя удалить категорию, потому что в ней есть оборудование. Сначала перенесите или удалите предметы из этой категории."
+            )
+            return redirect("equipment_list_categories")
+
         log_action(
             user=request.user,
             action="delete",
             entity_type="EquipmentCategory",
-            entity_id=obj_id,
-            entity_repr=obj_repr,
-            details="Удалена категория",
+            message=f"Удалена категория: {obj_repr} (id={obj_id})",
         )
         messages.success(request, "Категория удалена.")
         return redirect("equipment_list_categories")
 
     return render(request, "inventory/category_confirm_delete.html", {
         "category": obj,
+        "equipment_count": equipment_count,
     })
