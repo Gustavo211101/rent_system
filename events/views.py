@@ -6,7 +6,6 @@ from datetime import date, datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -50,20 +49,59 @@ def _month_bounds(year: int, month: int) -> tuple[date, date]:
     return first, last
 
 
+def _format_date_range(start: date, end: date) -> str:
+    if not end or end == start:
+        return start.strftime("%d.%m.%Y")
+    return f"{start.strftime('%d.%m.%Y')}–{end.strftime('%d.%m.%Y')}"
+
+
+def _lane_pack(segments: list[dict]) -> list[dict]:
+    """
+    Раскладывает сегменты недели по линиям (lane), чтобы они не пересекались по дням.
+    segment: {start_col,end_col,...}
+    """
+    lanes: list[list[tuple[int, int]]] = []
+
+    for s in sorted(segments, key=lambda x: (x["start_col"], x["end_col"], x["event"].id)):
+        placed = False
+        for lane_idx, intervals in enumerate(lanes):
+            conflict = False
+            for a, b in intervals:
+                if not (s["end_col"] < a or s["start_col"] > b):
+                    conflict = True
+                    break
+            if not conflict:
+                s["lane"] = lane_idx
+                intervals.append((s["start_col"], s["end_col"]))
+                placed = True
+                break
+
+        if not placed:
+            s["lane"] = len(lanes)
+            lanes.append([(s["start_col"], s["end_col"])])
+
+    return segments
+
+
 @login_required
 def calendar_view(request: HttpRequest) -> HttpResponse:
     auto_close_past_events()
 
     year, month = _parse_year_month(request)
-    month_start, month_end = _month_bounds(year, month)
 
     cal_filter = (request.GET.get("filter") or "all").strip()
     if cal_filter not in {"all", "confirmed", "mine"}:
         cal_filter = "all"
 
+    # Сетка календаря (включая хвосты соседних месяцев)
+    month_days = list(pycalendar.Calendar(firstweekday=0).monthdatescalendar(year, month))
+    grid_start = month_days[0][0]
+    grid_end = month_days[-1][-1]
+
+    # ВАЖНО: фильтруем по видимой сетке, а не только по месяцу
     qs = (
         Event.objects
-        .filter(start_date__lte=month_end, end_date__gte=month_start)
+        .filter(start_date__lte=grid_end, end_date__gte=grid_start)
         .select_related("responsible", "s_engineer")
         .prefetch_related("engineers")
         .order_by("start_date", "id")
@@ -82,43 +120,54 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
     for e in qs:
         event_problem[e.id] = bool(calculate_shortages(e))
 
-    events_by_day: dict[date, list[dict]] = defaultdict(list)
+    # Вместо events_by_day делаем сегменты на неделю (единая полоса по неделе)
+    segments_starting: dict[date, list[dict]] = defaultdict(list)
 
-    for e in qs:
-        start = max(e.start_date, month_start)
-        end = min(e.end_date, month_end)
+    for week in month_days:
+        week_start = week[0]
+        week_end = week[-1]
 
-        d = start
-        while d <= end:
-            is_start = (d == e.start_date)
-            is_end = (d == e.end_date)
-            is_single = (e.start_date == e.end_date)
+        week_segments: list[dict] = []
 
-            if e.start_date < month_start and d == month_start:
-                is_start = True
-            if e.end_date > month_end and d == month_end:
-                is_end = True
+        for e in qs:
+            seg_start = max(e.start_date, week_start, grid_start)
+            seg_end = min(e.end_date, week_end, grid_end)
+            if seg_end < seg_start:
+                continue
 
-            events_by_day[d].append({
+            start_col = (seg_start - week_start).days
+            end_col = (seg_end - week_start).days
+            span = end_col - start_col + 1
+
+            week_segments.append({
                 "event": e,
-                "is_start": is_start,
-                "is_end": is_end,
-                "is_single": is_single,
+                "start_col": start_col,
+                "end_col": end_col,
+                "span": span,
                 "has_problem": event_problem.get(e.id, False),
+                "date_display": _format_date_range(e.start_date, e.end_date),
+                "data_start": e.start_date.strftime("%Y-%m-%d"),
+                "data_end": e.end_date.strftime("%Y-%m-%d"),
             })
-            d = d + timedelta(days=1)
 
-    for k in events_by_day:
-        events_by_day[k].sort(key=lambda x: (x["event"].start_date, x["event"].id))
+        week_segments = _lane_pack(week_segments)
 
-    month_days = list(pycalendar.Calendar(firstweekday=0).monthdatescalendar(year, month))
+        for s in week_segments:
+            start_day = week[s["start_col"]]
+            segments_starting[start_day].append(s)
+
+        # стабилизируем порядок рисования
+        for day in week:
+            if day in segments_starting:
+                segments_starting[day].sort(key=lambda x: (x["lane"], x["end_col"], x["event"].id))
 
     ctx = {
         "year": year,
         "month": month,
         "month_name": pycalendar.month_name[month],
         "month_days": month_days,
-        "events_by_day": dict(events_by_day),
+
+        "segments_starting": dict(segments_starting),
 
         "filter": cal_filter,
         "can_create_event": can_edit_event_card(request.user),
@@ -377,10 +426,6 @@ def event_rented_delete_view(request: HttpRequest, event_id: int, item_id: int) 
         item.delete()
     return redirect("event_detail", event_id=event.id)
 
-
-# ---------------------------
-# API: quick-create (modal)
-# ---------------------------
 
 @login_required
 def quick_create_event_api(request: HttpRequest) -> HttpResponse:
