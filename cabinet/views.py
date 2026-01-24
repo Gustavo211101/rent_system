@@ -23,6 +23,9 @@ def _get_primary_role(user):
     if ROLE_ENGINEER in groups:
         return (ROLE_ENGINEER, "engineer")
 
+    if groups:
+        any_role = sorted(groups)[0]
+        return (any_role, "custom")
     return ("—", "unknown")
 
 
