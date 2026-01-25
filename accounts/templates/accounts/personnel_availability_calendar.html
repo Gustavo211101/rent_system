@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load event_extras %}
+
+{% block content %}
+<div class="toolbar">
+  <h1 style="margin:0;">Календарь занятости</h1>
+
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <a class="btn-secondary" href="{% url 'personnel' %}">← Назад в персонал</a>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <form method="get" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+    <div>
+      <label>Пользователь</label>
+      <select name="user_id">
+        <option value="">— выберите —</option>
+        {% for u in users %}
+          <option value="{{ u.id }}" {% if selected_user and selected_user.id == u.id %}selected{% endif %}>
+            {{ u.username }}{% if u.get_full_name %} ({{ u.get_full_name }}){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>Год</label>
+      <input type="number" name="year" value="{{ year }}" style="width:120px;">
+    </div>
+
+    <div>
+      <label>Месяц</label>
+      <input type="number" name="month" value="{{ month }}" min="1" max="12" style="width:120px;">
+    </div>
+
+    <div>
+      <button class="btn" type="submit">Показать</button>
+    </div>
+  </form>
+</div>
+
+<div style="margin-top:16px;">
+  <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
+</div>
+
+<style>
+  .cal-wrap{
+    margin-top:12px;
+    background:#ffffff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .cal-weekdays, .cal-week{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+  }
+  .cal-weekdays{
+    background:#f9fafb;
+    border-bottom:1px solid #eef2f7;
+  }
+  .cal-weekdays div{
+    padding:10px 12px;
+    font-size:13px;
+    color:#374151;
+    font-weight:700;
+    border-right:1px solid #eef2f7;
+  }
+  .cal-weekdays div:last-child{ border-right:0; }
+
+  .cal-week{
+    position:relative;
+    border-bottom:1px solid #eef2f7;
+    --lanes: 3;
+  }
+  .cal-week:last-child{ border-bottom:0; }
+
+  .cal-day{
+    min-height:104px;
+    padding:8px;
+    border-right:1px solid #eef2f7;
+    position:relative;
+    background:#ffffff;
+  }
+  .cal-day:last-child{ border-right:0; }
+
+  .cal-day.other-month{
+    background:#fafafa;
+    color:#9ca3af;
+    opacity:0.70;
+  }
+
+  .cal-day-number{
+    font-weight:700;
+    font-size:12px;
+    color:#374151;
+    margin-bottom:6px;
+  }
+
+  .cal-bars{
+    position:absolute;
+    left:0; right:0;
+    top:26px;
+    height: calc(12px + (var(--lanes) * 26px));
+    overflow:hidden;
+    pointer-events:none;
+  }
+
+  .event-bar{
+    position:absolute;
+    height:22px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 10px;
+    font-size:12px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,0.10);
+    background:rgba(0,0,0,0.04);
+    left: calc(var(--start) * (100% / 7));
+    width: calc(var(--span) * (100% / 7));
+    top: calc(6px + (var(--lane) * 26px));
+    pointer-events:auto;
+  }
+  .event-bar a{ color:inherit; text-decoration:none; width:100%; text-align:center; display:block; }
+</style>
+
+<div class="cal-wrap">
+  <div class="cal-weekdays">
+    <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+  </div>
+
+  {% for week in month_days %}
+    <div class="cal-week">
+      {% for day in week %}
+        <div class="cal-day {% if day.month != month %}other-month{% endif %}">
+          <div class="cal-day-number">{{ day.day }}</div>
+        </div>
+      {% endfor %}
+
+      <div class="cal-bars">
+        {% for seg in week_segments|get_item:week.0 %}
+          <div class="event-bar"
+               style="--start: {{ seg.start_col }}; --span: {{ seg.span }}; --lane: {{ seg.lane }};"
+               title="{{ seg.event.name }}">
+            <a href="{% url 'event_detail' seg.event.id %}">{{ seg.event.name }}</a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+{% if not selected_user %}
+  <p style="color:#6b7280; margin-top:12px;">Выберите пользователя сверху, чтобы показать его мероприятия.</p>
+{% endif %}
+
+{% endblock %}

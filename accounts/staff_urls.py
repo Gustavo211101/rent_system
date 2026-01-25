@@ -9,6 +9,9 @@ urlpatterns = [
     path("personnel/roles/", staff_views.staff_roles_view, name="staff_roles"),
     path("personnel/roles/", staff_views.staff_roles_view, name="personnel_roles"),
 
+    # ✅ NEW: availability calendar
+    path("personnel/availability/", staff_views.staff_availability_calendar_view, name="personnel_availability"),
+
     # users CRUD
     path("personnel/user/add/", staff_views.staff_user_add_view, name="staff_user_add"),
     path("personnel/user/add/", staff_views.staff_user_add_view, name="personnel_user_add"),

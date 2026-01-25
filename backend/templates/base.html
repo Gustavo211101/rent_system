@@ -32,13 +32,33 @@
             <a class="nav-link" href="{% url 'personnel' %}">👥 Персонал</a>
             <a class="nav-link" href="{% url 'audit_list' %}">📒 Журнал</a>
           {% endif %}
+          
+          <div class="notif-wrap">
+            <button type="button" class="nav-link notif-bell" id="notifBell" aria-label="Уведомления">
+              🔔
+              <span class="notif-dot{% if notifications_unread_count|default:0 > 0 %} is-on{% endif %}" id="notifDot"></span>
+            </button>
+
+            <div class="notif-panel" id="notifPanel" aria-hidden="true">
+              <div class="notif-head">
+                <div class="notif-title">Уведомления</div>
+                <div class="notif-actions">
+                  <button type="button" class="notif-link" id="notifMarkAll">Прочитать все</button>
+                  <button type="button" class="notif-link" id="notifClose">✕</button>
+                </div>
+              </div>
+              <div class="notif-body" id="notifBody">
+                <div class="notif-empty">Загрузка…</div>
+              </div>
+            </div>
+          </div>
+
           <a class="nav-link" href="{% url 'cabinet:dashboard' %}">⚙️ Кабинет</a>
-          <a class="nav-link" href="{% url 'login' %}">🚪 Выход</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline;">
   {% csrf_token %}
-<!--  <button type="submit" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">
+  <button type="submit" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">
     🚪 Выйти
-  </button> -->
+  </button>
 </form>
           {% if user.is_superuser %}
             <a class="nav-link" href="/admin/">⚙️ Админка</a>
@@ -59,5 +79,151 @@
 
     {% block content %}{% endblock %}
   </main>
+
+<script>
+(function(){
+  const bell = document.getElementById("notifBell");
+  const panel = document.getElementById("notifPanel");
+  const body = document.getElementById("notifBody");
+  const dot = document.getElementById("notifDot");
+  const closeBtn = document.getElementById("notifClose");
+  const markAllBtn = document.getElementById("notifMarkAll");
+
+  if(!bell || !panel || !body || !dot) return;
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return "";
+  }
+  const csrftoken = getCookie("csrftoken");
+
+  async function fetchList(){
+    body.innerHTML = '<div class="notif-empty">Загрузка…</div>';
+    try{
+      const resp = await fetch("/notifications/api/list/", {credentials: "same-origin"});
+      const data = await resp.json();
+      if(!data.ok){
+        body.innerHTML = '<div class="notif-empty">Ошибка загрузки</div>';
+        return;
+      }
+      if(data.unread_count > 0){
+        dot.classList.add("is-on");
+      }else{
+        dot.classList.remove("is-on");
+      }
+      renderItems(data.items || []);
+    }catch(e){
+      body.innerHTML = '<div class="notif-empty">Ошибка сети</div>';
+    }
+  }
+
+  function escapeHtml(s){
+    return (s||"").replace(/[&<>"']/g, (c)=>({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  function renderItems(items){
+    if(!items.length){
+      body.innerHTML = '<div class="notif-empty">Нет уведомлений</div>';
+      return;
+    }
+    const html = items.map(it=>{
+      const cls = it.is_read ? "notif-item" : "notif-item unread";
+      const title = escapeHtml(it.title);
+      const msg = escapeHtml(it.message || "");
+      const url = it.url || "";
+      const open = url ? `<a class="notif-open" href="${escapeHtml(url)}">Открыть</a>` : "";
+      return `
+        <div class="${cls}" data-id="${it.id}">
+          <div class="notif-item-top">
+            <div class="notif-item-title">${title}</div>
+            <button type="button" class="notif-del" title="Удалить">🗑</button>
+          </div>
+          ${msg ? `<div class="notif-item-msg">${msg}</div>` : ""}
+          <div class="notif-item-actions">
+            <button type="button" class="notif-mark">Прочитано</button>
+            ${open}
+          </div>
+        </div>
+      `;
+    }).join("");
+    body.innerHTML = html;
+
+    body.querySelectorAll(".notif-mark").forEach(btn=>{
+      btn.addEventListener("click", async (e)=>{
+        const item = e.target.closest(".notif-item");
+        const id = item.getAttribute("data-id");
+        await fetch(`/notifications/api/mark-read/${id}/`, {
+          method:"POST",
+          headers: {"X-CSRFToken": csrftoken},
+          credentials:"same-origin"
+        });
+        item.classList.remove("unread");
+        fetchList();
+      });
+    });
+
+    body.querySelectorAll(".notif-del").forEach(btn=>{
+      btn.addEventListener("click", async (e)=>{
+        const item = e.target.closest(".notif-item");
+        const id = item.getAttribute("data-id");
+        await fetch(`/notifications/api/delete/${id}/`, {
+          method:"POST",
+          headers: {"X-CSRFToken": csrftoken},
+          credentials:"same-origin"
+        });
+        fetchList();
+      });
+    });
+  }
+
+  function openPanel(){
+    panel.style.display = "block";
+    panel.setAttribute("aria-hidden", "false");
+    fetchList();
+  }
+  function closePanel(){
+    panel.style.display = "none";
+    panel.setAttribute("aria-hidden", "true");
+  }
+  function isOpen(){
+    return panel.getAttribute("aria-hidden") === "false";
+  }
+
+  bell.addEventListener("click", (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(isOpen()) closePanel();
+    else openPanel();
+  });
+
+  document.addEventListener("click", (e)=>{
+    if(!panel.contains(e.target) && e.target !== bell){
+      closePanel();
+    }
+  });
+
+  if(closeBtn){
+    closeBtn.addEventListener("click", (e)=>{
+      e.preventDefault();
+      closePanel();
+    });
+  }
+
+  if(markAllBtn){
+    markAllBtn.addEventListener("click", async (e)=>{
+      e.preventDefault();
+      await fetch("/notifications/api/mark-all-read/", {
+        method:"POST",
+        headers: {"X-CSRFToken": csrftoken},
+        credentials:"same-origin"
+      });
+      fetchList();
+    });
+  }
+})();
+</script>
+
 </body>
 </html>

@@ -4,9 +4,14 @@
 <div class="toolbar">
   <h1 style="margin:0;">Персонал</h1>
 
-  <div style="display:flex; gap:8px;">
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
     <a class="btn-secondary {% if tab == 'users' %}active{% endif %}" href="{% url 'personnel' %}">Персонал</a>
     <a class="btn-secondary {% if tab == 'roles' %}active{% endif %}" href="{% url 'personnel_roles' %}">Роли</a>
+
+    {# ✅ Новая кнопка #}
+    <a class="btn-secondary {% if tab == 'availability' %}active{% endif %}" href="{% url 'personnel_availability' %}">
+      Календарь занятости
+    </a>
   </div>
 </div>
 
@@ -14,85 +19,84 @@
   <div class="card" style="margin-top:16px;">
     <form method="get" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
       <div>
-        <label>Поиск</label><br>
-        <input type="text" name="q" value="{{ q }}" placeholder="имя / логин / email" />
+        <label>Поиск</label>
+        <input type="text" name="q" value="{{ q|default:'' }}">
       </div>
-
       <div>
-        <label>Роль</label><br>
-        <select name="role">
-          <option value="">Все</option>
-          {% for r in roles %}
-            <option value="{{ r.name }}" {% if role == r.name %}selected{% endif %}>{{ r.name }}</option>
-          {% endfor %}
-        </select>
+        <button class="btn" type="submit">Искать</button>
       </div>
-
-      <button class="btn" type="submit">Применить</button>
-      <a class="btn-secondary" href="{% url 'personnel' %}">Сброс</a>
-
-      <div style="flex:1;"></div>
-      <a class="btn" href="{% url 'personnel_user_add' %}">➕ Добавить пользователя</a>
     </form>
   </div>
 
-  <table class="list-table" style="margin-top:16px;">
-    <thead>
-      <tr>
-        <th>Логин</th>
-        <th>Имя</th>
-        <th>Email</th>
-        <th>Роль</th>
-        <th style="width:240px;">Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in user_rows %}
-      <tr>
-        <td>{{ row.obj.username }}</td>
-        <td>{{ row.obj.first_name }} {{ row.obj.last_name }}</td>
-        <td>{{ row.obj.email }}</td>
-        <td>{{ row.role_name }}</td>
-        <td>
-          <a class="btn-secondary" href="{% url 'personnel_user_edit' row.obj.id %}">Редактировать</a>
-          <a class="btn-secondary" href="{% url 'personnel_user_delete' row.obj.id %}">Удалить</a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5">Пользователей нет</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-{% elif tab == 'roles' %}
-  <div class="card" style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
-    <div>
-      <div style="font-weight:600;">Роли (группы)</div>
-      <div style="opacity:.75;">Создавай/редактируй роли и профили прав</div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar" style="margin:0 0 10px 0;">
+      <div></div>
+      <a class="btn" href="{% url 'personnel_user_add' %}">+ Добавить</a>
     </div>
-    <a class="btn" href="{% url 'personnel_role_add' %}">➕ Добавить роль</a>
+
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th>Логин</th>
+          <th>Имя</th>
+          <th>Email</th>
+          <th>Роли</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.username }}</td>
+          <td>{{ u.get_full_name|default:"—" }}</td>
+          <td>{{ u.email|default:"—" }}</td>
+          <td>
+            {% for g in u.groups.all %}
+              <span class="badge">{{ g.name }}</span>
+            {% empty %}
+              —
+            {% endfor %}
+          </td>
+          <td>
+            <a class="btn-secondary" href="{% url 'personnel_user_edit' u.id %}">Редактировать</a>
+            <a class="btn-secondary" href="{% url 'personnel_user_delete' u.id %}">Удалить</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Пользователей нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
-  <table class="list-table" style="margin-top:16px;">
-    <thead>
-      <tr>
-        <th>Название</th>
-        <th style="width:240px;">Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for g in roles %}
-      <tr>
-        <td>{{ g.name }}</td>
-        <td>
-          <a class="btn-secondary" href="{% url 'personnel_role_edit' g.id %}">Редактировать</a>
-          <a class="btn-secondary" href="{% url 'personnel_role_delete' g.id %}">Удалить</a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="2">Ролей нет</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% elif tab == 'roles' %}
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar" style="margin:0 0 10px 0;">
+      <div></div>
+      <a class="btn" href="{% url 'personnel_role_add' %}">+ Добавить роль</a>
+    </div>
+
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in roles %}
+        <tr>
+          <td>{{ g.name }}</td>
+          <td>
+            <a class="btn-secondary" href="{% url 'personnel_role_edit' g.id %}">Редактировать</a>
+            <a class="btn-secondary" href="{% url 'personnel_role_delete' g.id %}">Удалить</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2">Ролей нет</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% endif %}
 {% endblock %}

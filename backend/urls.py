@@ -20,6 +20,9 @@ urlpatterns = [
     # journal
     path("audit/", include("audit.urls")),
 
+    # notifications
+    path("notifications/", include("notifications.urls")),
+
     path("admin/", admin.site.urls),
 
     # cabinet

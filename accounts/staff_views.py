@@ -7,6 +7,7 @@ from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from .permissions import can_manage_staff
 
@@ -315,3 +316,139 @@ def staff_role_delete_view(request, group_id: int):
         "accounts/staff_role_confirm_delete.html",
         {"tab": "roles", "role": role, "has_users": False},
     )
+
+
+# =========================
+# Календарь занятости (персонал)
+# =========================
+import calendar as _pycalendar
+from datetime import date as _date
+from collections import defaultdict as _defaultdict
+
+from events.models import Event as _Event
+
+
+def _parse_year_month_staff(request):
+    today = timezone.localdate()
+    try:
+        year = int(request.GET.get("year", today.year))
+    except Exception:
+        year = today.year
+    try:
+        month = int(request.GET.get("month", today.month))
+    except Exception:
+        month = today.month
+    if month < 1:
+        month = 1
+    if month > 12:
+        month = 12
+    return year, month
+
+
+def _pack_lanes_staff(segments):
+    lanes = []  # list[list[(start,end)]]
+    for seg in sorted(segments, key=lambda s: (s["start_col"], s["end_col"], s["event"].id)):
+        placed = False
+        for lane_idx, used in enumerate(lanes):
+            conflict = False
+            for a, b in used:
+                if not (seg["end_col"] < a or seg["start_col"] > b):
+                    conflict = True
+                    break
+            if not conflict:
+                seg["lane"] = lane_idx
+                used.append((seg["start_col"], seg["end_col"]))
+                placed = True
+                break
+        if not placed:
+            seg["lane"] = len(lanes)
+            lanes.append([(seg["start_col"], seg["end_col"])])
+    return segments
+
+
+@login_required
+def staff_availability_calendar_view(request):
+    if not can_manage_staff(request.user):
+        return _deny()
+
+    # выбранный пользователь
+    selected_user_id = request.GET.get("user_id") or ""
+    selected_user = None
+    if selected_user_id:
+        try:
+            selected_user = User.objects.filter(id=int(selected_user_id)).first()
+        except Exception:
+            selected_user = None
+
+    # для выпадашки — все пользователи
+    users_qs = User.objects.all().order_by("username")
+
+    year, month = _parse_year_month_staff(request)
+
+    month_days = list(_pycalendar.Calendar(firstweekday=0).monthdatescalendar(year, month))
+    grid_start = month_days[0][0]
+    grid_end = month_days[-1][-1]
+
+    week_segments = {}
+
+    if selected_user:
+        q = Q(responsible=selected_user)
+
+        if hasattr(_Event, "s_engineer"):
+            q = q | Q(s_engineer=selected_user)
+
+        if hasattr(_Event, "engineers"):
+            q = q | Q(engineers=selected_user)
+
+        ev_qs = (
+            _Event.objects
+            .filter(q)
+            .distinct()
+            .filter(start_date__lte=grid_end, end_date__gte=grid_start)
+            .order_by("start_date", "id")
+        )
+
+        # исключаем soft-deleted если поле есть
+        if hasattr(_Event, "is_deleted"):
+            ev_qs = ev_qs.filter(is_deleted=False)
+
+        for week in month_days:
+            week_start = week[0]
+            week_end = week[-1]
+
+            segs = []
+            for e in ev_qs:
+                seg_start = max(e.start_date, week_start, grid_start)
+                seg_end = min(e.end_date, week_end, grid_end)
+                if seg_end < seg_start:
+                    continue
+
+                start_col = week.index(seg_start)
+                end_col = week.index(seg_end)
+
+                segs.append({
+                    "event": e,
+                    "start_col": start_col,
+                    "end_col": end_col,
+                    "span": (end_col - start_col + 1),
+                    "cont_left": e.start_date < week_start,
+                    "cont_right": e.end_date > week_end,
+                    "data_start": e.start_date.strftime("%Y-%m-%d"),
+                    "data_end": e.end_date.strftime("%Y-%m-%d"),
+                })
+
+            segs = _pack_lanes_staff(segs)
+            week_segments[week_start] = segs
+
+    context = {
+        "tab": "availability",
+        "users": users_qs,
+        "selected_user": selected_user,
+        "selected_user_id": str(selected_user.id) if selected_user else "",
+        "year": year,
+        "month": month,
+        "month_name": _pycalendar.month_name[month],
+        "month_days": month_days,
+        "week_segments": week_segments,
+    }
+    return render(request, "accounts/personnel_availability_calendar.html", context)

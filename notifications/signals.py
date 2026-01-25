@@ -1,0 +1,1 @@
+# Reserved for future app-level signals (e.g., cleanup).
