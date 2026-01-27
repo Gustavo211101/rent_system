@@ -42,7 +42,7 @@
     {% for row in logs %}
     <tr>
       <td>{{ row.created_at|date:"d.m.Y H:i" }}</td>
-      <td>{% if row.actor %}{{ row.actor.username }}{% else %}—{% endif %}</td>
+      <td>{% if row.actor %}{{ row.actor.display_name }}{% else %}—{% endif %}</td>
       <td>{{ row.get_action_display }}</td>
       <td>
         <strong>{{ row.entity_type }}</strong>

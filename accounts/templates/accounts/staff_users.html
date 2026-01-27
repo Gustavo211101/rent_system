@@ -12,7 +12,7 @@
       <option value="{{ r.id }}" {% if role == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
     {% endfor %}
   </select>
-  <button class="btn-secondary" type="submit">Применить</button>
+  <button class="btn-secondary" type="submit">Фильтр</button>
   <a class="btn-secondary" href="{% url 'staff_users' %}">Сброс</a>
 
   <div style="margin-left:auto;">
@@ -33,7 +33,7 @@
   <tbody>
     {% for u in users %}
       <tr>
-        <td>{{ u.username }}</td>
+        <td>{{ u.get_full_name|default:u.username }}</td>
         <td>{{ u.first_name }} {{ u.last_name }}</td>
         <td>{{ u.email|default:"—" }}</td>
         <td>{% if u.groups.first %}{{ u.groups.first.name }}{% else %}—{% endif %}</td>

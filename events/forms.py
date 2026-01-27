@@ -9,6 +9,17 @@ from accounts.roles import ROLE_ENGINEER, ROLE_MANAGER, ROLE_SENIOR_ENGINEER
 User = get_user_model()
 
 
+def _user_label(u: User) -> str:
+    """
+    Единый формат отображения пользователя:
+    Имя Фамилия (username) или просто username.
+    """
+    full = (f"{(u.first_name or '').strip()} {(u.last_name or '').strip()}").strip()
+    if full:
+        return f"{full} ({u.username})"
+    return u.username
+
+
 class EventForm(forms.ModelForm):
     class Meta:
         model = Event
@@ -26,14 +37,13 @@ class EventForm(forms.ModelForm):
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
-            # инженеры — обычный мультиселект, чтобы ТОЧНО отображалось
             "engineers": forms.SelectMultiple(attrs={"size": "8"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Фильтры по группам (как в твоём проекте роли устроены)
+        # Ограничим выбор пользователей по группам-ролям
         self.fields["responsible"].queryset = (
             User.objects.filter(groups__name=ROLE_MANAGER).order_by("username").distinct()
         )
@@ -44,7 +54,12 @@ class EventForm(forms.ModelForm):
             User.objects.filter(groups__name=ROLE_ENGINEER).order_by("username").distinct()
         )
 
-        # если инженеров мало — размер уменьшим
+        # Красивые подписи в выпадающих списках
+        self.fields["responsible"].label_from_instance = _user_label
+        self.fields["s_engineer"].label_from_instance = _user_label
+        self.fields["engineers"].label_from_instance = _user_label
+
+        # Подстроим размер списка инженеров под количество
         try:
             cnt = self.fields["engineers"].queryset.count()
             self.fields["engineers"].widget.attrs["size"] = str(min(max(cnt, 4), 12))
@@ -56,7 +71,6 @@ class EventForm(forms.ModelForm):
         start = cleaned.get("start_date")
         end = cleaned.get("end_date")
 
-        # если дату окончания не указали — считаем однодневным
         if start and not end:
             cleaned["end_date"] = start
 
