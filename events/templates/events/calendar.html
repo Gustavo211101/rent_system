@@ -298,6 +298,7 @@
             data-event-name="{{ seg.event.name|escape }}"
             data-start="{{ seg.data_start }}"
             data-end="{{ seg.data_end }}"
+            data-notes="{{ seg.event.notes|default:''|escapejs }}"
             data-status="{{ seg.event.status }}"
             title="{{ seg.event.name }} · {{ seg.event.start_date|date:'d.m.Y' }} – {{ seg.event.end_date|date:'d.m.Y' }} · {{ seg.event.get_status_display }}"
           >
@@ -353,6 +354,11 @@
     <div class="cal-modal__body">
       <div style="font-weight:900; font-size:18px;" id="pvName"></div>
       <div class="cal-modal__meta" id="pvDates"></div>
+
+      <div id="pvNotesWrap" style="margin-top:10px; display:none;">
+        <div class="muted" style="font-weight:700; margin-bottom:6px;">Заметки</div>
+        <div id="pvNotes" style="white-space:pre-wrap;"></div>
+      </div>
 
       <div class="cal-modal__row" {% if not can_create_event %}style="display:none"{% endif %}>
       <label>Статус</label>
@@ -477,6 +483,7 @@
           name: name,
           start_date: selectedDay,
           end_date: end,
+          notes: (createNotesInput ? (createNotesInput.value || "") : ""),
         }),
       });
 
@@ -506,6 +513,8 @@
   const pvClose = document.getElementById("calPreviewClose");
   const pvName = document.getElementById("pvName");
   const pvDates = document.getElementById("pvDates");
+  const pvNotesWrap = document.getElementById("pvNotesWrap");
+  const pvNotes = document.getElementById("pvNotes");
   const pvStatus = document.getElementById("pvStatus");
   const pvSetStatus = document.getElementById("pvSetStatus");
   const pvOpen = document.getElementById("pvOpen");
@@ -520,6 +529,17 @@
     pvName.textContent = data.name;
     pvDates.textContent = data.dates;
     pvStatus.value = data.status;
+
+    if(pvNotesWrap && pvNotes){
+      const n = (data.notes || "").trim();
+      if(n){
+        pvNotes.textContent = n;
+        pvNotesWrap.style.display = "";
+      }else{
+        pvNotes.textContent = "";
+        pvNotesWrap.style.display = "none";
+      }
+    }
 
     pvOpen.href = data.openUrl;
     pvEdit.href = data.editUrl;
@@ -552,13 +572,15 @@
     const start = bar.getAttribute("data-start");
     const end = bar.getAttribute("data-end");
     const status = bar.getAttribute("data-status") || "draft";
+    const notesRaw = bar.getAttribute("data-notes") || "";
+    const notes = notesRaw.replace(/\\n/g, "\n").replace(/\\r/g, "");
 
     const dates = `${start} → ${end}`;
 
     const openUrl = `{% url 'event_detail' 0 %}`.replace("/0/", `/${id}/`);
     const editUrl = `{% url 'event_edit' 0 %}`.replace("/0/", `/${id}/`);
 
-    openPreview({id, name, dates, status, openUrl, editUrl});
+    openPreview({id, name, dates, status, openUrl, editUrl, notes});
   });
 
   pvSetStatus.addEventListener("click", async function(){

@@ -57,6 +57,9 @@ class Event(models.Model):
         related_name="engineer_events",
     )
 
+    # Заметки менеджера
+    notes = models.TextField(blank=True, default="")
+
     # Soft-delete (вместо физического удаления)
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)

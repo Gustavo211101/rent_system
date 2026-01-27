@@ -32,12 +32,14 @@ class EventForm(forms.ModelForm):
             "responsible",
             "s_engineer",
             "engineers",
+            "notes",
             "status",
         ]
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
             "engineers": forms.SelectMultiple(attrs={"size": "8"}),
+            "notes": forms.Textarea(attrs={"rows": 4, "placeholder": "Заметки менеджера"}),
         }
 
     def __init__(self, *args, **kwargs):

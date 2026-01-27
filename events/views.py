@@ -478,6 +478,7 @@ def quick_create_event_api(request: HttpRequest) -> HttpResponse:
     name = (payload.get("name") or "").strip()
     start = (payload.get("start_date") or "").strip()
     end = (payload.get("end_date") or "").strip()
+    notes = (payload.get("notes") or "").strip()
 
     if not name:
         return JsonResponse({"ok": False, "error": "Название обязательно"}, status=400)
@@ -506,6 +507,7 @@ def quick_create_event_api(request: HttpRequest) -> HttpResponse:
         end_date=ed,
         responsible=request.user,
         status="draft",
+        notes=notes,
     )
     log_action(user=request.user, action="create", obj=event, details="Создано из календаря (модалка)")
     return JsonResponse({"ok": True, "id": event.id})

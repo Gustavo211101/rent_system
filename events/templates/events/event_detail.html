@@ -15,6 +15,15 @@
       </div>
       <div style="margin-top:4px;"><strong>Клиент:</strong> {{ event.client|default:"—" }}</div>
       <div style="margin-top:4px;"><strong>Локация:</strong> {{ event.location|default:"—" }}</div>
+
+      <div style="margin-top:8px;">
+        <strong>Заметки:</strong>
+        {% if event.notes %}
+          <div style="margin-top:6px; white-space:pre-wrap;">{{ event.notes }}</div>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </div>
       <div style="margin-top:4px;"><strong>Ответственный:</strong> {{ event.responsible|default:"—" }}</div>
       <div style="margin-top:4px;"><strong>Старший инженер:</strong> {{ event.s_engineer|default:"—" }}</div>
       <div style="margin-top:4px;"><strong>Инженеры:</strong>
