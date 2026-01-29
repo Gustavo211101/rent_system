@@ -435,7 +435,8 @@
       .replace(/\\u000D\\u000A/g, "\n")
       .replace(/\\u000A/g, "\n")
       .replace(/\\r\\n/g, "\n")
-      .replace(/\\n/g, "\n");
+      .replace(/\\n/g, "\n")
+      .replace(/\\u002D/g, "-");
   }
 
   function getCookie(name) {
@@ -484,7 +485,7 @@
 
   function openPreviewModal(payload){
     previewEventId = payload.id;
-    previewName.textContent = payload.name || "";
+    previewName.textContent = decodeNotes(payload.name) || "";
     previewDates.textContent = `${payload.start} → ${payload.end}`;
     previewNotes.textContent = decodeNotes(payload.notes) || "—";
     previewStatus.value = payload.status || "draft";
