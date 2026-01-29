@@ -23,7 +23,6 @@
 <table class="list-table">
   <thead>
     <tr>
-      <th>Username</th>
       <th>Имя</th>
       <th>Email</th>
       <th>Роль</th>
@@ -33,7 +32,6 @@
   <tbody>
     {% for u in users %}
       <tr>
-        <td>{{ u.get_full_name|default:u.username }}</td>
         <td>{{ u.first_name }} {{ u.last_name }}</td>
         <td>{{ u.email|default:"—" }}</td>
         <td>{% if u.groups.first %}{{ u.groups.first.name }}{% else %}—{% endif %}</td>

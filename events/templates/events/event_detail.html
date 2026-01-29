@@ -16,20 +16,51 @@
       <div style="margin-top:4px;"><strong>Клиент:</strong> {{ event.client|default:"—" }}</div>
       <div style="margin-top:4px;"><strong>Локация:</strong> {{ event.location|default:"—" }}</div>
 
-      <div style="margin-top:8px;">
-        <strong>Заметки:</strong>
+      <div style="margin-top:8px;"><strong>Заметки:</strong>
         {% if event.notes %}
           <div style="margin-top:6px; white-space:pre-wrap;">{{ event.notes }}</div>
         {% else %}
           <span class="muted">—</span>
         {% endif %}
       </div>
-      <div style="margin-top:4px;"><strong>Ответственный:</strong> {{ event.responsible|default:"—" }}</div>
-      <div style="margin-top:4px;"><strong>Старший инженер:</strong> {{ event.s_engineer|default:"—" }}</div>
+
+      <div style="margin-top:4px;"><strong>Ответственный:</strong>
+        {% if event.responsible %}
+          {% if event.responsible.first_name or event.responsible.last_name %}
+            {{ event.responsible.last_name }} {{ event.responsible.first_name }}
+            <span class="muted">({{ event.responsible.username }})</span>
+          {% else %}
+            {{ event.responsible.username }}
+          {% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </div>
+
+      <div style="margin-top:4px;"><strong>Старший инженер:</strong>
+        {% if event.s_engineer %}
+          {% if event.s_engineer.first_name or event.s_engineer.last_name %}
+            {{ event.s_engineer.last_name }} {{ event.s_engineer.first_name }}
+            <span class="muted">({{ event.s_engineer.username }})</span>
+          {% else %}
+            {{ event.s_engineer.username }}
+          {% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </div>
+
       <div style="margin-top:4px;"><strong>Инженеры:</strong>
         {% with engs=event.engineers.all %}
           {% if engs %}
-            {% for u in engs %}{{ u }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            {% for u in engs %}
+              {% if u.first_name or u.last_name %}
+                {{ u.last_name }} {{ u.first_name }} <span class="muted">({{ u.username }})</span>
+              {% else %}
+                {{ u.username }}
+              {% endif %}
+              {% if not forloop.last %}, {% endif %}
+            {% endfor %}
           {% else %}
             —
           {% endif %}
@@ -49,7 +80,6 @@
 
       <div style="height:10px;"></div>
 
-      {# Статусные кнопки #}
       {% if event.status != 'draft' %}
         <a class="btn-secondary" href="{% url 'event_set_status' event.id 'draft' %}">В черновик</a>
       {% endif %}
@@ -69,7 +99,6 @@
   </div>
 </div>
 
-{# Нехватка оборудования #}
 {% if shortages %}
   <div class="alert alert-warning" style="margin-top:18px;">
     <strong>⚠️ Нехватка оборудования</strong>

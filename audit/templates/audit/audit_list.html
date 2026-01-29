@@ -16,15 +16,18 @@
       <option value="create" {% if action == "create" %}selected{% endif %}>Создание</option>
       <option value="update" {% if action == "update" %}selected{% endif %}>Изменение</option>
       <option value="delete" {% if action == "delete" %}selected{% endif %}>Удаление</option>
+      <option value="status" {% if action == "status" %}selected{% endif %}>Статус</option>
+      <option value="restore" {% if action == "restore" %}selected{% endif %}>Восстановление</option>
+      <option value="purge" {% if action == "purge" %}selected{% endif %}>Удаление навсегда</option>
     </select>
   </div>
 
   <div>
     <div class="muted">Тип</div>
-    <input type="text" name="type" value="{{ type }}" placeholder="Equipment / Event / ..." />
+    <input type="text" name="type" value="{{ type }}" placeholder="например: Event" />
   </div>
 
-  <button class="btn" type="submit">Фильтр</button>
+  <button class="btn-secondary" type="submit">Фильтр</button>
   <a class="btn-secondary" href="{% url 'audit_list' %}">Сброс</a>
 </form>
 
@@ -42,13 +45,30 @@
     {% for row in logs %}
     <tr>
       <td>{{ row.created_at|date:"d.m.Y H:i" }}</td>
-      <td>{% if row.actor %}{{ row.actor.display_name }}{% else %}—{% endif %}</td>
+
+      <td>
+        {% if row.actor %}
+          {% if row.actor.first_name or row.actor.last_name %}
+            {{ row.actor.last_name }} {{ row.actor.first_name }}
+            <span class="muted">({{ row.actor.username }})</span>
+          {% else %}
+            {{ row.actor.username }}
+          {% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+
       <td>{{ row.get_action_display }}</td>
+
       <td>
         <strong>{{ row.entity_type }}</strong>
         {% if row.entity_id %}#{{ row.entity_id }}{% endif %}
-        {% if row.entity_repr %}<div class="muted">{{ row.entity_repr }}</div>{% endif %}
+        {% if row.entity_repr %}
+          <div class="muted">{{ row.entity_repr }}</div>
+        {% endif %}
       </td>
+
       <td>{{ row.message|default:"—" }}</td>
     </tr>
     {% empty %}

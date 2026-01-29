@@ -20,8 +20,10 @@ def audit_list_view(request):
 
     if action:
         qs = qs.filter(action=action)
+
     if etype:
-        qs = qs.filter(entity_type__icontains=etype)
+        qs = qs.filter(entity_type=etype)
+
     if q:
         qs = qs.filter(
             Q(entity_type__icontains=q)
@@ -29,6 +31,8 @@ def audit_list_view(request):
             | Q(entity_repr__icontains=q)
             | Q(message__icontains=q)
             | Q(actor__username__icontains=q)
+            | Q(actor__first_name__icontains=q)
+            | Q(actor__last_name__icontains=q)  
         )
 
     return render(
