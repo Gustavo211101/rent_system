@@ -5,27 +5,21 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import render, redirect
 
-from accounts.roles import ROLE_MANAGER, ROLE_SENIOR_ENGINEER, ROLE_ENGINEER
 from events.models import Event
+from .forms import ProfileForm
 
 
 def _get_primary_role(user):
-    """Одна основная роль по приоритету."""
+    # У тебя роль(и) через groups, плюс суперпользователь.
     if getattr(user, "is_superuser", False):
         return ("Суперадмин", "superadmin")
 
-    groups = set(user.groups.values_list("name", flat=True))
+    group_names = list(user.groups.values_list("name", flat=True))
+    if group_names:
+        # если у пользователя несколько групп — показываем первую как “основную”
+        # (у тебя это уже работает и устраивает)
+        return (group_names[0], "custom")
 
-    if ROLE_MANAGER in groups:
-        return (ROLE_MANAGER, "manager")
-    if ROLE_SENIOR_ENGINEER in groups:
-        return (ROLE_SENIOR_ENGINEER, "s_engineer")
-    if ROLE_ENGINEER in groups:
-        return (ROLE_ENGINEER, "engineer")
-
-    if groups:
-        any_role = sorted(groups)[0]
-        return (any_role, "custom")
     return ("—", "unknown")
 
 
@@ -67,16 +61,14 @@ def dashboard(request):
     today = date.today()
 
     q = Q(responsible=user)
-
     if hasattr(Event, "s_engineer"):
         q = q | Q(s_engineer=user)
-
     if hasattr(Event, "engineers"):
         q = q | Q(engineers=user)
 
     qs = (
         Event.objects
-        .filter(q, is_deleted=False)
+        .filter(q)
         .distinct()
         .order_by("start_date", "id")
     )
@@ -108,9 +100,8 @@ def dashboard(request):
         else:
             past.append(item)
 
-    # Ближайшие — сверху (самое близкое первым)
+    # сортировки
     upcoming.sort(key=lambda x: (x["event"].start_date, x["event"].id))
-    # Прошедшие — ниже, от свежих к старым
     past.sort(key=lambda x: (x["event"].start_date, x["event"].id), reverse=True)
 
     stats = {
@@ -121,23 +112,40 @@ def dashboard(request):
 
     role_name, role_slug = _get_primary_role(user)
 
-    context = {
+    return render(request, "cabinet/dashboard.html", {
         "role_name": role_name,
         "role_slug": role_slug,
         "stats": stats,
         "upcoming_events": upcoming,
         "past_events": past,
-    }
-    return render(request, "cabinet/dashboard.html", context)
+    })
 
 
 @login_required
 def profile_edit(request):
-    messages.info(request, "Редактирование профиля будет добавлено позже.")
-    return redirect("cabinet:dashboard")
+    user = request.user
+
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Профиль обновлён.")
+            return redirect("cabinet:dashboard")
+        messages.error(request, "Проверьте форму — есть ошибки.")
+    else:
+        form = ProfileForm(instance=user)
+
+    role_name, role_slug = _get_primary_role(user)
+
+    return render(request, "cabinet/profile_edit.html", {
+        "form": form,
+        "role_name": role_name,
+        "role_slug": role_slug,
+    })
 
 
+# Заглушки если у тебя они есть (оставляем)
 @login_required
 def password_change(request):
-    messages.info(request, "Смена пароля будет добавлена позже.")
+    messages.info(request, "Смена пароля доступна отдельной кнопкой в кабинете.")
     return redirect("cabinet:dashboard")

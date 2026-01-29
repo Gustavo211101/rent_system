@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Ссылка использована</title>
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <style>
+    body{ background:#f5f7fb; }
+    .wrap{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:28px; max-width:520px; width:100%; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1 style="margin-top:0;">Ссылка уже использована</h1>
+      <p class="muted">Попросите менеджера создать новую ссылку для регистрации.</p>
+      <a class="btn-secondary" href="/login/">На страницу входа</a>
+    </div>
+  </div>
+</body>
+</html>

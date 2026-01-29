@@ -1,5 +1,6 @@
 from django.urls import path
 from . import staff_views
+from .staff_invite_views import staff_invite_link_view
 
 urlpatterns = [
     # lists
@@ -9,8 +10,8 @@ urlpatterns = [
     path("personnel/roles/", staff_views.staff_roles_view, name="staff_roles"),
     path("personnel/roles/", staff_views.staff_roles_view, name="personnel_roles"),
 
-    # ✅ NEW: availability calendar
-    path("personnel/availability/", staff_views.staff_availability_calendar_view, name="personnel_availability"),
+    # ссылка для нового сотрудника
+    path("personnel/invite-link/", staff_invite_link_view, name="staff_invite_link"),
 
     # users CRUD
     path("personnel/user/add/", staff_views.staff_user_add_view, name="staff_user_add"),

@@ -4,15 +4,9 @@
 <h1>Редактирование профиля</h1>
 
 <div style="margin-bottom: 12px;">
-  <div><strong>Роль:</strong>
-    {% if role_names %}
-      {{ role_names|join:", " }}
-    {% else %}
-      —
-    {% endif %}
-  </div>
+  <div><strong>Роль:</strong> {{ role_name|default:"—" }}</div>
   <div style="font-size: 12px; opacity: 0.8;">
-    Роль меняется только администратором / менеджером, здесь её изменить нельзя.
+    Роль меняется администратором/менеджером. Здесь её изменить нельзя.
   </div>
 </div>
 
@@ -24,6 +18,12 @@
       {{ form.non_field_errors }}
     </div>
   {% endif %}
+
+  <div class="form-row">
+    <label>Username</label>
+    {{ form.username }}
+    {{ form.username.errors }}
+  </div>
 
   <div class="form-row">
     <label>Имя</label>
@@ -43,10 +43,15 @@
     {{ form.email.errors }}
   </div>
 
+  <div class="form-row">
+    <label>Телефон</label>
+    {{ form.phone }}
+    {{ form.phone.errors }}
+  </div>
+
   <div style="margin-top:16px;">
     <button class="btn" type="submit">Сохранить</button>
     <a class="btn-secondary" href="{% url 'cabinet:dashboard' %}">Отмена</a>
   </div>
 </form>
-
 {% endblock %}
