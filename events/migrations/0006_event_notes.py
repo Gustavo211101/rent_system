@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("events", "0005_event_soft_delete"),
+        ("events", "0004_event_team_fields"),
     ]
 
     operations = [

@@ -1,6 +1,8 @@
-from django.db import models
+from __future__ import annotations
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db import models
 
 from inventory.models import Equipment
 
@@ -28,7 +30,6 @@ class Event(models.Model):
 
     name = models.CharField(max_length=200)
 
-    # только дни
     start_date = models.DateField()
     end_date = models.DateField(blank=True, null=True)
 
@@ -42,7 +43,7 @@ class Event(models.Model):
         related_name="events",
     )
 
-    # Команда мероприятия
+    # Старший инженер
     s_engineer = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -51,6 +52,7 @@ class Event(models.Model):
         related_name="senior_events",
     )
 
+    # Инженеры
     engineers = models.ManyToManyField(
         User,
         blank=True,
@@ -60,7 +62,7 @@ class Event(models.Model):
     # Заметки менеджера
     notes = models.TextField(blank=True, default="")
 
-    # Soft-delete (вместо физического удаления)
+    # Soft delete
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -75,7 +77,6 @@ class Event(models.Model):
     def clean(self):
         if not self.end_date:
             self.end_date = self.start_date
-
         if self.end_date and self.start_date and self.end_date < self.start_date:
             raise ValidationError("Дата окончания не может быть раньше даты начала.")
 
@@ -90,16 +91,8 @@ class Event(models.Model):
 
 
 class EventEquipment(models.Model):
-    event = models.ForeignKey(
-        Event,
-        on_delete=models.CASCADE,
-        related_name="equipment_items",
-    )
-    equipment = models.ForeignKey(
-        Equipment,
-        on_delete=models.PROTECT,
-        related_name="event_items",
-    )
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="equipment_items")
+    equipment = models.ForeignKey(Equipment, on_delete=models.PROTECT, related_name="event_items")
     quantity = models.PositiveIntegerField()
 
     class Meta:
@@ -108,26 +101,10 @@ class EventEquipment(models.Model):
     def __str__(self):
         return f"{self.equipment.name} × {self.quantity}"
 
-    def clean(self):
-        # раньше тут была проверка доступности.
-        # сейчас НЕ блокируем сохранение — нехватку показываем как предупреждение в UI.
-        return
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
 
 class EventRentedEquipment(models.Model):
-    event = models.ForeignKey(
-        Event,
-        on_delete=models.CASCADE,
-        related_name="rented_items",
-    )
-    equipment = models.ForeignKey(
-        Equipment,
-        on_delete=models.PROTECT,
-        related_name="rented_event_items",
-    )
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="rented_items")
+    equipment = models.ForeignKey(Equipment, on_delete=models.PROTECT, related_name="rented_event_items")
     quantity = models.PositiveIntegerField()
 
     class Meta:

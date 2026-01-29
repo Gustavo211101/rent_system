@@ -1,7 +1,6 @@
 from django.db.models.signals import m2m_changed, pre_save, post_save
 from django.dispatch import receiver
 from django.urls import reverse
-
 from django.contrib.auth import get_user_model
 
 from .models import Event
@@ -22,7 +21,6 @@ def _notify(user_id: int, event: Event, title: str, message: str):
     try:
         url = reverse("event_detail", kwargs={"event_id": event.id})
     except Exception:
-        # fallback if name differs
         try:
             url = reverse("event_detail", args=[event.id])
         except Exception:
@@ -54,7 +52,6 @@ def _event_track_old(sender, instance: Event, **kwargs):
 
 @receiver(post_save, sender=Event)
 def _event_notify_role_changes(sender, instance: Event, created: bool, **kwargs):
-    # On create: notify assigned users
     if created:
         if instance.responsible_id:
             _notify(instance.responsible_id, instance, "Назначение на мероприятие", f"Вы назначены ответственным на «{instance.name}».")
@@ -79,11 +76,14 @@ def _event_notify_role_changes(sender, instance: Event, created: bool, **kwargs)
             _notify(new_se, instance, "Назначение на мероприятие", f"Вы назначены старшим инженером на «{instance.name}».")
 
 
-@receiver(m2m_changed, sender=Event.engineers.through)
-def _event_engineers_changed(sender, instance: Event, action: str, pk_set, **kwargs):
-    if action == "post_add":
-        for uid in pk_set:
-            _notify(uid, instance, "Добавлены в мероприятие", f"Вы добавлены инженером в «{instance.name}».")
-    elif action == "post_remove":
-        for uid in pk_set:
-            _notify(uid, instance, "Удалены из мероприятия", f"Вы удалены из инженеров в «{instance.name}».")
+# ✅ Безопасная регистрация m2m для engineers
+_engineers_field = getattr(Event, "engineers", None)
+if _engineers_field is not None:
+    @receiver(m2m_changed, sender=_engineers_field.through)
+    def _event_engineers_changed(sender, instance: Event, action: str, pk_set, **kwargs):
+        if action == "post_add":
+            for uid in pk_set:
+                _notify(uid, instance, "Добавлены в мероприятие", f"Вы добавлены инженером в «{instance.name}».")
+        elif action == "post_remove":
+            for uid in pk_set:
+                _notify(uid, instance, "Удалены из мероприятия", f"Вы удалены из инженеров в «{instance.name}».")

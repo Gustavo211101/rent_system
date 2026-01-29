@@ -2,22 +2,18 @@ from django import forms
 from django.contrib.auth import get_user_model
 
 from inventory.models import Equipment
-from .models import Event, EventEquipment, EventRentedEquipment
-
 from accounts.roles import ROLE_ENGINEER, ROLE_MANAGER, ROLE_SENIOR_ENGINEER
+
+from .models import Event, EventEquipment, EventRentedEquipment
 
 User = get_user_model()
 
 
-def _user_label(u: User) -> str:
-    """
-    Единый формат отображения пользователя:
-    Имя Фамилия (username) или просто username.
-    """
-    full = (f"{(u.first_name or '').strip()} {(u.last_name or '').strip()}").strip()
-    if full:
-        return f"{full} ({u.username})"
-    return u.username
+def user_label(user: User) -> str:
+    full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+    if full_name:
+        return f"{full_name} ({user.username})"
+    return user.username
 
 
 class EventForm(forms.ModelForm):
@@ -38,35 +34,37 @@ class EventForm(forms.ModelForm):
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
-            "engineers": forms.SelectMultiple(attrs={"size": "8"}),
-            "notes": forms.Textarea(attrs={"rows": 4, "placeholder": "Заметки менеджера"}),
+            "engineers": forms.SelectMultiple(attrs={"size": 8}),
+            "notes": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Важные заметки менеджера (видны в календаре и карточке)",
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Ограничим выбор пользователей по группам-ролям
         self.fields["responsible"].queryset = (
-            User.objects.filter(groups__name=ROLE_MANAGER).order_by("username").distinct()
+            User.objects.filter(groups__name=ROLE_MANAGER)
+            .order_by("username")
+            .distinct()
         )
         self.fields["s_engineer"].queryset = (
-            User.objects.filter(groups__name=ROLE_SENIOR_ENGINEER).order_by("username").distinct()
+            User.objects.filter(groups__name=ROLE_SENIOR_ENGINEER)
+            .order_by("username")
+            .distinct()
         )
         self.fields["engineers"].queryset = (
-            User.objects.filter(groups__name=ROLE_ENGINEER).order_by("username").distinct()
+            User.objects.filter(groups__name=ROLE_ENGINEER)
+            .order_by("username")
+            .distinct()
         )
 
-        # Красивые подписи в выпадающих списках
-        self.fields["responsible"].label_from_instance = _user_label
-        self.fields["s_engineer"].label_from_instance = _user_label
-        self.fields["engineers"].label_from_instance = _user_label
-
-        # Подстроим размер списка инженеров под количество
-        try:
-            cnt = self.fields["engineers"].queryset.count()
-            self.fields["engineers"].widget.attrs["size"] = str(min(max(cnt, 4), 12))
-        except Exception:
-            pass
+        self.fields["responsible"].label_from_instance = user_label
+        self.fields["s_engineer"].label_from_instance = user_label
+        self.fields["engineers"].label_from_instance = user_label
 
     def clean(self):
         cleaned = super().clean()
@@ -77,17 +75,14 @@ class EventForm(forms.ModelForm):
             cleaned["end_date"] = start
 
         if start and end and end < start:
-            raise forms.ValidationError("Дата окончания не может быть раньше даты начала.")
+            raise forms.ValidationError(
+                "Дата окончания не может быть раньше даты начала."
+            )
 
         return cleaned
 
 
 class EventEquipmentForm(forms.ModelForm):
-    """
-    ВАЖНО:
-    - принимает event=... (kwargs)
-    - проставляет instance.event ДО form.is_valid(), чтобы модельный clean() не падал
-    """
     equipment = forms.ModelChoiceField(
         queryset=Equipment.objects.all().order_by("name"),
         label="Оборудование",
@@ -97,8 +92,7 @@ class EventEquipmentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         event = kwargs.pop("event", None)
         super().__init__(*args, **kwargs)
-
-        if event is not None:
+        if event:
             self.instance.event = event
 
     class Meta:
@@ -107,20 +101,16 @@ class EventEquipmentForm(forms.ModelForm):
 
 
 class EventRentedEquipmentForm(forms.ModelForm):
-    """
-    Аналогично: поддержка event=... и установка instance.event заранее.
-    """
     equipment = forms.ModelChoiceField(
         queryset=Equipment.objects.all().order_by("name"),
-        label="Оборудование (в аренду)",
+        label="Оборудование (аренда)",
     )
     quantity = forms.IntegerField(min_value=1, label="Количество")
 
     def __init__(self, *args, **kwargs):
         event = kwargs.pop("event", None)
         super().__init__(*args, **kwargs)
-
-        if event is not None:
+        if event:
             self.instance.event = event
 
     class Meta:
