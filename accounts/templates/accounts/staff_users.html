@@ -10,15 +10,15 @@
   </div>
 </div>
 
-<form method="get" style="display:flex; gap:10px; align-items:center; margin: 12px 0; flex-wrap:wrap;">
-  <input type="text" name="q" value="{{ q }}" placeholder="Поиск: username/имя/email" style="width:280px;">
-  <select name="role">
+<form id="staffFilterForm" method="get" style="display:flex; gap:10px; align-items:center; margin: 12px 0; flex-wrap:wrap;">
+  <input id="staffSearchInput" type="text" name="q" value="{{ q }}" placeholder="Поиск: username/имя/email" style="width:280px;">
+  <select id="staffRoleSelect" name="role">
     <option value="">Все роли</option>
     {% for r in roles %}
       <option value="{{ r.id }}" {% if role == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
     {% endfor %}
   </select>
-  <button class="btn-secondary" type="submit">Фильтр</button>
+
   <a class="btn-secondary" href="{% url 'staff_users' %}">Сброс</a>
 </form>
 
@@ -55,4 +55,28 @@
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+(function(){
+  const form = document.getElementById("staffFilterForm");
+  const qInput = document.getElementById("staffSearchInput");
+  const roleSelect = document.getElementById("staffRoleSelect");
+
+  let t = null;
+
+  function submitWithDebounce() {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => {
+      form.submit();
+    }, 350);
+  }
+
+  // Поиск: применяем автоматически с debounce
+  qInput.addEventListener("input", submitWithDebounce);
+
+  // Роль: применяем сразу
+  roleSelect.addEventListener("change", () => form.submit());
+})();
+</script>
+
 {% endblock %}
