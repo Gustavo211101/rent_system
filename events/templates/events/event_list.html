@@ -3,7 +3,11 @@
 {% block content %}
 <div class="toolbar">
   <h1 style="margin:0;">Мероприятия</h1>
-
+{% if not can_view_all_events %}
+  <div class="muted" style="margin: 6px 0 12px;">
+    Показаны только ваши мероприятия (где вы участвуете)
+  </div>
+{% endif %}
   <div style="display:flex; gap:10px; align-items:center;">
     {% if can_create_event %}
       <a class="btn" href="{% url 'event_create' %}">+ Добавить мероприятие</a>

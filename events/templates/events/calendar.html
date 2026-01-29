@@ -161,7 +161,7 @@
   }
 
   .event-bar.has-problem{
-    outline:2px solid rgba(255, 0, 0, 0.35);
+    outline:2px solid rgba(255, 0, 0, 1);
     outline-offset:-1px;
   }
 
@@ -245,41 +245,50 @@
     flex-wrap:wrap;
   }
 
-  #calPreviewNotes {
-    white-space: pre-wrap;
-  }
+  /* multi-line preview notes */
+  #calPreviewNotes { white-space: pre-wrap; }
 </style>
 
 <div class="cal-head">
   <div style="display:flex; align-items:center; gap:12px;">
     {% if month > 1 %}
-      <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"-1" }}&filter={{ filter }}">←</a>
+      <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"-1" }}{% if show_filter %}&filter={{ filter }}{% endif %}">←</a>
     {% else %}
-      <a class="btn-secondary" href="?year={{ year|add:"-1" }}&month=12&filter={{ filter }}">←</a>
+      <a class="btn-secondary" href="?year={{ year|add:"-1" }}&month=12{% if show_filter %}&filter={{ filter }}{% endif %}">←</a>
     {% endif %}
 
     <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
 
     {% if month < 12 %}
-      <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"1" }}&filter={{ filter }}">→</a>
+      <a class="btn-secondary" href="?year={{ year }}&month={{ month|add:"1" }}{% if show_filter %}&filter={{ filter }}{% endif %}">→</a>
     {% else %}
-      <a class="btn-secondary" href="?year={{ year|add:"1" }}&month=1&filter={{ filter }}">→</a>
+      <a class="btn-secondary" href="?year={{ year|add:"1" }}&month=1{% if show_filter %}&filter={{ filter }}{% endif %}">→</a>
     {% endif %}
   </div>
 
-  <form method="get" style="display:flex; align-items:center; gap:10px;">
-    <input type="hidden" name="year" value="{{ year }}">
-    <input type="hidden" name="month" value="{{ month }}">
+  {# ✅ ФИЛЬТР ПОКАЗЫВАЕМ ТОЛЬКО ТЕМ, КТО ВИДИТ ВСЕ #}
+  {% if show_filter %}
+    <form method="get" style="display:flex; align-items:center; gap:10px;">
+      <input type="hidden" name="year" value="{{ year }}">
+      <input type="hidden" name="month" value="{{ month }}">
 
-    <label class="muted" for="filter" style="white-space:nowrap;">Фильтр:</label>
-    <select id="filter" name="filter" onchange="this.form.submit()">
-      <option value="all" {% if filter == "all" %}selected{% endif %}>Все</option>
-      <option value="confirmed" {% if filter == "confirmed" %}selected{% endif %}>Только подтверждённые</option>
-      <option value="mine" {% if filter == "mine" %}selected{% endif %}>Только мои</option>
-    </select>
-    <noscript><button class="btn-secondary" type="submit">OK</button></noscript>
-  </form>
+      <label class="muted" for="filter" style="white-space:nowrap;">Фильтр:</label>
+      <select id="filter" name="filter" onchange="this.form.submit()">
+        <option value="all" {% if filter == "all" %}selected{% endif %}>Все</option>
+        <option value="confirmed" {% if filter == "confirmed" %}selected{% endif %}>Только подтверждённые</option>
+        <option value="mine" {% if filter == "mine" %}selected{% endif %}>Только мои</option>
+      </select>
+      <noscript><button class="btn-secondary" type="submit">OK</button></noscript>
+    </form>
+  {% endif %}
 </div>
+
+{# ✅ ПОДПИСЬ ДЛЯ ОГРАНИЧЕННЫХ ПОЛЬЗОВАТЕЛЕЙ #}
+{% if not can_view_all_events %}
+  <div class="muted" style="margin: 6px 0 12px;">
+    Отображаются только ваши мероприятия (где вы участвуете)
+  </div>
+{% endif %}
 
 <div class="cal-wrap">
   <div class="cal-weekdays">
@@ -429,7 +438,7 @@
   let draggingEl = null;
   let previewEventId = null;
 
-  function decodeNotes(s) {
+  function decodeEscapedText(s) {
     if (!s) return "";
     return s
       .replace(/\\u000D\\u000A/g, "\n")
@@ -447,7 +456,6 @@
   }
   const csrftoken = getCookie("csrftoken");
 
-  // --- AUTO HEIGHT (lanes) ---
   function autoWeekHeights(){
     document.querySelectorAll(".cal-week").forEach(week => {
       const bars = Array.from(week.querySelectorAll(".event-bar"));
@@ -485,9 +493,9 @@
 
   function openPreviewModal(payload){
     previewEventId = payload.id;
-    previewName.textContent = decodeNotes(payload.name) || "";
+    previewName.textContent = decodeEscapedText(payload.name || "");
     previewDates.textContent = `${payload.start} → ${payload.end}`;
-    previewNotes.textContent = decodeNotes(payload.notes) || "—";
+    previewNotes.textContent = decodeEscapedText(payload.notes) || "—";
     previewStatus.value = payload.status || "draft";
 
     previewOpenBtn.href = `/events/${payload.id}/`;
@@ -506,9 +514,7 @@
     return e.target && (e.target.tagName === "A" || e.target.closest("a"));
   }
 
-  // click on day -> create modal
   document.addEventListener("click", function(e){
-    // click on event bar -> preview
     const bar = e.target.closest(".event-bar");
     if (bar) {
       e.preventDefault();
@@ -557,7 +563,6 @@
     }
   });
 
-  // create save
   saveBtn.addEventListener("click", async function(){
     if(!selectedDay) return;
     const name = (nameInput.value || "").trim();
@@ -599,15 +604,12 @@
     }
   });
 
-  // status save from preview
-  previewSaveStatusBtn.addEventListener("click", async function(){
+  // статус/удаление: сохраняем поведение (не ломаем)
+  previewSaveStatusBtn.addEventListener("click", function(){
     if (!previewEventId) return;
-    // если у тебя статус меняется url-ом, оставим редирект на edit (без ломки)
-    // минимально: просто открываем карточку (ты можешь менять статус оттуда)
     window.location.href = `/events/${previewEventId}/`;
   });
 
-  // delete from preview (soft-delete)
   previewDeleteBtn.addEventListener("click", function(){
     if (!previewEventId) return;
     if (!confirm("Удалить мероприятие? Оно попадёт в корзину.")) return;
@@ -624,7 +626,7 @@
     form.submit();
   });
 
-  // drag & drop
+  // drag handlers (оставляем)
   document.addEventListener("dragstart", function(e){
     const ev = e.target.closest(".event-bar");
     if(!ev) return;

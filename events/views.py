@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from accounts.permissions import can_edit_event_card, can_edit_event_equipment
+from accounts.roles import ROLE_MANAGER, ROLE_SENIOR_ENGINEER
 
 try:
     from audit.utils import log_action  # type: ignore
@@ -25,6 +26,10 @@ from .forms import EventEquipmentForm, EventForm, EventRentedEquipmentForm
 from .models import Event, EventEquipment, EventRentedEquipment
 from .utils import auto_close_past_events, calculate_shortages
 
+
+# =========================
+# helpers
+# =========================
 
 def _safe_int(v, default=0) -> int:
     try:
@@ -58,6 +63,33 @@ def _pack_lanes(segments: list[dict]) -> list[dict]:
     return segments
 
 
+def _can_view_all_events(user) -> bool:
+    """
+    Видеть ВСЕ мероприятия могут:
+    - superuser
+    - пользователи в группе ROLE_MANAGER
+    - пользователи в группе ROLE_SENIOR_ENGINEER
+    Остальные — только мероприятия, где они участвуют.
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    groups = set(user.groups.values_list("name", flat=True))
+    return (ROLE_MANAGER in groups) or (ROLE_SENIOR_ENGINEER in groups)
+
+
+def _participation_q(user) -> Q:
+    """
+    Участие в мероприятии: ответственный / старший инженер / инженер (m2m).
+    """
+    return Q(responsible=user) | Q(s_engineer=user) | Q(engineers=user)
+
+
+# =========================
+# views
+# =========================
+
 @login_required
 def calendar_view(request: HttpRequest) -> HttpResponse:
     auto_close_past_events()
@@ -79,12 +111,19 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
         .order_by("start_date", "id")
     )
 
+    can_view_all = _can_view_all_events(request.user)
+
+    # 🔒 Ограничение видимости для всех ролей, кроме менеджера/старшего инженера
+    if not can_view_all:
+        qs = qs.filter(_participation_q(request.user)).distinct()
+        # фильтр "all" для них фактически превращаем в "mine", чтобы не путать
+        cal_filter = "mine"
+
+    # Фильтры
     if cal_filter == "confirmed":
         qs = qs.filter(status="confirmed")
     elif cal_filter == "mine":
-        qs = qs.filter(
-            Q(responsible=request.user) | Q(s_engineer=request.user) | Q(engineers=request.user)
-        ).distinct()
+        qs = qs.filter(_participation_q(request.user)).distinct()
 
     event_problem = {e.id: bool(calculate_shortages(e)) for e in qs}
 
@@ -121,6 +160,7 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
         "week_segments": week_segments,
         "filter": cal_filter,
         "can_create_event": can_edit_event_card(request.user),
+        "can_view_all_events": can_view_all,
     })
 
 
@@ -132,20 +172,35 @@ def event_list_view(request: HttpRequest) -> HttpResponse:
         .prefetch_related("engineers")
         .order_by("-start_date", "-id")
     )
+
+    can_view_all = _can_view_all_events(request.user)
+    if not can_view_all:
+        qs = qs.filter(_participation_q(request.user)).distinct()
+
     return render(request, "events/event_list.html", {
         "events": qs,
         "can_create_event": can_edit_event_card(request.user),
         "can_delete": can_edit_event_card(request.user),
         "can_edit": can_edit_event_card(request.user),
+        "can_view_all_events": can_view_all,
     })
 
 
 @login_required
 def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
     can_manage = can_edit_event_card(request.user)
+    can_view_all = _can_view_all_events(request.user)
+
     base_qs = Event.objects.select_related("responsible", "s_engineer").prefetch_related("engineers")
+
+    # Обычным пользователям нельзя видеть удалённые события
     if not can_manage:
         base_qs = base_qs.filter(is_deleted=False)
+
+    # 🔒 Ограничение доступа к карточке: не-менеджер/не-старший видит только “свои”
+    if not can_view_all:
+        base_qs = base_qs.filter(is_deleted=False).filter(_participation_q(request.user)).distinct()
+
     event = get_object_or_404(base_qs, id=event_id)
 
     equipment_items = EventEquipment.objects.filter(event=event).select_related("equipment").order_by("equipment__name")

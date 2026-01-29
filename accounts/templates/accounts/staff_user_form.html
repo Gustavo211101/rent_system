@@ -6,43 +6,66 @@
   {% if user_obj %}Редактировать пользователя{% else %}Добавить пользователя{% endif %}
 </h1>
 
-<form method="post" class="card" style="max-width:720px;">
+<form method="post" class="card" style="max-width:720px; padding:16px;">
   {% csrf_token %}
 
   {% if not user_obj %}
-    <p><label>Username</label><br>
+    <p>
+      <label>Username</label><br>
       <input type="text" name="username" required style="width:100%;">
     </p>
-    <p><label>Пароль</label><br>
+    <p>
+      <label>Пароль</label><br>
       <input type="password" name="password" required style="width:100%;">
     </p>
   {% else %}
-    <p><strong>Username:</strong> {{ user_obj.username }}</p>
-    <p><label>Новый пароль (необязательно)</label><br>
-      <input type="password" name="password" style="width:100%;">
+    <p class="muted" style="margin-top:0;">
+      Username менять нельзя (при необходимости создайте нового пользователя).
+    </p>
+    <p>
+      <label>Username</label><br>
+      <input type="text" value="{{ user_obj.username }}" disabled style="width:100%;">
     </p>
   {% endif %}
 
-  <p><label>Имя</label><br>
+  <p>
+    <label>Имя</label><br>
     <input type="text" name="first_name" value="{{ user_obj.first_name|default:'' }}" style="width:100%;">
   </p>
-  <p><label>Фамилия</label><br>
+
+  <p>
+    <label>Фамилия</label><br>
     <input type="text" name="last_name" value="{{ user_obj.last_name|default:'' }}" style="width:100%;">
   </p>
-  <p><label>Email</label><br>
+
+  <p>
+    <label>Email</label><br>
     <input type="email" name="email" value="{{ user_obj.email|default:'' }}" style="width:100%;">
   </p>
 
-  <p><label>Роль</label><br>
-    <select name="role_id" style="width:100%;">
-      <option value="">— без роли —</option>
-      {% for r in roles %}
-        <option value="{{ r.id }}"
-          {% if current_role and current_role.id == r.id %}selected{% endif %}
-        >{{ r.name }}</option>
-      {% endfor %}
-    </select>
-  </p>
+  {% if user_obj %}
+    <p>
+      <label>Новый пароль (опционально)</label><br>
+      <input type="password" name="password" style="width:100%;">
+      <div class="muted" style="font-size:12px; margin-top:6px;">
+      </div>
+    </p>
+  {% endif %}
+
+  <hr style="margin:16px 0; opacity:.35;">
+
+  <div style="font-weight:700; margin-bottom:8px;">Роли (можно несколько)</div>
+
+  <div style="display:grid; gap:8px; margin-bottom:14px;">
+    {% for r in roles %}
+      <label style="display:flex; align-items:center; gap:10px;">
+        <input type="checkbox" name="roles" value="{{ r.id }}"
+          {% if selected_role_ids and r.id|stringformat:"s" in selected_role_ids %}checked{% endif %}
+        >
+        <span>{{ r.name }}</span>
+      </label>
+    {% endfor %}
+  </div>
 
   <div style="display:flex; gap:10px;">
     <button class="btn" type="submit">Сохранить</button>

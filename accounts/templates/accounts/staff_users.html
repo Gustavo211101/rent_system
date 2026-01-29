@@ -28,7 +28,7 @@
       <th>Username</th>
       <th>Имя</th>
       <th>Email</th>
-      <th>Роль</th>
+      <th>Роли</th>
       <th style="width:220px;">Действия</th>
     </tr>
   </thead>
@@ -38,7 +38,13 @@
         <td>{{ u.username }}</td>
         <td>{{ u.first_name }} {{ u.last_name }}</td>
         <td>{{ u.email|default:"—" }}</td>
-        <td>{% if u.groups.first %}{{ u.groups.first.name }}{% else %}—{% endif %}</td>
+        <td>
+          {% for g in u.groups.all %}
+            <span class="badge">{{ g.name }}</span>
+          {% empty %}
+            —
+          {% endfor %}
+        </td>
         <td>
           <a class="btn-secondary" href="{% url 'staff_user_edit' u.id %}">Редактировать</a>
           <a class="btn-secondary" href="{% url 'staff_user_delete' u.id %}">Удалить</a>
