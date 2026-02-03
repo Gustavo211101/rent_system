@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import warehouse_views
 
 urlpatterns = [
     # существующие страницы просмотра
@@ -27,4 +28,38 @@ urlpatterns = [
     # ---------- Склад (новая модель, этап 1) ----------
     path("warehouse/", views.stock_type_list_view, name="stock_type_list"),
     path("warehouse/repairs/", views.stock_repair_list_view, name="stock_repair_list"),
+
+    # Категории/подкатегории склада
+    path("warehouse/categories/", warehouse_views.stock_category_list_view, name="stock_category_list"),
+    path("warehouse/categories/add/", warehouse_views.stock_category_add_view, name="stock_category_add"),
+    path(
+        "warehouse/categories/<int:category_id>/edit/",
+        warehouse_views.stock_category_edit_view,
+        name="stock_category_edit",
+    ),
+    path(
+        "warehouse/categories/<int:category_id>/delete/",
+        warehouse_views.stock_category_delete_view,
+        name="stock_category_delete",
+    ),
+    path(
+        "warehouse/categories/<int:category_id>/subcategories/",
+        warehouse_views.stock_subcategory_list_view,
+        name="stock_subcategory_list",
+    ),
+    path(
+        "warehouse/categories/<int:category_id>/subcategories/add/",
+        warehouse_views.stock_subcategory_add_view,
+        name="stock_subcategory_add",
+    ),
+    path(
+        "warehouse/subcategories/<int:subcategory_id>/edit/",
+        warehouse_views.stock_subcategory_edit_view,
+        name="stock_subcategory_edit",
+    ),
+    path(
+        "warehouse/subcategories/<int:subcategory_id>/delete/",
+        warehouse_views.stock_subcategory_delete_view,
+        name="stock_subcategory_delete",
+    ),
 ]

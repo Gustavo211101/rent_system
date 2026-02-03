@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <h1 style="margin:16px 0;">{{ title }}</h1>
+
+  <form method="post" style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px;">
+    {% csrf_token %}
+    <div style="margin-bottom:12px;">
+      <label for="id_name" style="display:block; font-weight:600; margin-bottom:6px;">Название</label>
+      {{ form.name }}
+      {% if form.name.errors %}<div style="color:#b91c1c; margin-top:6px;">{{ form.name.errors }}</div>{% endif %}
+    </div>
+
+    <div style="display:flex; gap:10px;">
+      <button class="btn" type="submit">Сохранить</button>
+      <a class="btn" href="{% url 'stock_category_list' %}">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 0 auto;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin: 16px 0;">
+    <h1 style="margin:0;">Категории склада</h1>
+    {% if can_manage %}
+      <a class="btn" href="{% url 'stock_category_add' %}">Добавить категорию</a>
+    {% endif %}
+  </div>
+
+  {% if messages %}
+    <div style="margin-bottom:12px;">
+      {% for message in messages %}
+        <div style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:8px;">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr style="background:#f9fafb; text-align:left;">
+          <th style="padding:12px;">Категория</th>
+          <th style="padding:12px; width:140px;">Подкатегорий</th>
+          <th style="padding:12px; width:240px;">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in categories %}
+          <tr style="border-top:1px solid #f1f5f9;">
+            <td style="padding:12px;">
+              <a href="{% url 'stock_category_detail' c.id %}">{{ c.name }}</a>
+            </td>
+            <td style="padding:12px;">{{ c.subcategories.count }}</td>
+            <td style="padding:12px;">
+              <a class="btn" href="{% url 'stock_category_detail' c.id %}">Открыть</a>
+              {% if can_manage %}
+                <a class="btn" href="{% url 'stock_category_edit' c.id %}">Редактировать</a>
+                <form method="post" action="{% url 'stock_category_delete' c.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button class="btn btn-danger" type="submit" onclick="return confirm('Удалить категорию?')">Удалить</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" style="padding:12px; color:#6b7280;">Категорий пока нет.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

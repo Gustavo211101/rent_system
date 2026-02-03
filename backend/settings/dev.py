@@ -9,6 +9,7 @@ ALLOWED_HOSTS = [
     ".ngrok-free.app",
     ".ngrok.app",
     ".ngrok.io",
+    ".ngrok-free.dev",
 ] + ALLOWED_HOSTS
 
 CSRF_TRUSTED_ORIGINS = [
