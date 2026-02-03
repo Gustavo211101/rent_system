@@ -110,6 +110,14 @@ def stock_category_detail_view(request, category_id: int):
         "subcategories": subcategories,
     })
 
+@login_required
+def stock_subcategory_list_view(request, category_id: int):
+    """
+    Backward-compatible alias for URLs that used stock_subcategory_list_view
+    to show the list of subcategories inside a category.
+    """
+    return stock_category_detail_view(request, category_id)
+
 
 @login_required
 def stock_subcategory_add_view(request, category_id: int):
