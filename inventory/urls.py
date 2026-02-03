@@ -22,4 +22,9 @@ urlpatterns = [
     path("equipment/categories/add/", views.category_create_view, name="category_add"),
     path("equipment/categories/<int:category_id>/edit/", views.category_update_view, name="category_edit"),
     path("equipment/categories/<int:category_id>/delete/", views.category_delete_view, name="category_delete"),
+
+
+    # ---------- Склад (новая модель, этап 1) ----------
+    path("warehouse/", views.stock_type_list_view, name="stock_type_list"),
+    path("warehouse/repairs/", views.stock_repair_list_view, name="stock_repair_list"),
 ]

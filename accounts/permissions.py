@@ -17,6 +17,11 @@ def can_edit_inventory(user) -> bool:
     return is_super(user) or (_ok(user) and user.has_perm("inventory.manage_inventory"))
 
 
+def can_view_stock(user) -> bool:
+    """Просмотр склада: кладовщик (manage_inventory) и менеджер (edit_event_card) + супер."""
+    return is_super(user) or (_ok(user) and (user.has_perm("inventory.manage_inventory") or user.has_perm("events.edit_event_card")))
+
+
 def can_edit_event_card(user) -> bool:
     return is_super(user) or (_ok(user) and user.has_perm("events.edit_event_card"))
 

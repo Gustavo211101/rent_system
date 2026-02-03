@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models import Sum
 from django.utils import timezone
+from django.conf import settings
 
 
 class EquipmentCategory(models.Model):
@@ -92,3 +93,132 @@ class EquipmentRepair(models.Model):
 
     def __str__(self):
         return f"{self.equipment.name} × {self.quantity} ({self.get_status_display()})"
+
+
+# =========================
+# Warehouse (per-item) stock
+# =========================
+# Эти модели добавлены для будущего "складского" учёта по единицам (инвентарникам).
+# Они НЕ используются текущими экранами/логикой проката, поэтому безопасны для внедрения поэтапно.
+
+class StockCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        verbose_name = "Категория склада"
+        verbose_name_plural = "Категории склада"
+        ordering = ["name", "id"]
+
+    def __str__(self):
+        return self.name
+
+
+class StockSubcategory(models.Model):
+    category = models.ForeignKey(StockCategory, on_delete=models.PROTECT, related_name="subcategories")
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name = "Подкатегория склада"
+        verbose_name_plural = "Подкатегории склада"
+        unique_together = ("category", "name")
+        ordering = ["category__name", "name", "id"]
+
+    def __str__(self):
+        return f"{self.category.name} / {self.name}"
+
+
+class StockEquipmentType(models.Model):
+    category = models.ForeignKey(StockCategory, on_delete=models.PROTECT, related_name="equipment_types")
+    subcategory = models.ForeignKey(
+        StockSubcategory, on_delete=models.PROTECT, related_name="equipment_types", null=True, blank=True
+    )
+
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+
+    # ТТХ — храним на уровне ТИПА, а не конкретной единицы.
+    weight_kg = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+    width_mm = models.PositiveIntegerField(null=True, blank=True)
+    height_mm = models.PositiveIntegerField(null=True, blank=True)
+    depth_mm = models.PositiveIntegerField(null=True, blank=True)
+    power_watt = models.PositiveIntegerField(null=True, blank=True)
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Тип оборудования склада"
+        verbose_name_plural = "Типы оборудования склада"
+        unique_together = ("category", "subcategory", "name")
+        ordering = ["category__name", "subcategory__name", "name", "id"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def total_count(self) -> int:
+        return self.items.count()
+
+    @property
+    def available_count(self) -> int:
+        return self.items.filter(status=StockEquipmentItem.STATUS_STORAGE).count()
+
+    @property
+    def in_repair_count(self) -> int:
+        return self.items.filter(status=StockEquipmentItem.STATUS_REPAIR).count()
+
+
+class StockEquipmentItem(models.Model):
+    STATUS_STORAGE = "storage"
+    STATUS_EVENT = "event"
+    STATUS_REPAIR = "repair"
+    STATUS_LOST = "lost"
+
+    STATUS_CHOICES = (
+        (STATUS_STORAGE, "На складе"),
+        (STATUS_EVENT, "На мероприятии"),
+        (STATUS_REPAIR, "В ремонте"),
+        (STATUS_LOST, "Утеряно"),
+    )
+
+    equipment_type = models.ForeignKey(StockEquipmentType, on_delete=models.PROTECT, related_name="items")
+    inventory_number = models.CharField(max_length=64, unique=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_STORAGE)
+
+    comment = models.CharField(max_length=255, blank=True)
+    # Фото — без ImageField, чтобы не требовать Pillow.
+    photo = models.FileField(upload_to="equipment_photos/", blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Единица оборудования"
+        verbose_name_plural = "Единицы оборудования"
+        ordering = ["equipment_type__name", "inventory_number", "id"]
+
+    def __str__(self):
+        return f"{self.equipment_type.name} [{self.inventory_number}]"
+
+
+class StockRepair(models.Model):
+    equipment_item = models.ForeignKey(StockEquipmentItem, on_delete=models.CASCADE, related_name="repairs")
+
+    # Причина обязательна.
+    reason = models.TextField()
+    opened_at = models.DateTimeField(auto_now_add=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    opened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="opened_stock_repairs"
+    )
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="closed_stock_repairs"
+    )
+
+    class Meta:
+        verbose_name = "Ремонт (склад)"
+        verbose_name_plural = "Ремонты (склад)"
+        ordering = ["-opened_at", "-id"]
+
+    def __str__(self):
+        return f"{self.equipment_item.inventory_number}: {self.reason[:40]}"

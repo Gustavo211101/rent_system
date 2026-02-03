@@ -5,6 +5,7 @@ from .permissions import (
     can_edit_event_card,
     can_edit_event_equipment,
     can_edit_inventory,
+    can_view_stock,
 )
 
 
@@ -22,4 +23,7 @@ def authz_flags(request):
 
         # кто может CRUD инвентаря
         "can_edit_inventory": can_edit_inventory(user),
+
+        # кто видит склад (кладовщик + менеджер)
+        "can_view_stock": can_view_stock(user),
     }

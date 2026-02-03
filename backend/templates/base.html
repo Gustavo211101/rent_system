@@ -10,7 +10,6 @@
   <title>VIDIUM</title>
   <link rel="stylesheet" href="{% static 'css/base.css' %}">
   <link rel="stylesheet" href="{% static 'css/calendar.css' %}">
-  <link rel="stylesheet" href="{% static 'css/ux_polish.css' %}">
 </head>
 <body>
   <header class="topbar">
@@ -29,13 +28,16 @@
 
           <a class="nav-link" href="{% url 'equipment_list_categories' %}">🧰 Оборудование</a>
 
+          {% if can_view_stock %}
+            <a class="nav-link" href="{% url 'stock_type_list' %}">📦 Склад</a>
+          {% endif %}
+
+
           {% if can_manage_staff %}
             <a class="nav-link" href="{% url 'personnel' %}">👥 Персонал</a>
             <a class="nav-link" href="{% url 'audit_list' %}">📒 Журнал</a>
           {% endif %}
           
-          <a class="nav-link" href="{% url 'cabinet:dashboard' %}">⚙️ Кабинет</a>
-
           <div class="notif-wrap">
             <button type="button" class="nav-link notif-bell" id="notifBell" aria-label="Уведомления">
               🔔
@@ -56,6 +58,7 @@
             </div>
           </div>
 
+          <a class="nav-link" href="{% url 'cabinet:dashboard' %}">⚙️ Кабинет</a>
           <form method="post" action="{% url 'logout' %}" style="display:inline;">
   {% csrf_token %}
   <button type="submit" class="nav-link" style="background:none;border:none;padding:0;cursor:pointer;">

@@ -6,9 +6,9 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from accounts.permissions import can_edit_inventory
+from accounts.permissions import can_edit_inventory, can_view_stock
 from audit.utils import log_action
-from .models import Equipment, EquipmentCategory, EquipmentRepair
+from .models import Equipment, EquipmentCategory, EquipmentRepair, StockEquipmentType, StockRepair
 
 
 # ---------- Forms (просто и надёжно) ----------
@@ -341,3 +341,31 @@ def repair_delete_view(request, repair_id):
         return redirect("repair_list")
 
     return render(request, "inventory/repair_delete_confirm.html", {"repair": repair})
+
+
+# ---------- Склад (этап 1): каркас UI ----------
+
+@login_required
+def stock_type_list_view(request):
+    if not can_view_stock(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    types = StockEquipmentType.objects.select_related("category", "subcategory").order_by("category__name", "name")
+    return render(request, "inventory/stock/stock_list.html", {
+        "types": types,
+        "tab": "stock",
+        "can_manage": can_edit_inventory(request.user),  # только кладовщик
+    })
+
+
+@login_required
+def stock_repair_list_view(request):
+    if not can_view_stock(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    repairs = StockRepair.objects.select_related("equipment_item", "equipment_item__equipment_type").order_by("-opened_at")
+    return render(request, "inventory/stock/repair_list.html", {
+        "repairs": repairs,
+        "tab": "repairs",
+        "can_manage": can_edit_inventory(request.user),  # только кладовщик
+    })
