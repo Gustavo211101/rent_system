@@ -43,8 +43,13 @@
   </div>
 
   <div class="page-actions">
+
+{% with y=request.GET.year m=request.GET.month %}
+  <a class="btn-secondary" href="{% url 'calendar' %}{% if y and m %}?year={{ y }}&month={{ m }}{% endif %}">← Назад в календарь</a>
+{% endwith %}
+
     {% if can_modify %}
-      <a class="btn-secondary" href="{% url 'event_edit' event.id %}">✏️ Редактировать</a>
+      <a class="btn-secondary" href="{% url 'event_edit' event.id %}{% if request.GET.year and request.GET.month %}?year={{ request.GET.year }}&month={{ request.GET.month }}{% endif %}">✏️ Редактировать</a>
 
       <div style="height:10px;"></div>
 

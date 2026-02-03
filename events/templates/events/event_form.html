@@ -79,7 +79,7 @@
 
     <div style="margin-top:16px;">
         <button class="btn" type="submit">Сохранить</button>
-        <a class="btn-secondary" href="{% url 'calendar' %}">Отмена</a>
+        <a class="btn-secondary" href="{% url 'calendar' %}{% if request.GET.year and request.GET.month %}?year={{ request.GET.year }}&month={{ request.GET.month }}{% endif %}">Отмена</a>
     </div>
 </form>
 {% endblock %}
