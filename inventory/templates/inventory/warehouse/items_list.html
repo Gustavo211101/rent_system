@@ -1,0 +1,22 @@
+
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ etype.name }} — единицы</h2>
+{% if can_manage %}
+<a href="{% url 'stock_item_add' etype.id %}">Добавить</a>
+{% endif %}
+<ul>
+{% for i in items %}
+<li>
+{{ i.inventory_number }} ({{ i.get_status_display }})
+<a href="{% url 'stock_item_card' i.id %}">Карточка</a>
+{% if can_manage %}
+<a href="{% url 'stock_item_edit' i.id %}">Редактировать</a>
+<a href="{% url 'stock_item_delete' i.id %}">Удалить</a>
+{% endif %}
+</li>
+{% empty %}
+<li>Пусто</li>
+{% endfor %}
+</ul>
+{% endblock %}

@@ -9,8 +9,8 @@
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
       {# Если уже есть маршруты — кнопки появятся. Если нет — можно удалить лишнее. #}
       {% if request.resolver_match and request.resolver_match.url_name %}{% endif %}
-      <a class="btn" href="{% url 'repair_list' %}">Ремонт</a>
-      <a class="btn" href="{% url 'equipment_list_categories' %}">Категории</a>
+      <a class="btn" href="{% url 'stock_repair_list' %}">Ремонт</a>
+      <a class="btn" href="{% url 'stock_category_list' %}">Категории</a>
     </div>
   </div>
 

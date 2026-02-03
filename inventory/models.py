@@ -128,9 +128,34 @@ class StockSubcategory(models.Model):
 
 
 class StockEquipmentType(models.Model):
-    category = models.ForeignKey(StockCategory, on_delete=models.PROTECT, related_name="equipment_types")
+    name = models.CharField(max_length=255)
+    category = models.ForeignKey(StockCategory, on_delete=models.PROTECT)
     subcategory = models.ForeignKey(
-        StockSubcategory, on_delete=models.PROTECT, related_name="equipment_types", null=True, blank=True
+        StockSubcategory,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True
+    )
+
+    power_w = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Потребляемая мощность (Вт)"
+    )
+
+    dimensions_mm = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Габариты (мм)"
+    )
+
+    weight_kg = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Вес (кг)"
     )
 
     name = models.CharField(max_length=200)
@@ -172,21 +197,26 @@ class StockEquipmentItem(models.Model):
     STATUS_STORAGE = "storage"
     STATUS_EVENT = "event"
     STATUS_REPAIR = "repair"
-    STATUS_LOST = "lost"
 
     STATUS_CHOICES = (
         (STATUS_STORAGE, "На складе"),
         (STATUS_EVENT, "На мероприятии"),
         (STATUS_REPAIR, "В ремонте"),
-        (STATUS_LOST, "Утеряно"),
     )
 
-    equipment_type = models.ForeignKey(StockEquipmentType, on_delete=models.PROTECT, related_name="items")
+    equipment_type = models.ForeignKey(
+        StockEquipmentType,
+        on_delete=models.PROTECT,
+        related_name="items",
+    )
     inventory_number = models.CharField(max_length=64, unique=True)
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_STORAGE)
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_STORAGE,
+    )
 
     comment = models.CharField(max_length=255, blank=True)
-    # Фото — без ImageField, чтобы не требовать Pillow.
     photo = models.FileField(upload_to="equipment_photos/", blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -197,7 +227,7 @@ class StockEquipmentItem(models.Model):
         ordering = ["equipment_type__name", "inventory_number", "id"]
 
     def __str__(self):
-        return f"{self.equipment_type.name} [{self.inventory_number}]"
+        return f"{self.equipment_type.name} ({self.inventory_number})"
 
 
 class StockRepair(models.Model):

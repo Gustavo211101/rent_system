@@ -1,0 +1,1 @@
+from events.templatetags.event_extras import *  # noqa

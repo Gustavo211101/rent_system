@@ -1,0 +1,8 @@
+
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ item.inventory_number }}</h2>
+<p>Тип: {{ item.equipment_type.name }}</p>
+<p>Статус: {{ item.get_status_display }}</p>
+<a href="{% url 'stock_item_qr' item.id %}">Показать QR</a>
+{% endblock %}
