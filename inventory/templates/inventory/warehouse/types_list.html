@@ -1,111 +1,102 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
 {% load inventory_extras %}
+
 {% block content %}
-<div class="container mt-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-      <h2 class="mb-0">Склад — типы оборудования</h2>
-      <div class="text-muted">Планирование и привязка к мероприятиям появятся позже. Сейчас — структура склада.</div>
-    </div>
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-secondary" href="{% url 'stock_category_list' %}">Категории</a>
-      <a class="btn btn-outline-secondary" href="{% url 'stock_repair_list' %}">Ремонт</a>
-      {% if can_manage %}
-        <a class="btn btn-primary" href="{% url 'stock_type_add' %}">+ Добавить тип</a>
-      {% endif %}
-    </div>
+<div class="container" style="max-width: 1200px;">
+  <h1 style="margin-bottom:6px;">Склад — типы оборудования</h1>
+  <div style="opacity:.8; margin-bottom:12px;">Планирование и привязка к мероприятиям появятся позже. Сейчас — структура склада.</div>
+
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+    <a class="btn" href="/warehouse/categories/">Категории</a>
+    <a class="btn" href="/warehouse/repairs/">Ремонт</a>
+    {% if can_manage %}
+      <a class="btn" href="{% url 'stock_type_add' %}">+ Добавить тип</a>
+    {% endif %}
   </div>
 
-  {% if messages %}
-    <div class="mb-3">
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} mb-2">{{ message }}</div>
-      {% endfor %}
+  <form method="get" action="" style="display:flex; gap:8px; flex-wrap:wrap; align-items:end; margin-bottom:14px;">
+    <div>
+      <label for="q" style="display:block; font-size:12px; opacity:.8;">Поиск по названию</label>
+      <input id="q" name="q" type="text" value="{{ q|default:'' }}" style="min-width:220px;">
     </div>
-  {% endif %}
 
-  <form method="get" class="row g-2 mb-3">
-    <div class="col-md-4">
-      <input class="form-control" name="q" value="{{ q }}" placeholder="Поиск по названию">
-    </div>
-    <div class="col-md-3">
-      <select class="form-select" name="category" onchange="this.form.submit()">
-        <option value="">Категория (все)</option>
+    <div>
+      <label for="category" style="display:block; font-size:12px; opacity:.8;">Категория</label>
+      <select id="category" name="category">
+        <option value="">(все)</option>
         {% for c in categories %}
-          <option value="{{ c.id }}" {% if category_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+          <option value="{{ c.id }}" {% if category_id|default:'' == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-3">
-      <select class="form-select" name="subcategory" onchange="this.form.submit()">
-        <option value="">Подкатегория (все)</option>
+
+    <div>
+      <label for="subcategory" style="display:block; font-size:12px; opacity:.8;">Подкатегория</label>
+      <select id="subcategory" name="subcategory">
+        <option value="">(все)</option>
         {% for s in subcategories %}
-          <option value="{{ s.id }}" {% if subcategory_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          <option value="{{ s.id }}" {% if subcategory_id|default:'' == s.id|stringformat:'s' %}selected{% endif %}>{{ s.name }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-2 d-grid">
-      <button class="btn btn-outline-primary" type="submit">Применить</button>
-    </div>
+
+    <button class="btn" type="submit">Применить</button>
   </form>
 
-  <div class="card">
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Категория / Подкатегория</th>
-              <th>Название</th>
-              <th class="text-center">Всего</th>
-              <th class="text-center">На складе</th>
-              <th class="text-center">В ремонте</th>
-              <th class="text-center">На мероприятии</th>
-              <th class="text-end">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for t in types %}
-              {% with cnt=counts_map|get_item:t.id %}
-              <tr>
-                <td class="text-muted">
-                  <div>{{ t.category.name }}</div>
-                  <div class="small">{% if t.subcategory %}{{ t.subcategory.name }}{% else %}—{% endif %}</div>
-                </td>
-                <td>
-                  <div class="fw-semibold">{{ t.name }}</div>
-                  <div class="text-muted small">
-                    {% if t.weight_kg %}Вес: {{ t.weight_kg }} кг{% endif %}
-                    {% if t.dimensions_mm %}{% if t.weight_kg %} · {% endif %}Габариты: {{ t.dimensions_mm }}{% endif %}
-                    {% if t.power_w %}{% if t.weight_kg or t.dimensions_mm %} · {% endif %}Питание: {{ t.power_w }} W{% endif %}
-                  </div>
-                </td>
-                <td class="text-center">{{ cnt.total|default:0 }}</td>
-                <td class="text-center">{{ cnt.on_stock|default:0 }}</td>
-                <td class="text-center">{{ cnt.in_repair|default:0 }}</td>
-                <td class="text-center">{{ cnt.on_event|default:0 }}</td>
-                <td class="text-end">
-                  {% if can_manage %}
-                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'stock_type_edit' t.id %}">Редактировать</a>
-                    <form method="post" action="{% url 'stock_type_delete' t.id %}" style="display:inline;">
-                      {% csrf_token %}
-                      <button class="btn btn-sm btn-outline-danger" type="submit"
-                        onclick="return confirm('Удалить тип «{{ t.name }}»?');">Удалить</button>
-                    </form>
-                  {% else %}
-                    <span class="text-muted small">—</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endwith %}
-            {% empty %}
-              <tr><td colspan="7" class="text-muted">Типов оборудования пока нет.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  <table class="table" style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr>
+        <th style="text-align:left;">Категория / Подкатегория</th>
+        <th style="text-align:left;">Название</th>
+        <th style="text-align:center;">Всего</th>
+        <th style="text-align:center;">На складе</th>
+        <th style="text-align:center;">В ремонте</th>
+        <th style="text-align:center;">На мероприятии</th>
+        <th style="text-align:right;">Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in types %}
+        {% with cnt=counts_map|get_item:t.id %}
+        <tr>
+          <td>
+            <div>{{ t.category.name }}</div>
+            <div style="opacity:.8; font-size:12px;">{% if t.subcategory %}{{ t.subcategory.name }}{% else %}—{% endif %}</div>
+          </td>
 
+          <td>
+            <div style="font-weight:600;">{{ t.name }}</div>
+            <div style="opacity:.8; font-size:12px;">
+              {% if t.weight_kg %}Вес: {{ t.weight_kg }} кг{% endif %}
+              {% if t.dimensions_mm %}{% if t.weight_kg %} · {% endif %}Габариты: {{ t.dimensions_mm }}{% endif %}
+              {% if t.power_w %}{% if t.weight_kg or t.dimensions_mm %} · {% endif %}Питание: {{ t.power_w }} W{% endif %}
+            </div>
+          </td>
+
+          <td style="text-align:center;">{{ cnt.total|default:0 }}</td>
+          <td style="text-align:center;">{{ cnt.on_stock|default:0 }}</td>
+          <td style="text-align:center;">{{ cnt.in_repair|default:0 }}</td>
+          <td style="text-align:center;">{{ cnt.on_event|default:0 }}</td>
+
+          <td style="text-align:right; white-space:nowrap;">
+            <a class="btn btn-sm" href="{% url 'stock_items_list' type_id=t.id %}">Единицы</a>
+            {% if can_manage %}
+              <a class="btn btn-sm" href="{% url 'stock_type_edit' t.id %}">Редактировать</a>
+              <form method="post" action="{% url 'stock_type_delete' t.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="btn btn-sm" type="submit" onclick="return confirm('Удалить тип «{{ t.name }}»?')">Удалить</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+      {% empty %}
+        <tr>
+          <td colspan="7" style="opacity:.8; padding:12px;">Пока нет типов оборудования.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}

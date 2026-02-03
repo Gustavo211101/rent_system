@@ -1,10 +1,42 @@
-
 {% extends "base.html" %}
+{% load static %}
 {% block content %}
-<h2>Единица — {{ etype.name }}</h2>
-<form method="post" enctype="multipart/form-data">
-{% csrf_token %}
-{{ form.as_p }}
-<button type="submit">Сохранить</button>
-</form>
+<div class="container" style="max-width:800px; margin:0 auto; padding:20px;">
+  <h2 style="margin:0 0 16px 0;">
+    {% if mode == "add" %}Добавить единицу{% else %}Редактировать единицу{% endif %} — {{ eq_type.name }}
+  </h2>
+
+  <form method="post" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:14px;">
+    {% csrf_token %}
+
+    <div>
+      <label for="id_inventory_number" style="display:block; margin-bottom:6px;">Инвентарный номер</label>
+      {{ form.inventory_number }}
+      {{ form.inventory_number.errors }}
+    </div>
+
+    <div>
+      <label for="id_status" style="display:block; margin-bottom:6px;">Статус</label>
+      {{ form.status }}
+      {{ form.status.errors }}
+    </div>
+
+    <div>
+      <label for="id_comment" style="display:block; margin-bottom:6px;">Комментарий</label>
+      {{ form.comment }}
+      {{ form.comment.errors }}
+    </div>
+
+    <div>
+      <label for="id_photo" style="display:block; margin-bottom:6px;">Фото (опционально)</label>
+      {{ form.photo }}
+      {{ form.photo.errors }}
+    </div>
+
+    <div style="display:flex; gap:10px;">
+      <button class="btn" type="submit">Сохранить</button>
+      <a class="btn" href="{% url 'stock_items_list' type_id=eq_type.id %}">Отмена</a>
+    </div>
+  </form>
+</div>
 {% endblock %}

@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import warehouse_views
 from . import warehouse_types_views
+from . import warehouse_items_views
 
 urlpatterns = [
     # --- Legacy "equipment" URLs (старый склад). Оставляем как есть для совместимости проекта. ---
@@ -49,4 +50,11 @@ urlpatterns = [
     # Подкатегория: редактирование/удаление (вложенно, чтобы совпадало с шаблонами)
     path("warehouse/categories/<int:category_id>/subcategories/<int:subcategory_id>/edit/", warehouse_views.stock_subcategory_edit_view, name="stock_subcategory_edit"),
     path("warehouse/categories/<int:category_id>/subcategories/<int:subcategory_id>/delete/", warehouse_views.stock_subcategory_delete_view, name="stock_subcategory_delete"),
+
+    path("warehouse/types/<int:type_id>/items/", warehouse_items_views.stock_items_list_view, name="stock_items_list"),
+    path("warehouse/types/<int:type_id>/items/add/", warehouse_items_views.stock_item_add_view, name="stock_item_add"),
+    path("warehouse/types/<int:type_id>/items/<int:item_id>/edit/", warehouse_items_views.stock_item_edit_view, name="stock_item_edit"),
+    path("warehouse/types/<int:type_id>/items/<int:item_id>/delete/", warehouse_items_views.stock_item_delete_view, name="stock_item_delete"),
+    path("warehouse/types/<int:type_id>/items/<int:item_id>/card/", warehouse_items_views.stock_item_card_view, name="stock_item_card"),
+
 ]
