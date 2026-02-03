@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}QR для {{ item.inventory_number }}{% endblock %}
+
+{% block content %}
+<h1>QR для {{ item.inventory_number }}</h1>
+
+<div class="card" style="max-width: 720px;">
+  <p style="color:#64748b; margin-top:0;">
+    QR кодирует инвентарный номер. Это удобно для быстрой перепечатки наклейки.
+  </p>
+
+  <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;">
+    <div>
+      <img
+        src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data={{ qr_data|urlencode }}"
+        alt="QR"
+        style="border:1px solid #e5e7eb; border-radius:12px; padding:10px; background:#fff;"
+      >
+      <div style="margin-top:10px; font-size:14px; color:#334155;">
+        <div><b>Инвентарник:</b> {{ item.inventory_number }}</div>
+        <div><b>Тип:</b> {{ eq_type.name }}</div>
+      </div>
+    </div>
+
+    <div style="min-width:240px;">
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn" onclick="window.print()">Печать</button>
+        <a class="btn" href="{% url 'stock_item_card' type_id=eq_type.id item_id=item.id %}">Открыть карточку</a>
+        <a class="btn btn-outline" href="{% url 'stock_items_list' type_id=eq_type.id %}">Назад к списку</a>
+      </div>
+
+      <div style="margin-top:14px; font-size:14px; color:#64748b;">
+        Если интернет недоступен, можно позже заменить генерацию QR на локальную (JS или backend).
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

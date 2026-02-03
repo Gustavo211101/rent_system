@@ -1,43 +1,70 @@
 {% extends "base.html" %}
-{% load static %}
-{% block content %}
-<div class="container" style="max-width:900px; margin:0 auto; padding:20px;">
-  <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center;">
-    <div>
-      <h2 style="margin:0;">{{ eq_type.name }} — {{ item.inventory_number }}</h2>
-      <div style="margin-top:6px; color:#6b7280;">Статус: <b>{{ item.get_status_display }}</b></div>
-    </div>
-    <a class="btn" href="{% url 'stock_items_list' type_id=eq_type.id %}">← Назад</a>
-  </div>
 
-  <div style="margin-top:18px; display:grid; grid-template-columns: 320px 1fr; gap:18px;">
-    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px;">
+{% block title %}Карточка оборудования{% endblock %}
+
+{% block content %}
+<h1>Карточка оборудования</h1>
+
+<div class="card" style="max-width: 920px;">
+  <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;">
+    <div style="min-width:260px;">
       {% if item.photo %}
-        <img src="{{ item.photo.url }}" alt="" style="width:100%; border-radius:10px;">
+        <img src="{{ item.photo.url }}" alt="Фото" style="max-width:260px; max-height:260px; object-fit:contain; border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#fff;" />
       {% else %}
-        <div style="height:200px; display:flex; align-items:center; justify-content:center; color:#6b7280;">
-          Фото не добавлено
+        <div style="width:260px; height:260px; display:flex; align-items:center; justify-content:center; border:1px dashed #cbd5e1; border-radius:8px; color:#64748b;">
+          Фото пока не добавлено
         </div>
       {% endif %}
 
-      <div id="qr" style="margin-top:12px; padding-top:12px; border-top:1px solid #e5e7eb;">
-        <div style="font-weight:600; margin-bottom:8px;">QR / штрих‑код</div>
-        <div style="color:#6b7280; font-size:14px;">
-          Пока заглушка: позже сюда подключим генерацию QR по инвентарнику.
-        </div>
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn" href="{% url 'stock_item_qr' type_id=eq_type.id item_id=item.id %}">Показать QR</a>
+        <a class="btn btn-outline" href="{% url 'stock_items_list' type_id=eq_type.id %}">Назад к списку</a>
       </div>
     </div>
 
-    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px;">
-      <h3 style="margin-top:0;">Описание</h3>
-      <div style="white-space:pre-wrap;">{{ item.comment|default:"—" }}</div>
+    <div style="flex:1; min-width:320px;">
+      <h2 style="margin-top:0;">{{ eq_type.name }}</h2>
 
-      <h3 style="margin-top:20px;">Параметры типа</h3>
-      <div style="color:#6b7280;">
-        Вес: {{ eq_type.weight_kg|default:"—" }} кг<br>
-        Габариты: {{ eq_type.dimensions_mm|default:"—" }}<br>
-        Питание: {{ eq_type.power_w|default:"—" }} W
-      </div>
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td style="padding:6px 10px; color:#64748b;">Инвентарный номер</td>
+          <td style="padding:6px 10px; font-weight:600;">{{ item.inventory_number }}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px; color:#64748b;">Статус</td>
+          <td style="padding:6px 10px;">{{ item.get_status_display }}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px; color:#64748b;">Комментарий</td>
+          <td style="padding:6px 10px;">{{ item.comment|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px; color:#64748b;">Создано</td>
+          <td style="padding:6px 10px;">{{ item.created_at|date:"d.m.Y H:i" }}</td>
+        </tr>
+      </table>
+
+      <hr style="margin:18px 0;" />
+
+      <h3 style="margin:0 0 10px 0;">Параметры типа</h3>
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td style="padding:6px 10px; color:#64748b;">Вес</td>
+          <td style="padding:6px 10px;">{% if eq_type.weight_kg %}{{ eq_type.weight_kg }} кг{% else %}—{% endif %}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px; color:#64748b;">Габариты</td>
+          <td style="padding:6px 10px;">{% if eq_type.dimensions_mm %}{{ eq_type.dimensions_mm }} мм{% else %}—{% endif %}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 10px; color:#64748b;">Питание</td>
+          <td style="padding:6px 10px;">{% if eq_type.power_w %}{{ eq_type.power_w }} W{% else %}—{% endif %}</td>
+        </tr>
+      </table>
+
+      <p style="margin-top:14px; color:#64748b;">
+        Примечание: дополнительные поля (размеры, вес, энергопотребление и т.д.) можно расширять позже.
+      </p>
     </div>
   </div>
 </div>

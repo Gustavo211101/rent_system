@@ -119,3 +119,28 @@ def stock_item_card_view(request, type_id: int, item_id: int):
         "inventory/warehouse/item_card.html",
         {"eq_type": eq_type, "item": item},
     )
+
+@login_required
+def stock_item_qr_view(request, type_id: int, item_id: int):
+    """Страница с QR-кодом для печати наклейки.
+
+    QR кодирует инвентарный номер (inventory_number).
+    """
+    if not can_view_stock(request.user):
+        return _forbidden()
+
+    eq_type = get_object_or_404(StockEquipmentType, pk=type_id)
+    item = get_object_or_404(StockEquipmentItem, pk=item_id, equipment_type=eq_type)
+
+    # Строка, которую кодируем в QR. Можно расширить позже (URL, json и т.п.)
+    qr_data = item.inventory_number
+
+    return render(
+        request,
+        "inventory/warehouse/item_qr.html",
+        {
+            "eq_type": eq_type,
+            "item": item,
+            "qr_data": qr_data,
+        },
+    )
