@@ -48,10 +48,11 @@ def stock_item_add_view(request, type_id):
 
 
 @login_required
-def stock_item_edit_view(request, item_id):
+def stock_item_edit_view(request, type_id, item_id):
     if not can_edit_inventory(request.user):
         return _forbidden()
-    obj = get_object_or_404(StockEquipmentItem, pk=item_id)
+    etype = get_object_or_404(StockEquipmentType, pk=type_id)
+    obj = get_object_or_404(StockEquipmentItem, pk=item_id, equipment_type=etype)
     form = StockEquipmentItemForm(request.POST or None, instance=obj)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -59,29 +60,30 @@ def stock_item_edit_view(request, item_id):
     return render(
         request,
         "inventory/warehouse/item_form.html",
-        {"form": form, "etype": obj.equipment_type},
+        {"form": form, "etype": etype},
     )
 
 
 @login_required
-def stock_item_delete_view(request, item_id):
+def stock_item_delete_view(request, type_id, item_id):
     if not can_edit_inventory(request.user):
         return _forbidden()
-    obj = get_object_or_404(StockEquipmentItem, pk=item_id)
-    tid = obj.equipment_type.id
+    etype = get_object_or_404(StockEquipmentType, pk=type_id)
+    obj = get_object_or_404(StockEquipmentItem, pk=item_id, equipment_type=etype)
     obj.delete()
-    return redirect("stock_item_list", type_id=tid)
+    return redirect("stock_item_list", type_id=etype.id)
 
 
 @login_required
-def stock_item_card_view(request, item_id):
+def stock_item_card_view(request, type_id, item_id):
     if not can_view_stock(request.user):
         return _forbidden()
-    obj = get_object_or_404(StockEquipmentItem, pk=item_id)
+    etype = get_object_or_404(StockEquipmentType, pk=type_id)
+    obj = get_object_or_404(StockEquipmentItem, pk=item_id, equipment_type=etype)
     return render(
         request,
         "inventory/warehouse/item_card.html",
-        {"item": obj},
+        {"item": obj, "etype": etype, "can_manage": can_edit_inventory(request.user)},
     )
 
 

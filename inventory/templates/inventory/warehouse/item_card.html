@@ -1,13 +1,67 @@
-
 {% extends "base.html" %}
-{% block content %}
-<h2>{{ item.inventory_number }}</h2>
-<p><strong>Тип:</strong> {{ item.equipment_type.name }}</p>
-<p><strong>Статус:</strong> {{ item.get_status_display }}</p>
+{% load inventory_extras %}
 
-<p>
-    <a href="{% url 'stock_item_barcode' item.id %}" target="_blank">
-        Показать штрихкод
-    </a>
-</p>
+{% block content %}
+<div class="container" style="max-width: 1100px; margin: 0 auto; padding: 20px;">
+  <h2 style="margin: 0 0 8px 0;">{{ item.inventory_number }} — карточка единицы</h2>
+  <div style="color: #6b7280; margin-bottom: 16px;">
+    Тип: <strong>{{ eq_type.name }}</strong>
+    {% if eq_type.category %} · Категория: {{ eq_type.category.name }}{% endif %}
+    {% if eq_type.subcategory %} · Подкатегория: {{ eq_type.subcategory.name }}{% endif %}
+  </div>
+
+  <div style="display:flex; gap: 24px; flex-wrap: wrap;">
+    <div style="min-width: 280px;">
+      {% if item.photo %}
+        <img src="{{ item.photo.url }}" alt="Фото" style="max-width: 280px; max-height: 280px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #fff;" />
+      {% else %}
+        <div style="width: 280px; height: 280px; display:flex; align-items:center; justify-content:center; border: 1px dashed #cbd5e1; border-radius: 8px; color:#64748b;">
+          фото пока не добавлено
+        </div>
+      {% endif %}
+
+      <div style="margin-top: 12px; display:flex; gap: 10px; flex-wrap: wrap;">
+        <a class="btn" href="{% url 'stock_item_barcode' item_id=item.id %}">Штрихкод</a>
+        <a class="btn btn-outline" href="{% url 'stock_items_list' type_id=eq_type.id %}">Назад к списку</a>
+        {% if can_manage %}
+          <a class="btn btn-secondary" href="{% url 'stock_item_edit' type_id=eq_type.id item_id=item.id %}">Редактировать</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="flex: 1; min-width: 320px;">
+      <div class="card" style="padding: 16px;">
+        <div style="display:grid; grid-template-columns: 220px 1fr; gap: 10px 16px; align-items: baseline;">
+          <div style="color:#6b7280;">Инв. номер</div>
+          <div><strong>{{ item.inventory_number }}</strong></div>
+
+          <div style="color:#6b7280;">Статус</div>
+          <div>{{ item.get_status_display }}</div>
+
+          <div style="color:#6b7280;">Комментарий</div>
+          <div>{{ item.comment|dash_if_empty }}</div>
+
+          <div style="color:#6b7280;">Создано</div>
+          <div>{{ item.created_at|date:"d.m.Y H:i" }}</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px;" class="card">
+        <div style="padding: 16px;">
+          <h3 style="margin: 0 0 10px 0;">Характеристики типа</h3>
+          <div style="display:grid; grid-template-columns: 220px 1fr; gap: 10px 16px; align-items: baseline;">
+            <div style="color:#6b7280;">Вес</div>
+            <div>{% if eq_type.weight_kg %}{{ eq_type.weight_kg }} кг{% else %}—{% endif %}</div>
+
+            <div style="color:#6b7280;">Габариты</div>
+            <div>{{ eq_type.dimensions_mm|dash_if_empty }}</div>
+
+            <div style="color:#6b7280;">Питание</div>
+            <div>{% if eq_type.power_w %}{{ eq_type.power_w }} W{% else %}—{% endif %}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
