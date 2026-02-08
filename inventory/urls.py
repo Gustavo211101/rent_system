@@ -35,7 +35,6 @@ urlpatterns = [
     path("warehouse/types/<int:type_id>/edit/", warehouse_types_views.stock_type_edit_view, name="stock_type_edit"),
     path("warehouse/types/<int:type_id>/delete/", warehouse_types_views.stock_type_delete_view, name="stock_type_delete"),
 
-
     # Категории склада
     path("warehouse/categories/", warehouse_views.stock_category_list_view, name="stock_category_list"),
     path("warehouse/categories/add/", warehouse_views.stock_category_add_view, name="stock_category_add"),
@@ -47,15 +46,17 @@ urlpatterns = [
     path("warehouse/categories/<int:category_id>/subcategories/", warehouse_views.stock_subcategory_list_view, name="stock_subcategory_list"),
     path("warehouse/categories/<int:category_id>/subcategories/add/", warehouse_views.stock_subcategory_add_view, name="stock_subcategory_add"),
 
-    # Подкатегория: редактирование/удаление
+    # Подкатегория: редактирование/удаление (вложенно, чтобы совпадало с шаблонами)
     path("warehouse/categories/<int:category_id>/subcategories/<int:subcategory_id>/edit/", warehouse_views.stock_subcategory_edit_view, name="stock_subcategory_edit"),
     path("warehouse/categories/<int:category_id>/subcategories/<int:subcategory_id>/delete/", warehouse_views.stock_subcategory_delete_view, name="stock_subcategory_delete"),
 
-    path("warehouse/types/<int:type_id>/items/", warehouse_items_views.stock_item_list_view, name="stock_items_list"),
+    # Единицы типа
+    path("warehouse/types/<int:type_id>/items/", warehouse_items_views.stock_items_list_view, name="stock_items_list"),
     path("warehouse/types/<int:type_id>/items/add/", warehouse_items_views.stock_item_add_view, name="stock_item_add"),
     path("warehouse/types/<int:type_id>/items/<int:item_id>/edit/", warehouse_items_views.stock_item_edit_view, name="stock_item_edit"),
     path("warehouse/types/<int:type_id>/items/<int:item_id>/delete/", warehouse_items_views.stock_item_delete_view, name="stock_item_delete"),
     path("warehouse/types/<int:type_id>/items/<int:item_id>/card/", warehouse_items_views.stock_item_card_view, name="stock_item_card"),
 
-    path("warehouse/types/<int:type_id>/items/<int:item_id>/barcode/",warehouse_items_views.stock_item_barcode_view,name="stock_item_barcode",),
+    # QR (временно; по ТЗ этапа 1 будет заменено на штрихкод)
+    path("warehouse/types/<int:type_id>/items/<int:item_id>/qr/", warehouse_items_views.stock_item_qr_view, name="stock_item_qr"),
 ]

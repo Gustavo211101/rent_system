@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from django import forms
 
 from .models import StockEquipmentItem
@@ -10,5 +8,7 @@ class StockEquipmentItemForm(forms.ModelForm):
         model = StockEquipmentItem
         fields = ["inventory_number", "status", "comment", "photo"]
         widgets = {
-            "comment": forms.TextInput(attrs={"placeholder": "Комментарий (опционально)"}),
+            "inventory_number": forms.TextInput(attrs={"style": "width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:10px;"}),
+            "status": forms.Select(attrs={"style": "width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:10px;"}),
+            "comment": forms.TextInput(attrs={"style": "width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:10px;"}),
         }

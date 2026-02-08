@@ -32,7 +32,7 @@
         <td style="padding:10px;">{{ item.comment|dash_if_empty }}</td>
         <td style="padding:10px; display:flex; gap:8px; flex-wrap:wrap;">
           <a class="btn" href="{% url 'stock_item_card' type_id=eq_type.id item_id=item.id %}">Открыть карточку</a>
-          <a class="btn" href="{% url 'stock_item_barcode' item_id=item.id %}">Штрихкод</a>
+          <a class="btn" href="{% url 'stock_item_qr' type_id=eq_type.id item_id=item.id %}">Показать QR</a>
           {% if can_manage %}
             <a class="btn" href="{% url 'stock_item_edit' type_id=eq_type.id item_id=item.id %}">Редактировать</a>
             <form method="post" action="{% url 'stock_item_delete' type_id=eq_type.id item_id=item.id %}" style="margin:0;">
