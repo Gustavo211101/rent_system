@@ -30,6 +30,9 @@ urlpatterns = [
     path("warehouse/", warehouse_types_views.stock_type_list_view, name="stock_type_list"),
     path("warehouse/repairs/", views.stock_repair_list_view, name="stock_repair_list"),
 
+    # ✅ карточка ремонта (чтобы читать заметки крупнее)
+    path("warehouse/repairs/<int:repair_id>/", warehouse_items_views.stock_repair_detail_view, name="stock_repair_detail"),
+
     # Типы оборудования склада
     path("warehouse/types/add/", warehouse_types_views.stock_type_add_view, name="stock_type_add"),
     path("warehouse/types/<int:type_id>/edit/", warehouse_types_views.stock_type_edit_view, name="stock_type_edit"),
@@ -46,7 +49,7 @@ urlpatterns = [
     path("warehouse/categories/<int:category_id>/subcategories/", warehouse_views.stock_subcategory_list_view, name="stock_subcategory_list"),
     path("warehouse/categories/<int:category_id>/subcategories/add/", warehouse_views.stock_subcategory_add_view, name="stock_subcategory_add"),
 
-    # Подкатегория: редактирование/удаление (вложенно, чтобы совпадало с шаблонами)
+    # Подкатегория: редактирование/удаление
     path("warehouse/categories/<int:category_id>/subcategories/<int:subcategory_id>/edit/", warehouse_views.stock_subcategory_edit_view, name="stock_subcategory_edit"),
     path("warehouse/categories/<int:category_id>/subcategories/<int:subcategory_id>/delete/", warehouse_views.stock_subcategory_delete_view, name="stock_subcategory_delete"),
 
@@ -57,6 +60,12 @@ urlpatterns = [
     path("warehouse/types/<int:type_id>/items/<int:item_id>/delete/", warehouse_items_views.stock_item_delete_view, name="stock_item_delete"),
     path("warehouse/types/<int:type_id>/items/<int:item_id>/card/", warehouse_items_views.stock_item_card_view, name="stock_item_card"),
 
-    # QR (временно; по ТЗ этапа 1 будет заменено на штрихкод)
+    # Исторически url name "qr", но внутри уже BARCODE
     path("warehouse/types/<int:type_id>/items/<int:item_id>/qr/", warehouse_items_views.stock_item_qr_view, name="stock_item_qr"),
+    path("warehouse/types/<int:type_id>/items/<int:item_id>/barcode.svg", warehouse_items_views.stock_item_barcode_svg_view, name="stock_item_barcode_svg"),
+    path("warehouse/types/<int:type_id>/items/<int:item_id>/label/print/", warehouse_items_views.stock_item_label_print_view, name="stock_item_label_print"),
+
+    # Ремонт (этап 1)
+    path("warehouse/types/<int:type_id>/items/<int:item_id>/repair/open/", warehouse_items_views.stock_item_open_repair_view, name="stock_item_repair_open"),
+    path("warehouse/types/<int:type_id>/items/<int:item_id>/repair/close/", warehouse_items_views.stock_item_close_repair_view, name="stock_item_repair_close"),
 ]

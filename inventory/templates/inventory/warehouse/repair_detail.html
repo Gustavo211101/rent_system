@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Ремонт — {{ item.inventory_number }}{% endblock %}
+
+{% block content %}
+<h1>Ремонт</h1>
+
+<div class="card" style="max-width: 980px;">
+  <div style="display:flex; gap:16px; flex-wrap:wrap; justify-content:space-between; align-items:flex-start;">
+    <div>
+      <div style="font-weight:800; font-size:18px;">{{ eq_type.name }}</div>
+      <div style="color:#64748b; margin-top:4px;">
+        Инвентарник: <b>{{ item.inventory_number }}</b>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn btn-outline" href="{% url 'stock_item_card' type_id=eq_type.id item_id=item.id %}">← К карточке</a>
+      <a class="btn btn-outline" href="{% url 'stock_repair_list' %}">К списку ремонтов</a>
+
+      {% if can_manage and not repair.closed_at %}
+        <a class="btn" href="{% url 'stock_item_repair_close' type_id=eq_type.id item_id=item.id %}">Вернуть на склад</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <hr style="margin:14px 0;" />
+
+  <table style="width:100%; border-collapse:collapse;">
+    <tr>
+      <td style="padding:6px 10px; color:#64748b; width:220px;">Открыт</td>
+      <td style="padding:6px 10px;">{{ repair.opened_at|date:"d.m.Y H:i" }}</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 10px; color:#64748b;">Закрыт</td>
+      <td style="padding:6px 10px;">
+        {% if repair.closed_at %}
+          {{ repair.closed_at|date:"d.m.Y H:i" }}
+        {% else %}
+          <span style="padding:3px 8px; border-radius:999px; background:#fffbeb; border:1px solid #fde68a;">
+            В ремонте
+          </span>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin-top:14px;">
+    <div style="font-weight:800; margin-bottom:6px;">Причина / заметка при отправке</div>
+    <div style="white-space:pre-wrap; border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#fff;">
+      {{ repair.reason }}
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <div style="font-weight:800; margin-bottom:6px;">Заметка при возврате</div>
+    {% if repair.close_note %}
+      <div style="white-space:pre-wrap; border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#fff;">
+        {{ repair.close_note }}
+      </div>
+    {% else %}
+      <div style="color:#64748b;">—</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

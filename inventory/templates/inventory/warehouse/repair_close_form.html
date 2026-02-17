@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Вернуть на склад — {{ item.inventory_number }}{% endblock %}
+
+{% block content %}
+<h1>Вернуть на склад</h1>
+
+<div class="card" style="max-width: 860px;">
+  <div style="margin-bottom:10px;">
+    <div style="color:#64748b;">
+      Единица: <b>{{ eq_type.name }}</b> · Инвентарник: <b>{{ item.inventory_number }}</b>
+    </div>
+
+    {% if repair %}
+      <div style="margin-top:6px; color:#7c2d12;">
+        <b>Причина ремонта:</b> {{ repair.reason }}
+      </div>
+    {% endif %}
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <label style="display:block; font-weight:700; margin:6px 0;">
+      Заметка о результате (обязательно)
+    </label>
+
+    <textarea
+      name="close_note"
+      rows="4"
+      style="width:100%; max-width:100%;"
+      required
+      placeholder="Что сделано / что проверено / в каком состоянии возвращаем..."
+    ></textarea>
+
+    <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn" type="submit">Вернуть на склад</button>
+
+      <a class="btn btn-outline" href="{% url 'stock_item_card' type_id=eq_type.id item_id=item.id %}">
+        Отмена
+      </a>
+
+      <a class="btn btn-outline" href="{% url 'stock_repair_list' %}">
+        К списку ремонтов
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

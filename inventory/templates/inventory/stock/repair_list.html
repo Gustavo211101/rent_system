@@ -15,19 +15,35 @@
     <table class="table" style="width:100%;">
       <thead>
         <tr>
-          <th>Инвентарник</th>
+          <th style="width:140px;">Инвентарник</th>
           <th>Тип</th>
           <th>Причина</th>
-          <th style="width:140px;">Открыт</th>
+          <th style="width:150px;">Открыт</th>
+          <th style="width:240px;">Действия</th>
         </tr>
       </thead>
       <tbody>
         {% for r in repairs %}
           <tr>
-            <td>{{ r.equipment_item.inventory_number }}</td>
+            <td style="font-weight:600;">
+              <a href="{% url 'stock_item_card' type_id=r.equipment_item.equipment_type.id item_id=r.equipment_item.id %}">
+                {{ r.equipment_item.inventory_number }}
+              </a>
+            </td>
             <td>{{ r.equipment_item.equipment_type.name }}</td>
             <td>{{ r.reason }}</td>
             <td>{{ r.opened_at|date:"d.m.Y H:i" }}</td>
+            <td style="display:flex; gap:8px; flex-wrap:wrap;">
+              <a class="btn" href="{% url 'stock_item_card' type_id=r.equipment_item.equipment_type.id item_id=r.equipment_item.id %}">
+                Открыть карточку
+              </a>
+
+              {% if can_manage %}
+                <a class="btn" href="{% url 'stock_item_repair_close' type_id=r.equipment_item.equipment_type.id item_id=r.equipment_item.id %}">
+                  Вернуть
+                </a>
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
       </tbody>

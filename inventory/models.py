@@ -238,6 +238,10 @@ class StockRepair(models.Model):
     opened_at = models.DateTimeField(auto_now_add=True)
     closed_at = models.DateTimeField(null=True, blank=True)
 
+    # Заметка при возврате на склад (обязательна по UX, но храним как optional,
+    # а обязательность обеспечиваем на уровне формы/вьюхи).
+    close_note = models.TextField(blank=True)
+
     opened_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="opened_stock_repairs"
     )

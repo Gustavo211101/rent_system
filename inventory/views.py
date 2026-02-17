@@ -363,9 +363,14 @@ def stock_repair_list_view(request):
     if not can_view_stock(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
-    repairs = StockRepair.objects.select_related("equipment_item", "equipment_item__equipment_type").order_by("-opened_at")
+    # Показываем активные ремонты
+    repairs = (
+        StockRepair.objects.select_related("equipment_item", "equipment_item__equipment_type")
+        .filter(closed_at__isnull=True)
+        .order_by("-opened_at")
+    )
     return render(request, "inventory/stock/repair_list.html", {
         "repairs": repairs,
         "tab": "repairs",
-        "can_manage": can_edit_inventory(request.user),  # только кладовщик
+        "can_manage": can_edit_inventory(request.user),
     })
