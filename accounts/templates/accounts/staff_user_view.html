@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+  <h1 style="margin:0;">Карточка сотрудника</h1>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn" href="{% url 'staff_user_export_xlsx' user_obj.id %}">Скачать Excel</a>
+    <a class="btn" href="{% url 'staff_users' %}">Назад к списку</a>
+  </div>
+</div>
+
+<div style="margin-top:14px; display:grid; gap:14px;">
+
+  <div class="card" style="padding:14px;">
+    <h3 style="margin:0 0 10px 0;">Аккаунт</h3>
+
+    <table class="table" style="width:100%;">
+      <tbody>
+        {% for label, value in user_pairs %}
+          <tr>
+            <td style="width:280px; opacity:.8;">{{ label }}</td>
+            <td>
+              {% if value %}{{ value }}{% else %}—{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+
+        <tr>
+          <td style="width:280px; opacity:.8;">Роли</td>
+          <td>
+            {% with gs=user_obj.groups.all %}
+              {% if gs %}
+                {% for g in gs %}
+                  {{ g.name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            {% endwith %}
+          </td>
+        </tr>
+
+        <tr>
+          <td style="width:280px; opacity:.8;">Статус</td>
+          <td>
+            {% if user_obj.is_active %}
+              <span class="badge" style="padding:4px 10px; border-radius:999px; background:#dff5df;">Активен</span>
+            {% else %}
+              <span class="badge" style="padding:4px 10px; border-radius:999px; background:#f8d7da;">Заблокирован</span>
+            {% endif %}
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="padding:14px;">
+    <h3 style="margin:0 0 10px 0;">Анкета</h3>
+
+    {% if profile_pairs %}
+      <table class="table" style="width:100%;">
+        <tbody>
+          {% for label, value in profile_pairs %}
+            <tr>
+              <td style="width:280px; opacity:.8;">{{ label }}</td>
+              <td style="white-space:pre-wrap;">
+                {% if value %}
+                  {{ value }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div style="opacity:.8;">Анкета не найдена или ещё не заполнена.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

@@ -1,92 +1,20 @@
 from __future__ import annotations
 
-import io
-import os
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
 from django.db.models import Q
-from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
-from openpyxl import Workbook
-from openpyxl.utils import get_column_letter
-
 from .permissions import can_manage_staff
-from .models import Profile
 
 User = get_user_model()
 
 
 def _deny():
     return HttpResponseForbidden("Недостаточно прав")
-
-
-def _full_name(u: User) -> str:
-    parts = []
-    for attr in ("last_name", "first_name", "patronymic"):
-        v = getattr(u, attr, "") or ""
-        v = v.strip()
-        if v:
-            parts.append(v)
-    return " ".join(parts) if parts else (u.username or "—")
-
-
-def _auto_width(ws, max_cols=2):
-    for col in range(1, max_cols + 1):
-        max_len = 0
-        for row in range(1, ws.max_row + 1):
-            val = ws.cell(row=row, column=col).value
-            if val is None:
-                continue
-            max_len = max(max_len, len(str(val)))
-        ws.column_dimensions[get_column_letter(col)].width = min(max(14, max_len + 2), 80)
-
-
-def _model_field_label(model, field_name: str) -> str:
-    try:
-        f = model._meta.get_field(field_name)
-        return str(getattr(f, "verbose_name", field_name))
-    except Exception:
-        return field_name
-
-
-def _value_to_cell_str(instance, field_name: str):
-    """
-    Возвращает "человекочитаемое" значение:
-    - choices -> display
-    - FileField/ImageField -> имя файла (+ url если можно)
-    - остальное -> str(value)
-    """
-    # choices display
-    getter = getattr(instance, f"get_{field_name}_display", None)
-    if callable(getter):
-        try:
-            disp = getter()
-            if disp:
-                return disp
-        except Exception:
-            pass
-
-    val = getattr(instance, field_name, "")
-    if val is None:
-        return ""
-
-    # FileField / ImageField
-    # У Django у них есть .name и часто .url
-    if hasattr(val, "name") and hasattr(val, "file"):
-        name = getattr(val, "name", "") or ""
-        url = ""
-        try:
-            url = val.url  # может упасть если storage без url
-        except Exception:
-            url = ""
-        if name and url:
-            return f"{name} | {url}"
-        return name or ""
-
-    return str(val)
 
 
 @login_required
@@ -97,7 +25,8 @@ def staff_users_view(request):
     q = (request.GET.get("q") or "").strip()
     role = (request.GET.get("role") or "").strip()
 
-    users_qs = User.objects.all().order_by("username")
+    # Активные сверху, заблокированные ниже
+    users_qs = User.objects.all().order_by("-is_active", "username")
     roles = Group.objects.all().order_by("name")
 
     if q:
@@ -116,125 +45,6 @@ def staff_users_view(request):
         "accounts/staff_users.html",
         {"tab": "users", "users": users_qs, "q": q, "roles": roles, "role": role},
     )
-
-
-@login_required
-def staff_user_view(request, user_id: int):
-    if not can_manage_staff(request.user):
-        return _deny()
-
-    user_obj = get_object_or_404(User, id=user_id)
-    profile, _ = Profile.objects.get_or_create(user=user_obj)
-
-    return render(
-        request,
-        "accounts/staff_user_detail.html",
-        {"tab": "users", "user_obj": user_obj, "profile": profile, "full_name": _full_name(user_obj)},
-    )
-
-
-@login_required
-def staff_user_export_xlsx(request, user_id: int):
-    """
-    ✅ Экспортирует:
-    - лист "Аккаунт" — основные поля User + роли
-    - лист "Анкета" — ВСЕ поля модели Profile (автоматически)
-    """
-    if not can_manage_staff(request.user):
-        return _deny()
-
-    user_obj = get_object_or_404(User, id=user_id)
-    profile, _ = Profile.objects.get_or_create(user=user_obj)
-
-    wb = Workbook()
-
-    # --- Аккаунт ---
-    ws1 = wb.active
-    ws1.title = "Аккаунт"
-
-    # Важно: не вытаскиваем password / last_login как “таблицу полей”, а даём полезный минимум.
-    account_rows = [
-        ("ID", user_obj.id),
-        ("Username", user_obj.username or ""),
-        ("Email", getattr(user_obj, "email", "") or ""),
-        ("Фамилия", getattr(user_obj, "last_name", "") or ""),
-        ("Имя", getattr(user_obj, "first_name", "") or ""),
-        ("Отчество", getattr(user_obj, "patronymic", "") or ""),
-        ("Телефон", getattr(user_obj, "phone", "") or ""),
-        ("Активен", "Да" if getattr(user_obj, "is_active", False) else "Нет"),
-        ("Суперпользователь", "Да" if getattr(user_obj, "is_superuser", False) else "Нет"),
-        ("Роли", ", ".join(list(user_obj.groups.values_list("name", flat=True))) or "—"),
-        ("Создан", str(getattr(user_obj, "date_joined", "") or "")),
-    ]
-
-    for r, (k, v) in enumerate(account_rows, start=1):
-        ws1.cell(row=r, column=1, value=k)
-        ws1.cell(row=r, column=2, value=v)
-
-    _auto_width(ws1, max_cols=2)
-
-    # --- Анкета: ВСЕ поля Profile ---
-    ws2 = wb.create_sheet("Анкета")
-
-    # Берём все concrete поля кроме pk и user (user покажем отдельно)
-    profile_fields = []
-    for f in Profile._meta.get_fields():
-        # пропускаем связи/реверс-отношения и m2m
-        if not getattr(f, "concrete", False):
-            continue
-        if getattr(f, "many_to_many", False):
-            continue
-        if f.name in ("id", "user"):
-            continue
-        profile_fields.append(f.name)
-
-    # Чтобы “user” тоже был в анкете как ссылочный текст
-    ws2.cell(row=1, column=1, value="Пользователь")
-    ws2.cell(row=1, column=2, value=_full_name(user_obj) + f" (@{user_obj.username})")
-    row = 2
-
-    for field_name in profile_fields:
-        label = _model_field_label(Profile, field_name)
-        value = _value_to_cell_str(profile, field_name)
-        ws2.cell(row=row, column=1, value=label)
-        ws2.cell(row=row, column=2, value=value)
-        row += 1
-
-    _auto_width(ws2, max_cols=2)
-
-    out = io.BytesIO()
-    wb.save(out)
-    out.seek(0)
-
-    filename = f"анкета_{user_obj.username}.xlsx"
-    resp = HttpResponse(
-        out.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    resp["Content-Disposition"] = f'attachment; filename="{filename}"'
-    return resp
-
-
-@login_required
-def staff_user_resume_download(request, user_id: int):
-    """Скачивание резюме как оригинальный файл (не Excel)."""
-    if not can_manage_staff(request.user):
-        return _deny()
-
-    user_obj = get_object_or_404(User, id=user_id)
-    profile, _ = Profile.objects.get_or_create(user=user_obj)
-
-    if not profile.resume:
-        raise Http404("Резюме не загружено")
-
-    try:
-        f = profile.resume.open("rb")
-    except Exception:
-        raise Http404("Не удалось открыть файл резюме")
-
-    base = os.path.basename(profile.resume.name)
-    resp = FileResponse(f, as_attachment=True, filename=base)
-    return resp
 
 
 @login_required
@@ -260,7 +70,9 @@ def staff_user_add_view(request):
         last_name = (request.POST.get("last_name") or "").strip()
         email = (request.POST.get("email") or "").strip()
 
+        # ✅ много ролей
         role_ids = request.POST.getlist("roles")
+        # совместимость: если вдруг где-то осталось старое поле role_id
         role_id_single = (request.POST.get("role_id") or "").strip()
 
         if not username or not password:
@@ -268,7 +80,11 @@ def staff_user_add_view(request):
             return render(
                 request,
                 "accounts/staff_user_form.html",
-                {"tab": "users", "roles": roles, "selected_role_ids": role_ids},
+                {
+                    "tab": "users",
+                    "roles": roles,
+                    "selected_role_ids": role_ids,
+                },
             )
 
         if User.objects.filter(username=username).exists():
@@ -276,7 +92,11 @@ def staff_user_add_view(request):
             return render(
                 request,
                 "accounts/staff_user_form.html",
-                {"tab": "users", "roles": roles, "selected_role_ids": role_ids},
+                {
+                    "tab": "users",
+                    "roles": roles,
+                    "selected_role_ids": role_ids,
+                },
             )
 
         user = User.objects.create_user(username=username, password=password)
@@ -288,6 +108,7 @@ def staff_user_add_view(request):
             user.email = email
         user.save()
 
+        # ✅ сохраняем группы
         user.groups.clear()
 
         chosen = []
@@ -307,7 +128,11 @@ def staff_user_add_view(request):
     return render(
         request,
         "accounts/staff_user_form.html",
-        {"tab": "users", "roles": roles, "selected_role_ids": []},
+        {
+            "tab": "users",
+            "roles": roles,
+            "selected_role_ids": [],
+        },
     )
 
 
@@ -327,6 +152,7 @@ def staff_user_edit_view(request, user_id: int):
         last_name = (request.POST.get("last_name") or "").strip()
         email = (request.POST.get("email") or "").strip()
 
+        # ✅ много ролей
         role_ids = request.POST.getlist("roles")
         role_id_single = (request.POST.get("role_id") or "").strip()
 
@@ -364,26 +190,66 @@ def staff_user_edit_view(request, user_id: int):
     return render(
         request,
         "accounts/staff_user_form.html",
-        {"tab": "users", "user_obj": user_obj, "roles": roles, "selected_role_ids": selected_role_ids},
+        {
+            "tab": "users",
+            "user_obj": user_obj,
+            "roles": roles,
+            "selected_role_ids": selected_role_ids,
+        },
     )
 
 
 @login_required
 def staff_user_delete_view(request, user_id: int):
+    """
+    ВАЖНО: пользователей НЕ удаляем физически.
+    Вместо удаления — блокировка is_active=False (повторно — разблокировка).
+    """
     if not can_manage_staff(request.user):
         return _deny()
 
     user_obj = get_object_or_404(User, id=user_id)
 
     if getattr(user_obj, "is_superuser", False):
-        return HttpResponseForbidden("Суперпользователя удаляем только через админку.")
+        return HttpResponseForbidden("Суперпользователя блокируем только через админку.")
+
+    if user_obj.id == request.user.id:
+        return HttpResponseForbidden("Нельзя заблокировать самого себя.")
+
+    is_active = getattr(user_obj, "is_active", True)
+    action = "block" if is_active else "unblock"
 
     if request.method == "POST":
-        user_obj.delete()
-        messages.success(request, "Пользователь удалён.")
+        user_obj.is_active = (action == "unblock")
+        user_obj.save(update_fields=["is_active"])
+
+        if action == "block":
+            messages.success(request, "Пользователь заблокирован.")
+        else:
+            messages.success(request, "Пользователь разблокирован.")
         return redirect("staff_users")
 
-    return render(request, "accounts/staff_confirm_delete.html", {"tab": "users", "user_obj": user_obj})
+    if action == "block":
+        title = "Блокировка"
+        confirm_text = "Точно заблокировать"
+        action_button_text = "Заблокировать"
+    else:
+        title = "Разблокировка"
+        confirm_text = "Точно разблокировать"
+        action_button_text = "Разблокировать"
+
+    return render(
+        request,
+        "accounts/staff_confirm_delete.html",
+        {
+            "tab": "users",
+            "title": title,
+            "confirm_text": confirm_text,
+            "action_button_text": action_button_text,
+            "user_obj": user_obj,
+            "cancel_url": "staff_users",
+        },
+    )
 
 
 @login_required
@@ -419,11 +285,19 @@ def staff_role_edit_view(request, group_id: int):
         name = (request.POST.get("name") or "").strip()
         if not name:
             messages.error(request, "Название роли обязательно.")
-            return render(request, "accounts/staff_role_form.html", {"tab": "roles", "role": role})
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "role": role},
+            )
 
         if Group.objects.filter(name=name).exclude(id=role.id).exists():
             messages.error(request, "Такая роль уже существует.")
-            return render(request, "accounts/staff_role_form.html", {"tab": "roles", "role": role})
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "role": role},
+            )
 
         role.name = name
         role.save()
@@ -460,3 +334,175 @@ def staff_role_delete_view(request, group_id: int):
         "accounts/staff_role_confirm_delete.html",
         {"tab": "roles", "role": role, "has_users": False},
     )
+
+
+# ============================================================
+# ✅ ДОБАВЛЕНО: просмотр анкеты сотрудника + экспорт анкеты в Excel
+# ============================================================
+
+def _get_related_profile_object(user_obj):
+    """
+    Пытаемся найти связанную "анкету/профиль" пользователя в проекте.
+    Ничего не ломаем: если модели нет или связь отсутствует — вернём None.
+    """
+    candidates = [
+        "profile",
+        "questionnaire",
+        "form",
+        "staff_profile",
+        "employee_profile",
+        "personnel_profile",
+        " анкета",  # на случай экзотики
+    ]
+    for attr in candidates:
+        try:
+            obj = getattr(user_obj, attr, None)
+        except Exception:
+            obj = None
+        if obj is not None:
+            return obj
+    return None
+
+
+def _model_to_pairs(model_obj):
+    """
+    Любую модель Django превращаем в список (label, value) по ВСЕМ полям.
+    FileField/ImageField отдаём как url/path (что есть).
+    """
+    pairs = []
+    if model_obj is None:
+        return pairs
+
+    try:
+        fields = model_obj._meta.fields
+    except Exception:
+        return pairs
+
+    for f in fields:
+        name = getattr(f, "name", "")
+        if not name or name in ("id",):
+            continue
+
+        # Обычно FK на user называется user/owner/employee — пропускаем, чтобы не дублировать
+        if name in ("user", "owner", "employee", "account"):
+            continue
+
+        label = getattr(f, "verbose_name", name)
+        try:
+            val = getattr(model_obj, name)
+        except Exception:
+            val = ""
+
+        # FileField/ImageField
+        try:
+            if hasattr(val, "url"):
+                val = val.url
+            elif hasattr(val, "path"):
+                val = val.path
+        except Exception:
+            pass
+
+        # Datetime/date formatting
+        try:
+            if hasattr(val, "strftime"):
+                # если это date/datetime
+                val = val.strftime("%Y-%m-%d %H:%M") if "time" in str(type(val)).lower() else val.strftime("%Y-%m-%d")
+        except Exception:
+            pass
+
+        pairs.append((str(label), "" if val is None else str(val)))
+    return pairs
+
+
+@login_required
+def staff_user_view(request, user_id: int):
+    """
+    Просмотр анкеты/профиля сотрудника менеджером.
+    Ожидаемый шаблон: accounts/staff_user_view.html
+    """
+    if not can_manage_staff(request.user):
+        return _deny()
+
+    user_obj = get_object_or_404(User, id=user_id)
+
+    profile_obj = _get_related_profile_object(user_obj)
+    user_pairs = _model_to_pairs(user_obj)
+    profile_pairs = _model_to_pairs(profile_obj)
+
+    return render(
+        request,
+        "accounts/staff_user_view.html",
+        {
+            "tab": "users",
+            "user_obj": user_obj,
+            "profile_obj": profile_obj,
+            "user_pairs": user_pairs,
+            "profile_pairs": profile_pairs,
+        },
+    )
+
+
+@login_required
+def staff_user_export_xlsx(request, user_id: int):
+    """
+    Экспорт ВСЕЙ анкеты сотрудника (User + связанная анкета) в Excel.
+    """
+    if not can_manage_staff(request.user):
+        return _deny()
+
+    user_obj = get_object_or_404(User, id=user_id)
+    profile_obj = _get_related_profile_object(user_obj)
+
+    # Собираем пары
+    rows = []
+    rows.append(("=== АККАУНТ ===", ""))
+    rows.extend(_model_to_pairs(user_obj))
+
+    # группы/роли отдельной строкой
+    try:
+        roles = ", ".join([g.name for g in user_obj.groups.all().order_by("name")])
+        rows.append(("Роли (groups)", roles))
+    except Exception:
+        pass
+
+    rows.append(("", ""))
+    rows.append(("=== АНКЕТА ===", ""))
+
+    if profile_obj is None:
+        rows.append(("Анкета", "Не найдена (нет связанной модели профиля/анкеты)"))
+    else:
+        rows.extend(_model_to_pairs(profile_obj))
+
+    # Генерация Excel
+    try:
+        from openpyxl import Workbook
+        from openpyxl.utils import get_column_letter
+    except Exception as e:
+        raise Http404(f"openpyxl не доступен: {e}")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Анкета"
+
+    ws.append(["Поле", "Значение"])
+    for a, b in rows:
+        ws.append([a, b])
+
+    # Автоширина
+    for col in range(1, 3):
+        max_len = 0
+        for cell in ws[get_column_letter(col)]:
+            try:
+                max_len = max(max_len, len(str(cell.value or "")))
+            except Exception:
+                pass
+        ws.column_dimensions[get_column_letter(col)].width = min(max(12, max_len + 2), 70)
+
+    # отдаём файлом
+    filename = f"profile_user_{user_obj.id}.xlsx"
+    resp = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+    wb.save(resp)
+    return resp

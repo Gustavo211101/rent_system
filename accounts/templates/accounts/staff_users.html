@@ -11,7 +11,7 @@
 </div>
 
 <form id="staffFilterForm" method="get" style="display:flex; gap:10px; align-items:center; margin: 12px 0; flex-wrap:wrap;">
-  <input id="staffSearchInput" type="text" name="q" value="{{ q }}" placeholder="Поиск: username/имя/email" style="width:280px;">
+  <input id="staffSearchInput" type="text" name="q" value="{{ q }}" placeholder="Поиск: username/имя/телефон" style="width:280px;">
   <select id="staffRoleSelect" name="role">
     <option value="">Все роли</option>
     {% for r in roles %}
@@ -26,20 +26,25 @@
   <thead>
     <tr>
       <th>Username</th>
-      <th>ФИО</th>
-      <th>Email</th>
+      <th>Имя</th>
+      <th>Телефон</th>
       <th>Роли</th>
-      <th style="width:320px;">Действия</th>
+      <th style="width:120px;">Статус</th>
+      <th style="width:220px;">Действия</th>
     </tr>
   </thead>
   <tbody>
     {% for u in users %}
       <tr>
         <td>{{ u.username }}</td>
+        <td>{{ u.first_name }} {{ u.last_name }}</td>
         <td>
-          {{ u.last_name }} {{ u.first_name }}{% if u.patronymic %} {{ u.patronymic }}{% endif %}
+          {% if u.phone %}
+            {{ u.phone }}
+          {% else %}
+            —
+          {% endif %}
         </td>
-        <td>{{ u.email|default:"—" }}</td>
         <td>
           {% for g in u.groups.all %}
             <span class="badge">{{ g.name }}</span>
@@ -48,13 +53,24 @@
           {% endfor %}
         </td>
         <td>
-          <a class="btn-secondary" href="{% url 'staff_user_view' u.id %}">Посмотреть</a>
+          {% if u.is_active %}
+            <span class="badge" style="background:#e7f7ed; color:#0f5132; border:1px solid #b7e4c7;">Активен</span>
+          {% else %}
+            <span class="badge" style="background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb;">Заблокирован</span>
+          {% endif %}
+        </td>
+        <td>
+          <a class="btn-secondary" href="{% url 'staff_user_view' u.id %}">Просмотреть</a>
           <a class="btn-secondary" href="{% url 'staff_user_edit' u.id %}">Редактировать</a>
-          <a class="btn-secondary" href="{% url 'staff_user_delete' u.id %}">Удалить</a>
+          {% if u.is_active %}
+            <a class="btn-secondary" href="{% url 'staff_user_delete' u.id %}">Заблокировать</a>
+          {% else %}
+            <a class="btn-secondary" href="{% url 'staff_user_delete' u.id %}">Разблокировать</a>
+          {% endif %}
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="5">Пользователей нет</td></tr>
+      <tr><td colspan="6">Пользователей нет</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -74,7 +90,10 @@
     }, 350);
   }
 
+  // Поиск: применяем автоматически с debounce
   qInput.addEventListener("input", submitWithDebounce);
+
+  // Роль: применяем сразу
   roleSelect.addEventListener("change", () => form.submit());
 })();
 </script>
