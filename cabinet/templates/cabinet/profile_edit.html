@@ -10,44 +10,58 @@
   </div>
 </div>
 
-<form method="post">
+<form method="post" enctype="multipart/form-data">
   {% csrf_token %}
 
-  {% if form.non_field_errors %}
+  {% if user_form.non_field_errors or profile_form.non_field_errors %}
     <div style="padding:10px; border:1px solid #d33; margin-bottom:12px;">
-      {{ form.non_field_errors }}
+      {{ user_form.non_field_errors }}
+      {{ profile_form.non_field_errors }}
     </div>
   {% endif %}
 
+  <h3 style="margin-top:18px;">Аккаунт</h3>
   <div class="form-row">
     <label>Username</label>
-    {{ form.username }}
-    {{ form.username.errors }}
+    {{ user_form.username }}
+    {{ user_form.username.errors }}
   </div>
-
   <div class="form-row">
     <label>Имя</label>
-    {{ form.first_name }}
-    {{ form.first_name.errors }}
+    {{ user_form.first_name }}
+    {{ user_form.first_name.errors }}
   </div>
-
   <div class="form-row">
     <label>Фамилия</label>
-    {{ form.last_name }}
-    {{ form.last_name.errors }}
+    {{ user_form.last_name }}
+    {{ user_form.last_name.errors }}
   </div>
-
+  <div class="form-row">
+  <label>Отчество</label>
+  {{ user_form.patronymic }}
+  {{ user_form.patronymic.errors }}
+  </div>
   <div class="form-row">
     <label>Email</label>
-    {{ form.email }}
-    {{ form.email.errors }}
+    {{ user_form.email }}
+    {{ user_form.email.errors }}
   </div>
-
   <div class="form-row">
     <label>Телефон</label>
-    {{ form.phone }}
-    {{ form.phone.errors }}
+    {{ user_form.phone }}
+    {{ user_form.phone.errors }}
   </div>
+
+  <h3 style="margin-top:18px;">Анкета</h3>
+
+  {% for f in profile_form %}
+    <div class="form-row">
+      <label>{{ f.label }}</label>
+      {{ f }}
+      {% if f.help_text %}<div style="font-size:12px; opacity:.75;">{{ f.help_text }}</div>{% endif %}
+      {{ f.errors }}
+    </div>
+  {% endfor %}
 
   <div style="margin-top:16px;">
     <button class="btn" type="submit">Сохранить</button>

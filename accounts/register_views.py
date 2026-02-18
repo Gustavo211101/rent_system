@@ -14,7 +14,7 @@ def employee_register_view(request, token: str):
         return render(request, "accounts/employee_register_used.html")
 
     if request.method == "POST":
-        form = EmployeeRegistrationForm(request.POST)
+        form = EmployeeRegistrationForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save()
             invite.mark_used(user)

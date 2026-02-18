@@ -3,27 +3,29 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Форма сотрудника</title>
+  <title>Анкета сотрудника</title>
   <link rel="stylesheet" href="{% static 'css/base.css' %}">
   <style>
     body { background:#f5f7fb; }
-    .reg-wrap{
-      min-height:100vh; display:flex; align-items:center; justify-content:center;
-      padding:24px;
-    }
-    .reg-card{
-      width:100%; max-width:520px; background:#fff; border:1px solid #e5e7eb;
-      border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.08);
-      padding:28px;
-    }
-    .reg-head{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:18px; }
-    .reg-head img{ height:64px; width:auto; }
-    .reg-title{ font-size:20px; font-weight:900; margin:0; }
-    .reg-field{ margin-top:12px; }
+    .reg-wrap{ min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:24px; }
+    .reg-card{ width:100%; max-width:820px; background:#fff; border:1px solid #e5e7eb;
+      border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.08); padding:28px; }
+    .reg-head{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+    .reg-head img{ height:44px; width:auto; }
+    .reg-title{ font-size:22px; font-weight:900; margin:0; }
+
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:12px 16px; }
+    @media (max-width: 820px){ .grid{ grid-template-columns:1fr; } }
+
+    .reg-field{ margin-top:2px; }
     .reg-field label{ display:block; font-weight:700; font-size:13px; margin-bottom:6px; color:#374151; }
-    .reg-field input{ width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:10px; }
-    .reg-errors{ margin-top:12px; background:#fee2e2; border:1px solid rgba(239,68,68,.25); color:#991b1b; padding:10px; border-radius:10px; }
-    .reg-actions{ margin-top:16px; display:flex; gap:10px; }
+    .reg-field input, .reg-field select, .reg-field textarea{
+      width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:10px; background:#fff;
+    }
+    .help{ font-size:12px; opacity:.75; margin-top:4px; }
+    .errors{ margin-top:4px; color:#b91c1c; font-size:12px; }
+    .reg-errors{ margin:12px 0; background:#fee2e2; border:1px solid rgba(239,68,68,.25); color:#991b1b; padding:10px; border-radius:10px; }
+    .reg-actions{ margin-top:18px; display:flex; gap:10px; }
     .reg-actions button{ width:100%; justify-content:center; }
   </style>
 </head>
@@ -32,62 +34,35 @@
     <div class="reg-card">
       <div class="reg-head">
         <img src="{% static 'images/VidiumLogo.svg' %}" alt="Vidium">
-        <h1 class="reg-title">Форма сотрудника</h1>
+        <h1 class="reg-title">Анкета сотрудника</h1>
       </div>
 
-      <form method="post">
+      <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
-        {% if form.errors %}
+        {% if form.non_field_errors %}
+          <div class="reg-errors">
+            {{ form.non_field_errors }}
+          </div>
+        {% elif form.errors %}
           <div class="reg-errors">
             Проверьте форму: есть ошибки.
           </div>
         {% endif %}
 
-        <div class="reg-field">
-          <label>{{ form.username.label }}</label>
-          {{ form.username }}
-          {{ form.username.errors }}
-        </div>
-
-        <div class="reg-field">
-          <label>{{ form.password1.label }}</label>
-          {{ form.password1 }}
-          {{ form.password1.errors }}
-        </div>
-
-        <div class="reg-field">
-          <label>{{ form.password2.label }}</label>
-          {{ form.password2 }}
-          {{ form.password2.errors }}
-        </div>
-
-        <div class="reg-field">
-          <label>{{ form.first_name.label }}</label>
-          {{ form.first_name }}
-          {{ form.first_name.errors }}
-        </div>
-
-        <div class="reg-field">
-          <label>{{ form.last_name.label }}</label>
-          {{ form.last_name }}
-          {{ form.last_name.errors }}
-        </div>
-
-        <div class="reg-field">
-          <label>{{ form.email.label }}</label>
-          {{ form.email }}
-          {{ form.email.errors }}
-        </div>
-
-        <div class="reg-field">
-          <label>{{ form.phone.label }}</label>
-          {{ form.phone }}
-          {{ form.phone.errors }}
+        <div class="grid">
+          {% for field in form %}
+            <div class="reg-field" style="grid-column: {% if field.name == 'additional_skills' or field.name == 'resume' or field.name == 'photo' %}1 / -1{% else %}auto{% endif %};">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+              {% if field.errors %}<div class="errors">{{ field.errors }}</div>{% endif %}
+            </div>
+          {% endfor %}
         </div>
 
         <div class="reg-actions">
-          <button class="btn" type="submit">Зарегистрироваться</button>
+          <button class="btn" type="submit">Отправить и зарегистрироваться</button>
         </div>
       </form>
     </div>

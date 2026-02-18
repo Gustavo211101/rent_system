@@ -23,6 +23,10 @@ urlpatterns = [
     path("personnel/user/<int:user_id>/delete/", staff_views.staff_user_delete_view, name="staff_user_delete"),
     path("personnel/user/<int:user_id>/delete/", staff_views.staff_user_delete_view, name="personnel_user_delete"),
 
+    # ✅ NEW: просмотр анкеты + выгрузка в excel
+    path("personnel/user/<int:user_id>/view/", staff_views.staff_user_view, name="staff_user_view"),
+    path("personnel/user/<int:user_id>/export.xlsx", staff_views.staff_user_export_xlsx, name="staff_user_export_xlsx"),
+
     # roles CRUD
     path("personnel/roles/add/", staff_views.staff_role_add_view, name="staff_role_add"),
     path("personnel/roles/add/", staff_views.staff_role_add_view, name="personnel_role_add"),

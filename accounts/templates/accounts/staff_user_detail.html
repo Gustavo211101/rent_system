@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "accounts/staff_base_tabs.html" %}
+
+<div class="toolbar" style="margin-top:14px;">
+  <h1 style="margin:0;">Анкета сотрудника</h1>
+  <div style="display:flex; gap:10px; align-items:center;">
+    <a class="btn-secondary" href="{% url 'staff_users' %}">← Назад</a>
+    <a class="btn-secondary" href="{% url 'staff_user_edit' user_obj.id %}">Редактировать</a>
+    <a class="btn" href="{% url 'staff_user_export_xlsx' user_obj.id %}">⬇ Скачать Excel</a>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px; padding:14px;">
+  <div style="display:flex; gap:16px; align-items:flex-start;">
+    <div style="width:160px;">
+      {% if profile.photo %}
+        <img src="{{ profile.photo.url }}" alt="Фото" style="width:160px; height:200px; object-fit:cover; border-radius:10px; border:1px solid rgba(0,0,0,.08);">
+        <div style="margin-top:6px;">
+          <a class="btn-secondary" style="display:inline-block;" href="{{ profile.photo.url }}" target="_blank">Открыть фото</a>
+        </div>
+      {% else %}
+        <div style="width:160px; height:200px; border-radius:10px; background:#f2f4f7; border:1px dashed rgba(0,0,0,.15);
+                    display:flex; align-items:center; justify-content:center; font-size:12px; opacity:.7;">
+          фото нет
+        </div>
+      {% endif %}
+    </div>
+
+    <div style="flex:1;">
+      <h2 style="margin:0 0 8px 0;">{{ user_obj.last_name }} {{ user_obj.first_name }}{% if user_obj.patronymic %} {{ user_obj.patronymic }}{% endif %}</h2>
+
+      <div style="display:flex; gap:18px; flex-wrap:wrap; font-size:14px;">
+        <div><strong>Username:</strong> {{ user_obj.username }}</div>
+        <div><strong>Email:</strong> {{ user_obj.email|default:"—" }}</div>
+        <div><strong>Телефон:</strong> {{ user_obj.phone|default:"—" }}</div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <strong>Роли:</strong>
+        {% for g in user_obj.groups.all %}
+          <span class="badge">{{ g.name }}</span>
+        {% empty %}
+          —
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:12px;">
+        <strong>Резюме:</strong>
+        {% if profile.resume %}
+          <a class="btn-secondary" href="{{ profile.resume.url }}" target="_blank">Открыть</a>
+          <a class="btn-secondary" href="{{ profile.resume.url }}" download>Скачать файл</a>
+        {% else %}
+          —
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px; padding:14px;">
+  <h3 style="margin:0 0 10px 0;">Анкета</h3>
+
+  <table class="list-table">
+    <tbody>
+      <tr><th style="width:320px;">Фамилия латиницей</th><td>{{ profile.last_name_lat|default:"—" }}</td></tr>
+      <tr><th>Имя латиницей</th><td>{{ profile.first_name_lat|default:"—" }}</td></tr>
+      <tr><th>Отчество латиницей</th><td>{{ profile.patronymic_lat|default:"—" }}</td></tr>
+
+      <tr><th>Пол</th><td>{{ profile.get_gender_display|default:"—" }}</td></tr>
+      <tr><th>Гражданство</th><td>{{ profile.get_citizenship_display|default:profile.citizenship|default:"—" }}</td></tr>
+      <tr><th>Телеграм</th><td>{{ profile.telegram|default:"—" }}</td></tr>
+
+      <tr><th>Квалификация, навыки</th><td>{{ profile.qualification|default:"—" }}</td></tr>
+      <tr><th>Командировки</th><td>{{ profile.get_travel_ready_display|default:"—" }}</td></tr>
+      <tr><th>Карантин</th><td>{{ profile.get_quarantine_ready_display|default:"—" }}</td></tr>
+
+      <tr><th>Ограничения по компаниям</th><td>{{ profile.restrictions_companies|default:"—" }}</td></tr>
+      <tr><th>Ограничения по тематике</th><td>{{ profile.restrictions_topics|default:"—" }}</td></tr>
+      <tr><th>Ограничения по графику</th><td>{{ profile.restrictions_schedule|default:"—" }}</td></tr>
+
+      <tr><th>ФСО</th><td>{{ profile.get_fso_status_display|default:"—" }}</td></tr>
+      <tr><th>Собственное оборудование</th><td>{{ profile.own_equipment|default:"—" }}</td></tr>
+
+      <tr><th>Образование</th><td>{{ profile.get_education_display|default:"—" }}</td></tr>
+      <tr><th>Дополнительные навыки</th><td style="white-space:pre-wrap;">{{ profile.additional_skills|default:"—" }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

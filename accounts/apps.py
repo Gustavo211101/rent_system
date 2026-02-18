@@ -16,3 +16,10 @@ class AccountsConfig(AppConfig):
         except Exception:
             # При миграциях/первом старте база может быть не готова — это нормально
             pass
+
+        # ✅ Профили сотрудников (post_save)
+        try:
+            from . import profile_signals  # noqa: F401
+        except Exception:
+            # при миграциях база/модели могут быть в промежуточном состоянии
+            pass

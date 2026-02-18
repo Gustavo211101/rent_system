@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.shortcuts import render, redirect
 
 from events.models import Event
-from .forms import ProfileForm
+from .forms import UserBasicsForm, EmployeeProfileForm
 
 
 def _get_primary_role(user):
@@ -17,7 +17,6 @@ def _get_primary_role(user):
     group_names = list(user.groups.values_list("name", flat=True))
     if group_names:
         # если у пользователя несколько групп — показываем первую как “основную”
-        # (у тебя это уже работает и устраивает)
         return (group_names[0], "custom")
 
     return ("—", "unknown")
@@ -124,27 +123,38 @@ def dashboard(request):
 @login_required
 def profile_edit(request):
     user = request.user
+    try:
+        profile = user.profile
+    except Exception:
+        profile = None
 
     if request.method == "POST":
-        form = ProfileForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
+        user_form = UserBasicsForm(request.POST, instance=user)
+        profile_form = EmployeeProfileForm(request.POST, request.FILES, instance=profile)
+
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            prof = profile_form.save(commit=False)
+            prof.user = user
+            prof.save()
             messages.success(request, "Профиль обновлён.")
             return redirect("cabinet:dashboard")
+
         messages.error(request, "Проверьте форму — есть ошибки.")
     else:
-        form = ProfileForm(instance=user)
+        user_form = UserBasicsForm(instance=user)
+        profile_form = EmployeeProfileForm(instance=profile)
 
     role_name, role_slug = _get_primary_role(user)
 
     return render(request, "cabinet/profile_edit.html", {
-        "form": form,
+        "user_form": user_form,
+        "profile_form": profile_form,
         "role_name": role_name,
         "role_slug": role_slug,
     })
 
 
-# Заглушки если у тебя они есть (оставляем)
 @login_required
 def password_change(request):
     messages.info(request, "Смена пароля доступна отдельной кнопкой в кабинете.")
