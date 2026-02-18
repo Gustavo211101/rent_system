@@ -1,15 +1,33 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ title }}</h1>
+<h1>{{ title|default:"Удаление" }}</h1>
 
 <div class="card" style="max-width:720px;">
-  <p>Точно удалить: <strong>{{ object_name }}</strong>?</p>
+  <p style="margin-bottom:12px;">
+    Точно удалить:
+    <strong>
+      {% if object_name %}
+        {{ object_name }}
+      {% elif user_obj %}
+        {{ user_obj.get_full_name|default:user_obj.username }} ({{ user_obj.username }})
+      {% elif object %}
+        {{ object }}
+      {% else %}
+        —
+      {% endif %}
+    </strong>?
+  </p>
 
-  <form method="post" style="display:flex; gap:10px;">
+  <form method="post" style="display:flex; gap:10px; align-items:center;">
     {% csrf_token %}
     <button class="btn" type="submit">Удалить</button>
-    <a class="btn-secondary" href="{% url cancel_url %}">Отмена</a>
+
+    {% if cancel_url %}
+      <a class="btn btn-secondary" href="{% url cancel_url %}">Отмена</a>
+    {% else %}
+      <a class="btn btn-secondary" href="{% url 'staff_users' %}">Отмена</a>
+    {% endif %}
   </form>
 </div>
 {% endblock %}

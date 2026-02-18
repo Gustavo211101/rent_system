@@ -1,71 +1,214 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Редактирование профиля</h1>
+<div style="max-width: 980px; margin: 0 auto; padding: 18px 14px;">
 
-<div style="margin-bottom: 12px;">
-  <div><strong>Роль:</strong> {{ role_name|default:"—" }}</div>
-  <div style="font-size: 12px; opacity: 0.8;">
-    Роль меняется администратором/менеджером. Здесь её изменить нельзя.
+  <h1 style="margin: 0 0 10px;">Редактирование профиля</h1>
+
+  <div style="margin: 0 0 18px; color: #6b7280;">
+    <div><strong>Роль:</strong> {{ role_name }}</div>
+    <div style="font-size: 13px;">Роль меняется администратором/менеджером. Здесь её изменить нельзя.</div>
   </div>
-</div>
 
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-
-  {% if user_form.non_field_errors or profile_form.non_field_errors %}
-    <div style="padding:10px; border:1px solid #d33; margin-bottom:12px;">
-      {{ user_form.non_field_errors }}
-      {{ profile_form.non_field_errors }}
+  {% if form.non_field_errors %}
+    <div style="border:1px solid #ef4444; background:#fee2e2; padding:10px 12px; border-radius:10px; margin: 0 0 14px;">
+      {{ form.non_field_errors }}
     </div>
   {% endif %}
 
-  <h3 style="margin-top:18px;">Аккаунт</h3>
-  <div class="form-row">
-    <label>Username</label>
-    {{ user_form.username }}
-    {{ user_form.username.errors }}
-  </div>
-  <div class="form-row">
-    <label>Имя</label>
-    {{ user_form.first_name }}
-    {{ user_form.first_name.errors }}
-  </div>
-  <div class="form-row">
-    <label>Фамилия</label>
-    {{ user_form.last_name }}
-    {{ user_form.last_name.errors }}
-  </div>
-  <div class="form-row">
-  <label>Отчество</label>
-  {{ user_form.patronymic }}
-  {{ user_form.patronymic.errors }}
-  </div>
-  <div class="form-row">
-    <label>Email</label>
-    {{ user_form.email }}
-    {{ user_form.email.errors }}
-  </div>
-  <div class="form-row">
-    <label>Телефон</label>
-    {{ user_form.phone }}
-    {{ user_form.phone.errors }}
-  </div>
+  <form method="post" enctype="multipart/form-data"
+        style="border:1px solid #e5e7eb; border-radius:14px; padding:16px; background:#fff;">
+    {% csrf_token %}
 
-  <h3 style="margin-top:18px;">Анкета</h3>
+    <h2 style="margin: 0 0 12px;">Аккаунт</h2>
 
-  {% for f in profile_form %}
-    <div class="form-row">
-      <label>{{ f.label }}</label>
-      {{ f }}
-      {% if f.help_text %}<div style="font-size:12px; opacity:.75;">{{ f.help_text }}</div>{% endif %}
-      {{ f.errors }}
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px 14px;">
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.username.label }}</label>
+        {{ form.username }}
+        {% if form.username.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.username.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.email.label }}</label>
+        {{ form.email }}
+        {% if form.email.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.email.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.last_name.label }}</label>
+        {{ form.last_name }}
+        {% if form.last_name.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.last_name.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.first_name.label }}</label>
+        {{ form.first_name }}
+        {% if form.first_name.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.first_name.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.patronymic.label }}</label>
+        {{ form.patronymic }}
+        {% if form.patronymic.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.patronymic.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.phone.label }}</label>
+        {{ form.phone }}
+        {% if form.phone.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.phone.errors }}</div>{% endif %}
+      </div>
     </div>
-  {% endfor %}
 
-  <div style="margin-top:16px;">
-    <button class="btn" type="submit">Сохранить</button>
-    <a class="btn-secondary" href="{% url 'cabinet:dashboard' %}">Отмена</a>
-  </div>
-</form>
+    <hr style="margin: 18px 0; border:0; border-top:1px solid #e5e7eb;">
+
+    <h2 style="margin: 0 0 12px;">Анкета</h2>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px 14px;">
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.last_name_lat.label }}</label>
+        {{ form.last_name_lat }}
+        {% if form.last_name_lat.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.last_name_lat.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.first_name_lat.label }}</label>
+        {{ form.first_name_lat }}
+        {% if form.first_name_lat.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.first_name_lat.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.patronymic_lat.label }}</label>
+        {{ form.patronymic_lat }}
+        {% if form.patronymic_lat.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.patronymic_lat.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.gender.label }}</label>
+        {{ form.gender }}
+        {% if form.gender.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.gender.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.citizenship.label }}</label>
+        {{ form.citizenship }}
+        {% if form.citizenship.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.citizenship.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.telegram.label }}</label>
+        {{ form.telegram }}
+        {% if form.telegram.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.telegram.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.qualification.label }}</label>
+        {{ form.qualification }}
+        {% if form.qualification.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.qualification.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.travel_ready.label }}</label>
+        {{ form.travel_ready }}
+        {% if form.travel_ready.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.travel_ready.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.quarantine_ready.label }}</label>
+        {{ form.quarantine_ready }}
+        {% if form.quarantine_ready.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.quarantine_ready.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.fso_status.label }}</label>
+        {{ form.fso_status }}
+        {% if form.fso_status.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.fso_status.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.own_equipment.label }}</label>
+        {{ form.own_equipment }}
+        {% if form.own_equipment.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.own_equipment.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.education.label }}</label>
+        {{ form.education }}
+        {% if form.education.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.education.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.restrictions_companies.label }}</label>
+        {{ form.restrictions_companies }}
+        {% if form.restrictions_companies.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.restrictions_companies.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.restrictions_topics.label }}</label>
+        {{ form.restrictions_topics }}
+        {% if form.restrictions_topics.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.restrictions_topics.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.restrictions_schedule.label }}</label>
+        {{ form.restrictions_schedule }}
+        {% if form.restrictions_schedule.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.restrictions_schedule.errors }}</div>{% endif %}
+      </div>
+    </div>
+
+    <div style="margin-top: 14px;">
+      <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.additional_skills.label }}</label>
+      {{ form.additional_skills }}
+      {% if form.additional_skills.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.additional_skills.errors }}</div>{% endif %}
+    </div>
+
+    <hr style="margin: 18px 0; border:0; border-top:1px solid #e5e7eb;">
+
+    <h2 style="margin: 0 0 12px;">Файлы</h2>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px 14px;">
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.resume.label }}</label>
+        {{ form.resume }}
+        {% if form.instance.resume %}
+          <div style="font-size:13px; margin-top:6px; color:#6b7280;">
+            Сейчас: <a href="{{ form.instance.resume.url }}" target="_blank">{{ form.instance.resume.name }}</a>
+          </div>
+        {% endif %}
+        {% if form.resume.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.resume.errors }}</div>{% endif %}
+      </div>
+
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">{{ form.photo.label }}</label>
+        {{ form.photo }}
+        {% if form.instance.photo %}
+          <div style="font-size:13px; margin-top:6px; color:#6b7280;">
+            Сейчас: <a href="{{ form.instance.photo.url }}" target="_blank">{{ form.instance.photo.name }}</a>
+          </div>
+        {% endif %}
+        {% if form.photo.errors %}<div style="color:#dc2626; font-size:13px; margin-top:4px;">{{ form.photo.errors }}</div>{% endif %}
+      </div>
+    </div>
+
+    <div style="margin-top: 18px; display:flex; gap: 10px;">
+      <button type="submit" class="btn">Сохранить</button>
+      <a href="{% url 'cabinet:dashboard' %}" class="btn btn-secondary">Отмена</a>
+    </div>
+
+  </form>
+</div>
+
+<style>
+  /* легкая нормализация, чтобы инпуты выглядели адекватно */
+  input[type="text"], input[type="email"], input[type="tel"], input[type="password"],
+  select, textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+  }
+</style>
 {% endblock %}

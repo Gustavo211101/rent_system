@@ -8,8 +8,16 @@
     <div class="cabinet-card cabinet-profile">
 
         <div class="cabinet-profile-header">
-            <div class="cabinet-avatar">
-                {{ user.first_name|default:user.username|slice:":1"|upper }}
+            <div class="cabinet-avatar" style="overflow:hidden;">
+                {% if profile.photo %}
+                    <img
+                        src="{{ profile.photo.url }}"
+                        alt="Фото профиля"
+                        style="width:100%; height:100%; object-fit:cover; display:block;"
+                    >
+                {% else %}
+                    {{ user.first_name|default:user.username|slice:":1"|upper }}
+                {% endif %}
             </div>
 
             <div class="cabinet-profile-info">

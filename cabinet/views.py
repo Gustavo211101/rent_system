@@ -6,17 +6,17 @@ from django.db.models import Q
 from django.shortcuts import render, redirect
 
 from events.models import Event
-from .forms import UserBasicsForm, EmployeeProfileForm
+from .forms import ProfileForm
+
+from accounts.models import Profile
 
 
 def _get_primary_role(user):
-    # У тебя роль(и) через groups, плюс суперпользователь.
     if getattr(user, "is_superuser", False):
         return ("Суперадмин", "superadmin")
 
     group_names = list(user.groups.values_list("name", flat=True))
     if group_names:
-        # если у пользователя несколько групп — показываем первую как “основную”
         return (group_names[0], "custom")
 
     return ("—", "unknown")
@@ -59,6 +59,8 @@ def dashboard(request):
     user = request.user
     today = date.today()
 
+    profile, _ = Profile.objects.get_or_create(user=user)
+
     q = Q(responsible=user)
     if hasattr(Event, "s_engineer"):
         q = q | Q(s_engineer=user)
@@ -99,7 +101,6 @@ def dashboard(request):
         else:
             past.append(item)
 
-    # сортировки
     upcoming.sort(key=lambda x: (x["event"].start_date, x["event"].id))
     past.sort(key=lambda x: (x["event"].start_date, x["event"].id), reverse=True)
 
@@ -117,39 +118,29 @@ def dashboard(request):
         "stats": stats,
         "upcoming_events": upcoming,
         "past_events": past,
+        "profile": profile,
     })
 
 
 @login_required
 def profile_edit(request):
     user = request.user
-    try:
-        profile = user.profile
-    except Exception:
-        profile = None
 
     if request.method == "POST":
-        user_form = UserBasicsForm(request.POST, instance=user)
-        profile_form = EmployeeProfileForm(request.POST, request.FILES, instance=profile)
-
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            prof = profile_form.save(commit=False)
-            prof.user = user
-            prof.save()
+        # ✅ важно: FILES чтобы сохранялись photo/resume
+        form = ProfileForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            form.save()
             messages.success(request, "Профиль обновлён.")
             return redirect("cabinet:dashboard")
-
         messages.error(request, "Проверьте форму — есть ошибки.")
     else:
-        user_form = UserBasicsForm(instance=user)
-        profile_form = EmployeeProfileForm(instance=profile)
+        form = ProfileForm(instance=user)
 
     role_name, role_slug = _get_primary_role(user)
 
     return render(request, "cabinet/profile_edit.html", {
-        "user_form": user_form,
-        "profile_form": profile_form,
+        "form": form,
         "role_name": role_name,
         "role_slug": role_slug,
     })
