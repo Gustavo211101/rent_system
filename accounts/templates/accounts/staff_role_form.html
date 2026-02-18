@@ -6,7 +6,7 @@
   {% if role %}Редактировать роль{% else %}Добавить роль{% endif %}
 </h1>
 
-<form method="post" class="card" style="max-width:720px;">
+<form method="post" class="card" style="max-width:820px;">
   {% csrf_token %}
 
   <p>
@@ -19,16 +19,12 @@
     <div class="muted" style="margin-top:6px;">Отметь галочки, которые должна иметь роль</div>
 
     <div style="margin-top:10px; display:grid; gap:8px;">
-      {% for code, label, perm in perms %}
+      {% for pid, label in perm_choices %}
         <label style="display:flex; gap:10px; align-items:center;">
-          <input type="checkbox" name="perms" value="{{ code }}"
-            {% if current_codes and code in current_codes %}checked{% endif %}
-            {% if not perm %}disabled{% endif %}
+          <input type="checkbox" name="perm_ids" value="{{ pid }}"
+            {% if current_perm_ids and pid in current_perm_ids %}checked{% endif %}
           >
           <span>{{ label }}</span>
-          {% if not perm %}
-            <span class="muted"> (permission ещё не создан — проверь миграции)</span>
-          {% endif %}
         </label>
       {% endfor %}
     </div>

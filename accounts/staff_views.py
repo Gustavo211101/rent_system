@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,6 +15,21 @@ User = get_user_model()
 
 def _deny():
     return HttpResponseForbidden("Недостаточно прав")
+
+
+def _permission_choices():
+    """
+    Возвращает список для чекбоксов прав:
+    (perm_id, "app_label: Permission name")
+    """
+    perms_qs = Permission.objects.select_related("content_type").order_by(
+        "content_type__app_label", "codename"
+    )
+    out = []
+    for p in perms_qs:
+        label = f"{p.content_type.app_label}: {p.name}"
+        out.append((str(p.id), label))
+    return out
 
 
 @login_required
@@ -69,26 +84,24 @@ def staff_user_add_view(request):
         last_name = (request.POST.get("last_name") or "").strip()
         email = (request.POST.get("email") or "").strip()
 
-        # ✅ много ролей
         role_ids = request.POST.getlist("roles")
-        # совместимость: если вдруг где-то осталось старое поле role_id
         role_id_single = (request.POST.get("role_id") or "").strip()
 
         if not username or not password:
             messages.error(request, "Нужны username и пароль.")
-            return render(request, "accounts/staff_user_form.html", {
-                "tab": "users",
-                "roles": roles,
-                "selected_role_ids": role_ids,
-            })
+            return render(
+                request,
+                "accounts/staff_user_form.html",
+                {"tab": "users", "roles": roles, "selected_role_ids": role_ids},
+            )
 
         if User.objects.filter(username=username).exists():
             messages.error(request, "Пользователь с таким username уже существует.")
-            return render(request, "accounts/staff_user_form.html", {
-                "tab": "users",
-                "roles": roles,
-                "selected_role_ids": role_ids,
-            })
+            return render(
+                request,
+                "accounts/staff_user_form.html",
+                {"tab": "users", "roles": roles, "selected_role_ids": role_ids},
+            )
 
         user = User.objects.create_user(username=username, password=password)
         if hasattr(user, "first_name"):
@@ -99,14 +112,12 @@ def staff_user_add_view(request):
             user.email = email
         user.save()
 
-        # ✅ сохраняем группы
         user.groups.clear()
 
         chosen = []
         for rid in role_ids:
             if str(rid).isdigit():
                 chosen.append(int(rid))
-
         if not chosen and role_id_single.isdigit():
             chosen = [int(role_id_single)]
 
@@ -116,11 +127,11 @@ def staff_user_add_view(request):
         messages.success(request, "Пользователь создан.")
         return redirect("staff_users")
 
-    return render(request, "accounts/staff_user_form.html", {
-        "tab": "users",
-        "roles": roles,
-        "selected_role_ids": [],
-    })
+    return render(
+        request,
+        "accounts/staff_user_form.html",
+        {"tab": "users", "roles": roles, "selected_role_ids": []},
+    )
 
 
 @login_required
@@ -139,7 +150,6 @@ def staff_user_edit_view(request, user_id: int):
         last_name = (request.POST.get("last_name") or "").strip()
         email = (request.POST.get("email") or "").strip()
 
-        # ✅ много ролей
         role_ids = request.POST.getlist("roles")
         role_id_single = (request.POST.get("role_id") or "").strip()
 
@@ -161,7 +171,6 @@ def staff_user_edit_view(request, user_id: int):
         for rid in role_ids:
             if str(rid).isdigit():
                 chosen.append(int(rid))
-
         if not chosen and role_id_single.isdigit():
             chosen = [int(role_id_single)]
 
@@ -174,12 +183,16 @@ def staff_user_edit_view(request, user_id: int):
 
     selected_role_ids = [str(g.id) for g in user_obj.groups.all()]
 
-    return render(request, "accounts/staff_user_form.html", {
-        "tab": "users",
-        "user_obj": user_obj,
-        "roles": roles,
-        "selected_role_ids": selected_role_ids,
-    })
+    return render(
+        request,
+        "accounts/staff_user_form.html",
+        {
+            "tab": "users",
+            "user_obj": user_obj,
+            "roles": roles,
+            "selected_role_ids": selected_role_ids,
+        },
+    )
 
 
 @login_required
@@ -197,7 +210,17 @@ def staff_user_delete_view(request, user_id: int):
         messages.success(request, "Пользователь удалён.")
         return redirect("staff_users")
 
-    return render(request, "accounts/staff_confirm_delete.html", {"tab": "users", "user_obj": user_obj})
+    # ✅ даём шаблону все нужные переменные
+    return render(
+        request,
+        "accounts/staff_confirm_delete.html",
+        {
+            "tab": "users",
+            "title": "Удалить пользователя",
+            "object_name": user_obj.username,
+            "cancel_url": "staff_users",
+        },
+    )
 
 
 @login_required
@@ -205,21 +228,42 @@ def staff_role_add_view(request):
     if not can_manage_staff(request.user):
         return _deny()
 
+    perm_choices = _permission_choices()
+
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
+        selected_perm_ids = request.POST.getlist("perm_ids")
+
         if not name:
             messages.error(request, "Название роли обязательно.")
-            return render(request, "accounts/staff_role_form.html", {"tab": "roles"})
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "perm_choices": perm_choices, "current_perm_ids": selected_perm_ids},
+            )
 
         if Group.objects.filter(name=name).exists():
             messages.error(request, "Такая роль уже существует.")
-            return render(request, "accounts/staff_role_form.html", {"tab": "roles"})
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "perm_choices": perm_choices, "current_perm_ids": selected_perm_ids},
+            )
 
-        Group.objects.create(name=name)
+        role = Group.objects.create(name=name)
+
+        # ✅ сохраняем права
+        perms = Permission.objects.filter(id__in=[int(x) for x in selected_perm_ids if str(x).isdigit()])
+        role.permissions.set(perms)
+
         messages.success(request, "Роль создана.")
         return redirect("staff_roles")
 
-    return render(request, "accounts/staff_role_form.html", {"tab": "roles"})
+    return render(
+        request,
+        "accounts/staff_role_form.html",
+        {"tab": "roles", "perm_choices": perm_choices, "current_perm_ids": []},
+    )
 
 
 @login_required
@@ -228,23 +272,43 @@ def staff_role_edit_view(request, group_id: int):
         return _deny()
 
     role = get_object_or_404(Group, id=group_id)
+    perm_choices = _permission_choices()
+    current_perm_ids = [str(pid) for pid in role.permissions.values_list("id", flat=True)]
 
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
+        selected_perm_ids = request.POST.getlist("perm_ids")
+
         if not name:
             messages.error(request, "Название роли обязательно.")
-            return render(request, "accounts/staff_role_form.html", {"tab": "roles", "role": role})
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "role": role, "perm_choices": perm_choices, "current_perm_ids": selected_perm_ids},
+            )
 
         if Group.objects.filter(name=name).exclude(id=role.id).exists():
             messages.error(request, "Такая роль уже существует.")
-            return render(request, "accounts/staff_role_form.html", {"tab": "roles", "role": role})
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "role": role, "perm_choices": perm_choices, "current_perm_ids": selected_perm_ids},
+            )
 
         role.name = name
         role.save()
+
+        perms = Permission.objects.filter(id__in=[int(x) for x in selected_perm_ids if str(x).isdigit()])
+        role.permissions.set(perms)
+
         messages.success(request, "Роль обновлена.")
         return redirect("staff_roles")
 
-    return render(request, "accounts/staff_role_form.html", {"tab": "roles", "role": role})
+    return render(
+        request,
+        "accounts/staff_role_form.html",
+        {"tab": "roles", "role": role, "perm_choices": perm_choices, "current_perm_ids": current_perm_ids},
+    )
 
 
 @login_required
@@ -258,11 +322,19 @@ def staff_role_delete_view(request, group_id: int):
         if request.method == "POST":
             messages.error(request, "Нельзя удалить роль: она назначена пользователям.")
             return redirect("staff_roles")
-        return render(request, "accounts/staff_role_confirm_delete.html", {"tab": "roles", "role": role, "has_users": True})
+        return render(
+            request,
+            "accounts/staff_role_confirm_delete.html",
+            {"tab": "roles", "role": role, "has_users": True},
+        )
 
     if request.method == "POST":
         role.delete()
         messages.success(request, "Роль удалена.")
         return redirect("staff_roles")
 
-    return render(request, "accounts/staff_role_confirm_delete.html", {"tab": "roles", "role": role, "has_users": False})
+    return render(
+        request,
+        "accounts/staff_role_confirm_delete.html",
+        {"tab": "roles", "role": role, "has_users": False},
+    )

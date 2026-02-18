@@ -3,11 +3,13 @@
 {% block content %}
 <div class="toolbar">
   <h1 style="margin:0;">Мероприятия</h1>
-{% if not can_view_all_events %}
-  <div class="muted" style="margin: 6px 0 12px;">
-    Показаны только ваши мероприятия (где вы участвуете)
-  </div>
-{% endif %}
+
+  {% if not can_view_all_events %}
+    <div class="muted" style="margin: 6px 0 12px;">
+      Показаны только ваши мероприятия (где вы участвуете)
+    </div>
+  {% endif %}
+
   <div style="display:flex; gap:10px; align-items:center;">
     {% if can_create_event %}
       <a class="btn" href="{% url 'event_create' %}">+ Добавить мероприятие</a>
@@ -18,6 +20,9 @@
     {% endif %}
   </div>
 </div>
+
+
+<h2 style="margin: 14px 0 10px;">Актуальные и будущие</h2>
 
 <table class="list-table">
   <thead>
@@ -32,46 +37,123 @@
   </thead>
 
   <tbody>
-    {% for e in events %}
-    <tr>
-      <td>
-        <span class="status-pill status-{{ e.status }}">{{ e.get_status_display }}</span>
-      </td>
-      <td>{{ e.name }}</td>
-      <td>
-        {% if e.start_date == e.end_date or not e.end_date %}
-          {{ e.start_date|date:"d.m.Y" }}
-        {% else %}
-          {{ e.start_date|date:"d.m.Y" }} – {{ e.end_date|date:"d.m.Y" }}
-        {% endif %}
-      </td>
-      <td>{{ e.client }}</td>
-      <td>{{ e.location }}</td>
-      <td>
-        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
-          <a class="btn-secondary" href="{% url 'event_detail' e.id %}">Открыть</a>
+    {% for e in upcoming_events %}
+      <tr>
+        <td>
+          <span class="status-pill status-{{ e.status }}">{{ e.get_status_display }}</span>
+        </td>
 
-          {% if can_edit %}
-            <a class="btn-secondary" href="{% url 'event_edit' e.id %}">Редактировать</a>
-          {% endif %}
+        <td>{{ e.name }}</td>
 
-          {% if can_delete %}
-            <form method="post" action="{% url 'event_delete' e.id %}"
-                  onsubmit="return confirm('Удалить мероприятие «{{ e.name }}»? Оно попадёт в корзину на 30 дней.')">
-              {% csrf_token %}
-              <button type="submit" class="btn-secondary" style="border-color:#ef4444; color:#ef4444;">
-                Удалить
-              </button>
-            </form>
+        <td>
+          {% if e.start_date == e.end_date or not e.end_date %}
+            {{ e.start_date|date:"d.m.Y" }}
+          {% else %}
+            {{ e.start_date|date:"d.m.Y" }} – {{ e.end_date|date:"d.m.Y" }}
           {% endif %}
-        </div>
-      </td>
-    </tr>
+        </td>
+
+        <td>{{ e.client }}</td>
+        <td>{{ e.location }}</td>
+
+        <td>
+          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+            <a class="btn-secondary" href="{% url 'event_detail' e.id %}">Открыть</a>
+
+            {% if can_edit %}
+              <a class="btn-secondary" href="{% url 'event_edit' e.id %}">Редактировать</a>
+            {% endif %}
+
+            {% if can_delete %}
+              <form method="post" action="{% url 'event_delete' e.id %}"
+                    onsubmit="return confirm('Удалить мероприятие «{{ e.name }}»? Оно попадёт в корзину на 30 дней.')">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary" style="border-color:#ef4444; color:#ef4444;">
+                  Удалить
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
     {% empty %}
-    <tr>
-      <td colspan="6" style="color:#6b7280;">Мероприятий нет.</td>
-    </tr>
+      <tr>
+        <td colspan="6" style="color:#6b7280;">Актуальных мероприятий нет.</td>
+      </tr>
     {% endfor %}
   </tbody>
 </table>
+
+<div style="margin-top:16px;">
+  <details {% if past_count == 0 %}open{% endif %} style="border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px;">
+    <summary style="cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px;">
+      <span style="font-weight:800;">Прошедшие / закрытые</span>
+      <span class="muted">({{ past_count }})</span>
+      <span class="muted" style="margin-left:auto;">Нажми, чтобы {% if past_count == 0 %}свернуть{% else %}развернуть{% endif %}</span>
+    </summary>
+
+    <div style="margin-top:12px;">
+      <table class="list-table">
+        <thead>
+          <tr>
+            <th>Статус</th>
+            <th>Название</th>
+            <th>Период</th>
+            <th>Клиент</th>
+            <th>Локация</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for e in past_events %}
+            <tr>
+              <td>
+                <span class="status-pill status-{{ e.status }}">{{ e.get_status_display }}</span>
+              </td>
+
+              <td>{{ e.name }}</td>
+
+              <td>
+                {% if e.start_date == e.end_date or not e.end_date %}
+                  {{ e.start_date|date:"d.m.Y" }}
+                {% else %}
+                  {{ e.start_date|date:"d.m.Y" }} – {{ e.end_date|date:"d.m.Y" }}
+                {% endif %}
+              </td>
+
+              <td>{{ e.client }}</td>
+              <td>{{ e.location }}</td>
+
+              <td>
+                <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+                  <a class="btn-secondary" href="{% url 'event_detail' e.id %}">Открыть</a>
+
+                  {% if can_edit %}
+                    <a class="btn-secondary" href="{% url 'event_edit' e.id %}">Редактировать</a>
+                  {% endif %}
+
+                  {% if can_delete %}
+                    <form method="post" action="{% url 'event_delete' e.id %}"
+                          onsubmit="return confirm('Удалить мероприятие «{{ e.name }}»? Оно попадёт в корзину на 30 дней.')">
+                      {% csrf_token %}
+                      <button type="submit" class="btn-secondary" style="border-color:#ef4444; color:#ef4444;">
+                        Удалить
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" style="color:#6b7280;">Прошедших/закрытых мероприятий нет.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+</div>
+
 {% endblock %}

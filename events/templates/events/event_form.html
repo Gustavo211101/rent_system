@@ -77,9 +77,65 @@
         </div>
     </div>
 
+    <hr style="margin:18px 0;">
+
+    <h2 style="margin:0 0 10px 0;">Дополнительные роли (по необходимости)</h2>
+
+    <div class="card" style="max-width: 980px;">
+      <div style="margin-bottom:10px; color:#64748b;">
+        Отметь роли, которые нужны именно на этом мероприятии. После выбора появится выбор сотрудников.
+      </div>
+
+      <div style="margin-bottom:12px;">
+        {{ form.extra_roles.errors }}
+        {{ form.extra_roles }}
+      </div>
+
+      <div id="extra-role-users">
+        {% for role, field in form.extra_role_fields %}
+          <div class="extra-role-block" data-role-id="{{ role.id }}" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #e5e7eb;">
+            <div style="font-weight:800; margin-bottom:6px;">{{ role.name }}</div>
+            <div>
+              {{ field }}
+              {{ field.errors }}
+              <div style="font-size: 12px; opacity: 0.8; margin-top: 6px;">
+                Выбери одного или нескольких сотрудников (Ctrl/⌘ для множественного выбора).
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
     <div style="margin-top:16px;">
         <button class="btn" type="submit">Сохранить</button>
         <a class="btn-secondary" href="{% url 'calendar' %}{% if request.GET.year and request.GET.month %}?year={{ request.GET.year }}&month={{ request.GET.month }}{% endif %}">Отмена</a>
     </div>
 </form>
+
+<script>
+(function() {
+  function selectedRoleIds() {
+    const boxes = document.querySelectorAll('input[name="extra_roles"]');
+    const ids = [];
+    boxes.forEach(b => { if (b.checked) ids.push(b.value); });
+    return new Set(ids);
+  }
+
+  function updateBlocks() {
+    const selected = selectedRoleIds();
+    document.querySelectorAll('.extra-role-block').forEach(block => {
+      const rid = block.getAttribute('data-role-id');
+      block.style.display = selected.has(rid) ? 'block' : 'none';
+    });
+  }
+
+  document.addEventListener('change', function(e) {
+    if (e.target && e.target.name === 'extra_roles') updateBlocks();
+  });
+
+  updateBlocks();
+})();
+</script>
+
 {% endblock %}

@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.contrib.auth.models import Group
 
 from inventory.models import Equipment
 
@@ -88,6 +89,24 @@ class Event(models.Model):
         if self.start_date == self.end_date:
             return f"{self.name} ({self.start_date:%d.%m.%Y})"
         return f"{self.name} ({self.start_date:%d.%m.%Y}–{self.end_date:%d.%m.%Y})"
+
+
+class EventRoleSlot(models.Model):
+    """
+    Дополнительные роли на мероприятии (только по необходимости).
+    Пример: "Водитель", "Фотограф", "Свет", "Звук" и т.п.
+    """
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="role_slots")
+    role = models.ForeignKey(Group, on_delete=models.PROTECT, related_name="event_role_slots")
+    users = models.ManyToManyField(User, blank=True, related_name="event_extra_roles")
+
+    class Meta:
+        unique_together = ("event", "role")
+        ordering = ["role__name", "id"]
+
+    def __str__(self):
+        return f"{self.event} — {self.role.name}"
 
 
 class EventEquipment(models.Model):

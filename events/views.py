@@ -81,9 +81,11 @@ def _can_view_all_events(user) -> bool:
 
 def _participation_q(user) -> Q:
     """
-    Участие в мероприятии: ответственный / старший инженер / инженер (m2m).
+    Участие в мероприятии:
+    - ответственный / старший инженер / инженеры
+    - + пользователи в дополнительных ролях EventRoleSlot
     """
-    return Q(responsible=user) | Q(s_engineer=user) | Q(engineers=user)
+    return Q(responsible=user) | Q(s_engineer=user) | Q(engineers=user) | Q(role_slots__users=user)
 
 
 # =========================
@@ -166,24 +168,44 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def event_list_view(request: HttpRequest) -> HttpResponse:
+
+    today = timezone.localdate()
+
     qs = (
         Event.objects.filter(is_deleted=False)
         .select_related("responsible", "s_engineer")
-        .prefetch_related("engineers")
-        .order_by("-start_date", "-id")
+        .prefetch_related("engineers", "role_slots__role", "role_slots__users")
     )
 
     can_view_all = _can_view_all_events(request.user)
     if not can_view_all:
         qs = qs.filter(_participation_q(request.user)).distinct()
 
-    return render(request, "events/event_list.html", {
-        "events": qs,
-        "can_create_event": can_edit_event_card(request.user),
-        "can_delete": can_edit_event_card(request.user),
-        "can_edit": can_edit_event_card(request.user),
-        "can_view_all_events": can_view_all,
-    })
+    # Прошедшие/закрытые:
+    # - закрытые и отменённые всегда туда
+    # - или те, у которых дата окончания < сегодня
+    past_q = (
+        Q(status__in=[Event.STATUS_CLOSED, Event.STATUS_CANCELLED])
+        | Q(end_date__lt=today)
+        | (Q(end_date__isnull=True) & Q(start_date__lt=today))
+    )
+
+    past_events = qs.filter(past_q).distinct().order_by("-start_date", "-id")
+    upcoming_events = qs.exclude(past_q).distinct().order_by("start_date", "id")
+
+    return render(
+        request,
+        "events/event_list.html",
+        {
+            "upcoming_events": upcoming_events,
+            "past_events": past_events,
+            "past_count": past_events.count(),
+            "can_create_event": can_edit_event_card(request.user),
+            "can_delete": can_edit_event_card(request.user),
+            "can_edit": can_edit_event_card(request.user),
+            "can_view_all_events": can_view_all,
+        },
+    )
 
 
 @login_required
@@ -191,7 +213,7 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
     can_manage = can_edit_event_card(request.user)
     can_view_all = _can_view_all_events(request.user)
 
-    base_qs = Event.objects.select_related("responsible", "s_engineer").prefetch_related("engineers")
+    base_qs = (Event.objects.select_related("responsible", "s_engineer").prefetch_related("engineers", "role_slots__role", "role_slots__users"))
 
     # Обычным пользователям нельзя видеть удалённые события
     if not can_manage:
@@ -249,19 +271,30 @@ def event_create_view(request: HttpRequest) -> HttpResponse:
 def event_update_view(request: HttpRequest, event_id: int) -> HttpResponse:
     if not can_edit_event_card(request.user):
         return HttpResponseForbidden("Недостаточно прав")
+
     event = get_object_or_404(Event, id=event_id)
 
-    if request.method == "POST":
-        form = EventForm(request.POST, instance=event)
-        if form.is_valid():
-            event = form.save()
-            log_action(user=request.user, action="update", obj=event, details="Изменено мероприятие")
-            messages.success(request, "Изменения сохранены.")
-            return redirect("event_detail", event_id=event.id)
-    else:
-        form = EventForm(instance=event)
+    if event.is_deleted:
+        return HttpResponseForbidden("Нельзя редактировать удалённое мероприятие")
 
-    return render(request, "events/event_form.html", {"form": form, "title": "Редактировать мероприятие"})
+    # ✅ ВАЖНО: instance=event
+    form = EventForm(request.POST or None, instance=event)
+
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Мероприятие обновлено.")
+            return redirect("event_detail", event_id=event.id)
+        messages.error(request, "Исправьте ошибки формы.")
+
+    return render(
+        request,
+        "events/event_form.html",
+        {
+            "title": "Редактировать мероприятие",
+            "form": form,
+        },
+    )
 
 
 @login_required
