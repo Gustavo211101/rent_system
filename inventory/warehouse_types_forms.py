@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import StockEquipmentType, StockCategory, StockSubcategory
+from .models import StockEquipmentType, StockSubcategory
 
 
 class StockEquipmentTypeForm(forms.ModelForm):
@@ -15,9 +15,36 @@ class StockEquipmentTypeForm(forms.ModelForm):
             "dimensions_mm": forms.TextInput(attrs={"class": "form-control", "placeholder": "Например: 120×80×35"}),
             "power_w": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Например: 150", "step": "1"}),
         }
-        
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # подкатегории необязательны
         self.fields["subcategory"].required = False
+
+        # Показываем в выпадающем списке подкатегорий только те, что относятся
+        # к выбранной категории.
+        #
+        # - Если категория ещё не выбрана — список подкатегорий пустой (чтобы не
+        #   показывать "все подряд").
+        # - При редактировании — подтягиваем подкатегории по категории объекта.
+        category_id = None
+        if self.data.get("category"):
+            try:
+                category_id = int(self.data.get("category"))
+            except (TypeError, ValueError):
+                category_id = None
+        elif getattr(self.instance, "category_id", None):
+            category_id = int(self.instance.category_id)
+
+        if category_id:
+            self.fields["subcategory"].queryset = (
+                StockSubcategory.objects.filter(category_id=category_id).order_by("name")
+            )
+        else:
+            self.fields["subcategory"].queryset = StockSubcategory.objects.none()
+
+        # URL-основа для JS (см. шаблон), чтобы динамически подгружать
+        # подкатегории при смене категории.
+        self.fields["subcategory"].widget.attrs.setdefault(
+            "data-subcategories-url", "/warehouse/subcategories/"
+        )

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4" style="max-width: 820px;">
+  <a class="btn btn-light mb-3" href="{% url 'stock_type_list' %}">← Назад</a>
+
+  <div class="card">
+    <div class="card-body">
+      <h3 class="mb-3">Импорт оборудования из Excel</h3>
+
+      <div class="alert alert-info">
+        <div><strong>Ожидаются колонки в таком порядке:</strong></div>
+        <ol style="margin:6px 0 0 18px;">
+          <li>Категория</li>
+          <li>Подкатегория</li>
+          <li>Наименование</li>
+          <li>Инвентарный номер</li>
+          <li>Статус (на мероприятии / на складе / в ремонте)</li>
+          <li>Комментарий</li>
+          <li>Вес</li>
+          <li>Ширина</li>
+          <li>Высота</li>
+          <li>Глубина</li>
+          <li>Энергопотребление</li>
+        </ol>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+        {% csrf_token %}
+        <div style="flex:1; min-width: 280px;">
+          <label class="form-label">Excel файл (.xlsx)</label>
+          <input class="form-control" type="file" name="file" accept=".xlsx" required>
+        </div>
+        <button class="btn btn-primary" type="submit">Импортировать</button>
+      </form>
+
+      {% if result %}
+        <hr>
+        <h5>Результат</h5>
+        <ul>
+          <li>Создано типов: <strong>{{ result.created_types }}</strong></li>
+          <li>Обновлено типов: <strong>{{ result.updated_types }}</strong></li>
+          <li>Создано единиц: <strong>{{ result.created_items }}</strong></li>
+          <li>Обновлено единиц: <strong>{{ result.updated_items }}</strong></li>
+          <li>Пропущено строк: <strong>{{ result.skipped_rows }}</strong></li>
+        </ul>
+
+        {% if result.errors %}
+          <div class="alert alert-warning">
+            <div><strong>Ошибки:</strong></div>
+            <ul style="margin:6px 0 0 18px;">
+              {% for e in result.errors %}
+                <li>{{ e }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <div class="alert alert-success">Импорт завершён без ошибок.</div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

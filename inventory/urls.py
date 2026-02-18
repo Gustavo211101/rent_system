@@ -49,6 +49,13 @@ urlpatterns = [
     path("warehouse/categories/<int:category_id>/subcategories/", warehouse_views.stock_subcategory_list_view, name="stock_subcategory_list"),
     path("warehouse/categories/<int:category_id>/subcategories/add/", warehouse_views.stock_subcategory_add_view, name="stock_subcategory_add"),
 
+    # JSON для зависимого выбора подкатегории по выбранной категории
+    path(
+        "warehouse/subcategories/<int:category_id>/",
+        warehouse_types_views.stock_subcategories_by_category_view,
+        name="stock_subcategories_by_category",
+    ),
+
     # Подкатегория: редактирование/удаление
     path("warehouse/categories/<int:category_id>/subcategories/<int:subcategory_id>/edit/", warehouse_views.stock_subcategory_edit_view, name="stock_subcategory_edit"),
     path("warehouse/categories/<int:category_id>/subcategories/<int:subcategory_id>/delete/", warehouse_views.stock_subcategory_delete_view, name="stock_subcategory_delete"),
@@ -68,4 +75,6 @@ urlpatterns = [
     # Ремонт (этап 1)
     path("warehouse/types/<int:type_id>/items/<int:item_id>/repair/open/", warehouse_items_views.stock_item_open_repair_view, name="stock_item_repair_open"),
     path("warehouse/types/<int:type_id>/items/<int:item_id>/repair/close/", warehouse_items_views.stock_item_close_repair_view, name="stock_item_repair_close"),
+
+    path("warehouse/import/", warehouse_views.stock_import_view, name="stock_import"),
 ]

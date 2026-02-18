@@ -10,6 +10,11 @@ from accounts.permissions import can_edit_inventory, can_view_stock
 from .warehouse_forms import StockCategoryForm, StockSubcategoryForm
 from .models import StockCategory, StockSubcategory, StockEquipmentType, StockEquipmentItem
 
+import openpyxl
+from openpyxl import load_workbook
+from .warehouse_forms import StockImportForm
+from .warehouse_import import import_stock_from_rows
+
 
 def _forbidden():
     return HttpResponseForbidden("Недостаточно прав")
@@ -226,3 +231,23 @@ def stock_subcategory_delete_view(request, category_id: int, subcategory_id: int
             "has_items": (has_types or has_items),
         },
     )
+
+@login_required
+def stock_import_view(request):
+    if request.method == "POST":
+        f = request.FILES.get("file")
+        if not f:
+            messages.error(request, "Файл не выбран.")
+            return redirect("stock_import")
+
+        wb = openpyxl.load_workbook(f, data_only=True)
+        ws = wb.active
+
+        rows = []
+        for row in ws.iter_rows(values_only=True):
+            rows.append(list(row))
+
+        result = import_stock_from_rows(rows)
+        return render(request, "inventory/warehouse/import.html", {"result": result})
+
+    return render(request, "inventory/warehouse/import.html")

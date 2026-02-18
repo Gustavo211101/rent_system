@@ -13,6 +13,7 @@
     {% if can_manage %}
       <a class="btn" href="{% url 'stock_type_add' %}">+ Добавить тип</a>
     {% endif %}
+    <a class="btn btn-light" href="{% url 'stock_import' %}">Импорт</a>
   </div>
 
   <form method="get" action="" style="display:flex; gap:8px; flex-wrap:wrap; align-items:end; margin-bottom:14px;">

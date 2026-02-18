@@ -1,76 +1,120 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-4" style="max-width: 820px;">
-  <a class="btn btn-outline-secondary mb-3" href="{% url 'stock_type_list' %}">← Назад</a>
 
-  <div class="card">
-    <div class="card-body">
-      <h3 class="mb-3">{% if mode == "add" %}Добавить тип оборудования{% else %}Редактировать тип оборудования{% endif %}</h3>
-
-      {% if messages %}
-        <div class="mb-3">
-          {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} mb-2">{{ message }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-
-      <form method="post" novalidate>
-        {% csrf_token %}
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Категория</label>
-            {{ form.category }}
-            {% if form.category.errors %}
-              <div class="text-danger small mt-1">{{ form.category.errors|striptags }}</div>
-            {% endif %}
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Подкатегория (необязательно)</label>
-            {{ form.subcategory }}
-            {% if form.subcategory.errors %}
-              <div class="text-danger small mt-1">{{ form.subcategory.errors|striptags }}</div>
-            {% endif %}
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Наименование</label>
-            {{ form.name }}
-            {% if form.name.errors %}
-              <div class="text-danger small mt-1">{{ form.name.errors|striptags }}</div>
-            {% endif %}
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Вес (кг)</label>
-            {{ form.weight_kg }}
-            {% if form.weight_kg.errors %}
-              <div class="text-danger small mt-1">{{ form.weight_kg.errors|striptags }}</div>
-            {% endif %}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Габариты (мм)</label>
-            {{ form.dimensions_mm }}
-            {% if form.dimensions_mm.errors %}
-              <div class="text-danger small mt-1">{{ form.dimensions_mm.errors|striptags }}</div>
-            {% endif %}
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Энергопотребление (W)</label>
-            {{ form.power_w }}
-            {% if form.power_w.errors %}
-              <div class="text-danger small mt-1">{{ form.power_w.errors|striptags }}</div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="mt-4 d-flex gap-2">
-          <button class="btn btn-primary" type="submit">Сохранить</button>
-          <a class="btn btn-outline-secondary" href="{% url 'stock_type_list' %}">Отмена</a>
-        </div>
-      </form>
-
-    </div>
+<div class="container" style="max-width:720px;">
+  <div style="margin-bottom:12px;">
+    <a class="btn btn-light" href="{% url 'stock_type_list' %}">← Назад</a>
   </div>
+
+  <h2 style="font-weight:800;">
+    {% if mode == "edit" %}
+      Редактировать тип оборудования
+    {% else %}
+      Добавить тип оборудования
+    {% endif %}
+  </h2>
+
+  <form method="post" novalidate style="margin-top:18px;">
+    {% csrf_token %}
+
+    <div class="mb-2">
+      <label class="form-label">Категория</label>
+      {{ form.category }}
+      {% if form.category.errors %}
+        <div class="text-danger">{{ form.category.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-2">
+      <label class="form-label">Подкатегория (необязательно)</label>
+      {{ form.subcategory }}
+      {% if form.subcategory.errors %}
+        <div class="text-danger">{{ form.subcategory.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-2">
+      <label class="form-label">Наименование</label>
+      {{ form.name }}
+      {% if form.name.errors %}
+        <div class="text-danger">{{ form.name.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-2">
+      <label class="form-label">Вес (кг)</label>
+      {{ form.weight_kg }}
+      {% if form.weight_kg.errors %}
+        <div class="text-danger">{{ form.weight_kg.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-2">
+      <label class="form-label">Габариты (мм)</label>
+      {{ form.dimensions_mm }}
+      {% if form.dimensions_mm.errors %}
+        <div class="text-danger">{{ form.dimensions_mm.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Энергопотребление (W)</label>
+      {{ form.power_w }}
+      {% if form.power_w.errors %}
+        <div class="text-danger">{{ form.power_w.errors }}</div>
+      {% endif %}
+    </div>
+
+    <button type="submit" class="btn btn-light">Сохранить</button>
+    <a class="btn btn-light" href="{% url 'stock_type_list' %}">Отмена</a>
+  </form>
 </div>
+
+<script>
+(function() {
+  const catSelect = document.getElementById("id_category");
+  const subSelect = document.getElementById("id_subcategory");
+  if (!catSelect || !subSelect) return;
+
+  const baseUrl = subSelect.dataset.subcategoriesUrl || "/warehouse/subcategories/";
+
+  function clearSubcategories() {
+    while (subSelect.options.length > 0) {
+      subSelect.remove(0);
+    }
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "---------";
+    subSelect.appendChild(opt);
+  }
+
+  async function loadSubcategories(categoryId) {
+    if (!categoryId) {
+      clearSubcategories();
+      return;
+    }
+    try {
+      const resp = await fetch(baseUrl + categoryId + "/");
+      if (!resp.ok) throw new Error("bad response");
+      const data = await resp.json();
+      clearSubcategories();
+      for (const row of (data.results || [])) {
+        const opt = document.createElement("option");
+        opt.value = row.id;
+        opt.textContent = row.name;
+        subSelect.appendChild(opt);
+      }
+    } catch (e) {
+      // если что-то сломалось — просто очищаем
+      clearSubcategories();
+    }
+  }
+
+  catSelect.addEventListener("change", function() {
+    loadSubcategories(this.value);
+  });
+
+})();
+</script>
+
 {% endblock %}

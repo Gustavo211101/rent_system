@@ -32,3 +32,16 @@ class StockSubcategoryForm(forms.ModelForm):
                 "placeholder": "Например: Камеры",
             }),
         }
+
+from django import forms
+
+
+class StockImportForm(forms.Form):
+    file = forms.FileField(label="Excel файл (.xlsx)")
+
+    def clean_file(self):
+        f = self.cleaned_data["file"]
+        name = (getattr(f, "name", "") or "").lower()
+        if not name.endswith(".xlsx"):
+            raise forms.ValidationError("Нужен файл .xlsx")
+        return f

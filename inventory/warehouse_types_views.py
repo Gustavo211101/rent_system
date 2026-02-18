@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.permissions import can_edit_inventory, can_view_stock
@@ -138,3 +138,17 @@ def stock_type_delete_view(request, type_id: int):
 
     # Если кто-то открыл GET — просто вернём на список
     return redirect("stock_type_list")
+
+
+@login_required
+def stock_subcategories_by_category_view(request, category_id: int):
+    """JSON: подкатегории выбранной категории (для зависимого селекта)."""
+    if not can_view_stock(request.user):
+        return JsonResponse({"results": []}, status=403)
+
+    subcategories = (
+        StockSubcategory.objects.filter(category_id=category_id)
+        .order_by("name")
+        .values("id", "name")
+    )
+    return JsonResponse({"results": list(subcategories)})
