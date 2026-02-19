@@ -1,6 +1,7 @@
 # inventory/warehouse_import.py
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -45,7 +46,7 @@ def _f(v: Any) -> float | None:
 
 
 def _i(v: Any) -> int | None:
-    s = _s(v)
+    s = _s(v).replace(",", ".")
     if not s:
         return None
     try:
@@ -59,6 +60,24 @@ def _status(v: Any) -> str:
     return STATUS_MAP.get(key, StockEquipmentItem.STATUS_STORAGE)
 
 
+def _parse_kit(v: Any) -> list[str]:
+    """Parse kit inventory numbers from a cell. Supports ',', ';', whitespace and newlines."""
+    raw = _s(v)
+    if not raw:
+        return []
+    parts = re.split(r"[;,\s]+", raw)
+    out: list[str] = []
+    seen = set()
+    for p in parts:
+        p = p.strip()
+        if not p:
+            continue
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
+
+
 @dataclass
 class ImportResult:
     created_types: int = 0
@@ -66,7 +85,7 @@ class ImportResult:
     created_items: int = 0
     updated_items: int = 0
     skipped_rows: int = 0
-    errors: list[str] = None
+    errors: list[str] | None = None
 
     def __post_init__(self):
         if self.errors is None:
@@ -96,8 +115,8 @@ def _get_or_create_type(
 ) -> tuple[StockEquipmentType, bool]:
     """
     Возвращает (type_obj, created_bool).
-    Уникальность в твоём проекте гуляет, поэтому используем максимально безопасный ключ:
-    category + subcategory + name
+    Уникальность в проекте может меняться, поэтому используем ключ:
+    category + subcategory + name.
     """
     qs = StockEquipmentType.objects.filter(category=category, name=name)
     if subcategory is None:
@@ -112,7 +131,7 @@ def _get_or_create_type(
         obj = StockEquipmentType(category=category, subcategory=subcategory, name=name)
         created = True
 
-    # заполняем поля, если они есть в модели (у тебя там есть и power_w, и power_watt)
+    # ТТХ: на уровне ТИПА (у тебя есть разные поля, заполняем если существуют)
     if hasattr(obj, "weight_kg"):
         obj.weight_kg = weight_kg
     if hasattr(obj, "width_mm"):
@@ -156,37 +175,42 @@ def _get_or_create_item(
 @transaction.atomic
 def import_stock_from_rows(rows: list[list[Any]]) -> ImportResult:
     """
-    Ожидаемые колонки (1..11):
-    1 категория
-    2 подкатегория
-    3 наименование
-    4 инвентарный номер
-    5 статус ('на мероприятии'/'на складе'/'в ремонте')
-    6 комментарий
-    7 вес
-    8 ширина
-    9 высота
-    10 глубина
-    11 энергопотребление
+    Канон колонок (1..12):
+    1  категория
+    2  подкатегория
+    3  наименование
+    4  инвентарный номер
+    5  статус ('на мероприятии'/'на складе'/'в ремонте')
+    6  комплект (необязательно). ПУСТО = ОЧИСТИТЬ комплект.
+    7  комментарий
+    8  вес
+    9  ширина
+    10 высота
+    11 глубина
+    12 энергопотребление
     """
     result = ImportResult()
 
+    # inv -> list kit invs (может быть пустым списком = очистить)
+    kit_by_inv: dict[str, list[str]] = {}
+
+    # Pass 1: create/update categories/types/items
     for idx, row in enumerate(rows, start=1):
-        # row может быть короче/длиннее — нормализуем до 11
-        r = list(row)[:11] + [None] * max(0, 11 - len(row))
+        r = list(row)[:12] + [None] * max(0, 12 - len(row))
 
         cat = _s(r[0])
         subcat = _s(r[1])
         name = _s(r[2])
         inv = _s(r[3])
         status = _status(r[4])
-        comment = _s(r[5])
+        kit_list = _parse_kit(r[5])  # if empty cell => []
+        comment = _s(r[6])
 
-        weight_kg = _f(r[6])
-        width_mm = _i(r[7])
-        height_mm = _i(r[8])
-        depth_mm = _i(r[9])
-        power_watt = _i(r[10])
+        weight_kg = _f(r[7])
+        width_mm = _i(r[8])
+        height_mm = _i(r[9])
+        depth_mm = _i(r[10])
+        power_watt = _i(r[11])
 
         # Пропускаем пустые строки / шапку
         if not any([cat, subcat, name, inv, comment]) and inv == "":
@@ -200,6 +224,9 @@ def import_stock_from_rows(rows: list[list[Any]]) -> ImportResult:
         if not cat or not name or not inv:
             result.errors.append(f"Строка {idx}: пропущены обязательные поля (категория/наименование/инв.номер)")
             continue
+
+        # Пустая колонка 'комплект' должна очищать комплект
+        kit_by_inv[inv] = kit_list  # [] => clear
 
         try:
             category = _get_or_create_category(cat)
@@ -225,7 +252,6 @@ def import_stock_from_rows(rows: list[list[Any]]) -> ImportResult:
             item, item_created = _get_or_create_item(equipment_type=eq_type, inventory_number=inv)
             item.status = status
             item.comment = comment
-            # подстраховка, если есть updated_at/created_at
             if hasattr(item, "updated_at"):
                 item.updated_at = timezone.now()
             item.save()
@@ -237,5 +263,37 @@ def import_stock_from_rows(rows: list[list[Any]]) -> ImportResult:
 
         except Exception as e:
             result.errors.append(f"Строка {idx}: ошибка импорта: {e}")
+
+    # Pass 2: apply kits (after all items exist)
+    if not hasattr(StockEquipmentItem, "kit_items"):
+        if kit_by_inv:
+            result.errors.append("В модели StockEquipmentItem нет поля kit_items: добавь миграцию/поле для комплектов.")
+        return result
+
+    for inv, kit_invs in kit_by_inv.items():
+        parent = StockEquipmentItem.objects.filter(inventory_number=inv).first()
+        if not parent:
+            continue
+
+        # очистка/перезапись — всегда
+        if not kit_invs:
+            parent.kit_items.clear()
+            continue
+
+        kit_items: list[StockEquipmentItem] = []
+        missing: list[str] = []
+        for kinv in kit_invs:
+            if kinv == inv:
+                continue
+            obj = StockEquipmentItem.objects.filter(inventory_number=kinv).first()
+            if obj:
+                kit_items.append(obj)
+            else:
+                missing.append(kinv)
+
+        parent.kit_items.set(kit_items)
+
+        if missing:
+            result.errors.append(f"Инв. {inv}: элементы комплекта не найдены и пропущены: {', '.join(missing)}")
 
     return result

@@ -219,6 +219,16 @@ class StockEquipmentItem(models.Model):
     comment = models.CharField(max_length=255, blank=True)
     photo = models.FileField(upload_to="equipment_photos/", blank=True, null=True)
 
+    # Комплект: связанные позиции (например, компьютер + адаптеры).
+    # Используется для импорта и последующего автодобавления комплектующих при сканировании.
+    kit_items = models.ManyToManyField(
+        'self',
+        symmetrical=False,
+        blank=True,
+        related_name='kit_parents',
+        verbose_name='Комплект',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -237,22 +247,3 @@ class StockRepair(models.Model):
     reason = models.TextField()
     opened_at = models.DateTimeField(auto_now_add=True)
     closed_at = models.DateTimeField(null=True, blank=True)
-
-    # Заметка при возврате на склад (обязательна по UX, но храним как optional,
-    # а обязательность обеспечиваем на уровне формы/вьюхи).
-    close_note = models.TextField(blank=True)
-
-    opened_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="opened_stock_repairs"
-    )
-    closed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="closed_stock_repairs"
-    )
-
-    class Meta:
-        verbose_name = "Ремонт (склад)"
-        verbose_name_plural = "Ремонты (склад)"
-        ordering = ["-opened_at", "-id"]
-
-    def __str__(self):
-        return f"{self.equipment_item.inventory_number}: {self.reason[:40]}"

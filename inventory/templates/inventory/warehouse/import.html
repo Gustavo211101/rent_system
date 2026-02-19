@@ -15,6 +15,7 @@
           <li>Наименование</li>
           <li>Инвентарный номер</li>
           <li>Статус (на мероприятии / на складе / в ремонте)</li>
+          <li><strong>Комплект</strong> (необязательно; список инвентарников через запятую/точку с запятой; пусто = очистить комплект)</li>
           <li>Комментарий</li>
           <li>Вес</li>
           <li>Ширина</li>
@@ -46,7 +47,7 @@
 
         {% if result.errors %}
           <div class="alert alert-warning">
-            <div><strong>Ошибки:</strong></div>
+            <div><strong>Предупреждения/ошибки:</strong></div>
             <ul style="margin:6px 0 0 18px;">
               {% for e in result.errors %}
                 <li>{{ e }}</li>
