@@ -77,4 +77,7 @@ urlpatterns = [
     path("warehouse/types/<int:type_id>/items/<int:item_id>/repair/close/", warehouse_items_views.stock_item_close_repair_view, name="stock_item_repair_close"),
 
     path("warehouse/import/", warehouse_views.stock_import_view, name="stock_import"),
+
+    # Сканер (штрихкод): скан -> открыть карточку по инвентарнику
+    path("warehouse/scan/", warehouse_views.stock_scan_view, name="stock_scan"),
 ]

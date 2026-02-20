@@ -234,27 +234,7 @@ def stock_subcategory_delete_view(request, category_id: int, subcategory_id: int
 
 @login_required
 def stock_import_view(request):
-    if not can_edit_inventory(request.user):
-        return _forbidden()
-
     if request.method == "POST":
-        action = request.POST.get("action")
-
-        # Тестовая кнопка: удалить всё складское (для проверки импорта)
-        if action == "clear_all":
-            # порядок важен из-за PROTECT/ForeignKey
-            from .models import StockRepair
-
-            StockRepair.objects.all().delete()
-            StockEquipmentItem.objects.all().delete()
-            StockEquipmentType.objects.all().delete()
-            StockSubcategory.objects.all().delete()
-            StockCategory.objects.all().delete()
-
-            messages.success(request, "Склад очищен: удалены категории/подкатегории/типы/единицы/ремонты.")
-            return redirect("stock_import")
-
-        # Обычный импорт
         f = request.FILES.get("file")
         if not f:
             messages.error(request, "Файл не выбран.")
@@ -271,3 +251,37 @@ def stock_import_view(request):
         return render(request, "inventory/warehouse/import.html", {"result": result})
 
     return render(request, "inventory/warehouse/import.html")
+
+
+@login_required
+def stock_scan_view(request):
+    """Открыть карточку единицы по инвентарнику.
+
+    Используется фронтовым "перехватчиком сканера" (сканер работает как клавиатура + Enter).
+    URL: /warehouse/scan/?q=<код>
+    """
+    if not can_view_stock(request.user):
+        return _forbidden()
+
+    raw = (request.GET.get("q") or "").strip()
+    if not raw:
+        messages.warning(request, "Скан не распознан: пустое значение")
+        return redirect("stock_type_list")
+
+    code = raw.replace("\n", "").replace("\r", "").strip()
+
+    # Сначала ищем по инвентарнику (case-insensitive)
+    item = StockEquipmentItem.objects.filter(inventory_number__iexact=code).first()
+
+    # На всякий случай: если в штрихкоде/QR лежит просто id
+    if item is None and code.isdigit():
+        try:
+            item = StockEquipmentItem.objects.filter(id=int(code)).first()
+        except Exception:
+            item = None
+
+    if item is None:
+        messages.error(request, f"Оборудование не найдено по коду: {code}")
+        return redirect("stock_type_list")
+
+    return redirect("stock_item_card", type_id=item.equipment_type_id, item_id=item.id)

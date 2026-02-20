@@ -229,5 +229,57 @@
 })();
 </script>
 
+<!-- ===== Warehouse scanner (barcode) =====
+  На любой странице /warehouse... ловим быстрый ввод + Enter и открываем карточку по инвентарнику.
+  Сканеры обычно работают как клавиатура: быстро печатают символы и нажимают Enter.
+-->
+<script>
+(function () {
+  function isWarehousePage() {
+    return window.location.pathname.startsWith('/warehouse');
+  }
+  if (!isWarehousePage()) return;
+
+  let buffer = '';
+  let lastTs = 0;
+  const MAX_GAP_MS = 180; // если ввод медленнее — это обычный набор человеком
+
+  function reset() {
+    buffer = '';
+    lastTs = 0;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    // Не перехватываем, если фокус в поле ввода/textarea/select
+    const t = e.target;
+    const tag = t && t.tagName ? t.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) {
+      return;
+    }
+
+    const now = Date.now();
+    if (lastTs && (now - lastTs) > MAX_GAP_MS) {
+      buffer = '';
+    }
+    lastTs = now;
+
+    if (e.key === 'Enter') {
+      const code = buffer.trim();
+      reset();
+      if (code.length >= 3) {
+        window.location.href = '/warehouse/scan/?q=' + encodeURIComponent(code);
+      }
+      return;
+    }
+
+    // Печатные символы
+    if (e.key && e.key.length === 1) {
+      buffer += e.key;
+      if (buffer.length > 128) buffer = buffer.slice(-128);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
