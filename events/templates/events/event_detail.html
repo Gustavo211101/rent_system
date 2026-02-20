@@ -180,6 +180,94 @@
   {% endif %}
 </div>
 
+
+{# ---- NEW WAREHOUSE: phase 1 reservations ---- #}
+
+{% if stock_shortages %}
+  <div class="alert alert-warning" style="margin-top:18px;">
+    <strong>⚠️ Нехватка оборудования (склад, бронь)</strong>
+    <div style="margin-top:8px;">
+      {% for row in stock_shortages %}
+        <div style="margin-top:4px;">
+          {{ row.type.name }}: нужно {{ row.required }}, доступно {{ row.available }},
+          <strong>не хватает {{ row.shortage }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Склад (бронь по типам на даты)</h2>
+
+  {% if stock_rows %}
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th>Тип</th>
+          <th style="width:220px;">Количество (бронь)</th>
+          <th style="width:220px;">Доступно на даты</th>
+          {% if can_edit_equipment %}
+            <th style="width:220px;">Действия</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in stock_rows %}
+          <tr>
+            <td>
+              <div><strong>{{ row.reservation.equipment_type.name }}</strong></div>
+              <div class="muted" style="margin-top:2px;">
+                {{ row.reservation.equipment_type.category.name }}
+                {% if row.reservation.equipment_type.subcategory %} / {{ row.reservation.equipment_type.subcategory.name }}{% endif %}
+              </div>
+            </td>
+
+            <td>
+              {% if can_edit_equipment %}
+                <form method="post" action="{% url 'event_stock_update_qty' event.id row.reservation.id %}" style="display:flex; gap:8px; align-items:center;">
+                  {% csrf_token %}
+                  <input type="number" name="quantity" value="{{ row.reservation.quantity }}" min="0" style="width:90px;">
+                  <button class="btn-secondary" type="submit">Сохранить</button>
+                </form>
+                <small class="muted">0 = удалить</small>
+              {% else %}
+                {{ row.reservation.quantity }}
+              {% endif %}
+            </td>
+
+            <td>
+              {{ row.available }}
+              {% if row.shortage and row.shortage > 0 %}
+                <div class="muted" style="margin-top:4px; color:#b45309;">
+                  ⚠️ не хватает {{ row.shortage }}
+                </div>
+              {% endif %}
+            </td>
+
+            {% if can_edit_equipment %}
+              <td>
+                <form method="post" action="{% url 'event_stock_delete' event.id row.reservation.id %}">
+                  {% csrf_token %}
+                  <button class="btn-secondary" type="submit">Удалить</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted">Пока ничего не забронировано.</div>
+  {% endif %}
+
+  {% if can_edit_equipment %}
+    <div style="margin-top:12px;">
+      <a class="btn" href="{% url 'event_stock_add' event.id %}">➕ Забронировать со склада</a>
+    </div>
+  {% endif %}
+</div>
+
 <div class="card" style="margin-top:18px;">
   <h2 style="margin-top:0;">Взято в аренду (покрывает нехватку)</h2>
 

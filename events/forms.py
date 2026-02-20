@@ -5,9 +5,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 
 from accounts.roles import ROLE_ENGINEER, ROLE_MANAGER, ROLE_SENIOR_ENGINEER
-from inventory.models import Equipment
+from inventory.models import Equipment, StockEquipmentType
 
 from .models import Event, EventEquipment, EventRentedEquipment, EventRoleSlot
+from .models import EventStockReservation
 
 User = get_user_model()
 
@@ -209,3 +210,23 @@ class EventRentedEquipmentForm(forms.ModelForm):
     class Meta:
         model = EventRentedEquipment
         fields = ["equipment", "quantity"]
+
+
+class EventStockReservationForm(forms.ModelForm):
+    equipment_type = forms.ModelChoiceField(
+        queryset=StockEquipmentType.objects.filter(is_active=True).select_related("category", "subcategory").order_by(
+            "category__name", "subcategory__name", "name"
+        ),
+        label="Тип оборудования (склад)",
+    )
+    quantity = forms.IntegerField(min_value=1, label="Количество (бронь)")
+
+    def __init__(self, *args, **kwargs):
+        event = kwargs.pop("event", None)
+        super().__init__(*args, **kwargs)
+        if event is not None:
+            self.instance.event = event
+
+    class Meta:
+        model = EventStockReservation
+        fields = ["equipment_type", "quantity"]

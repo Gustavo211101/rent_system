@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import Group
 
-from inventory.models import Equipment
+from inventory.models import Equipment, StockEquipmentType, StockEquipmentItem
 
 User = settings.AUTH_USER_MODEL
 
@@ -131,3 +131,53 @@ class EventRentedEquipment(models.Model):
 
     def __str__(self):
         return f"Аренда: {self.equipment.name} × {self.quantity}"
+
+
+class EventStockReservation(models.Model):
+    """Фаза 1: бронь оборудования со склада по ТИПАМ и количеству на даты мероприятия.
+
+    В момент планирования на мероприятии храним только:
+      - какой тип оборудования нужен
+      - какое количество бронируем
+
+    Конкретные инвентарники привязываются позже на этапе погрузки (Фаза 2).
+    """
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="stock_reservations")
+    equipment_type = models.ForeignKey(StockEquipmentType, on_delete=models.PROTECT, related_name="event_reservations")
+    quantity = models.PositiveIntegerField(default=1)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_stock_reservations",
+    )
+
+    class Meta:
+        unique_together = ("event", "equipment_type")
+        ordering = ["equipment_type__category__name", "equipment_type__subcategory__name", "equipment_type__name", "id"]
+
+    def __str__(self):
+        return f"{self.event} — {self.equipment_type.name} × {self.quantity}"
+
+    @staticmethod
+    def available_for_dates(equipment_type: StockEquipmentType, start_date, end_date, exclude_event_id: int | None = None) -> int:
+        """Сколько единиц данного типа доступно на даты (с учётом ремонтов и чужих броней)."""
+        # Общее доступное физически: всё, кроме ремонта
+        total_physical = StockEquipmentItem.objects.filter(
+            equipment_type=equipment_type
+        ).exclude(status=StockEquipmentItem.STATUS_REPAIR).count()
+
+        # Сумма броней на пересекающиеся даты (кроме текущего события)
+        qs = EventStockReservation.objects.select_related("event").filter(equipment_type=equipment_type)
+        if exclude_event_id:
+            qs = qs.exclude(event_id=exclude_event_id)
+
+        qs = qs.filter(event__start_date__lte=end_date, event__end_date__gte=start_date)
+
+        reserved = qs.aggregate(models.Sum("quantity")).get("quantity__sum") or 0
+
+        return max(0, total_physical - reserved)

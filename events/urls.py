@@ -26,6 +26,11 @@ urlpatterns = [
     path("events/<int:event_id>/rented/<int:item_id>/qty/", views.event_rented_update_qty_view, name="event_rented_update_qty"),
     path("events/<int:event_id>/rented/<int:item_id>/delete/", views.event_rented_delete_view, name="event_rented_delete"),
 
+    # stock reservations (phase 1)
+    path("events/<int:event_id>/stock/add/", views.event_stock_add_view, name="event_stock_add"),
+    path("events/<int:event_id>/stock/<int:reservation_id>/qty/", views.event_stock_update_qty_view, name="event_stock_update_qty"),
+    path("events/<int:event_id>/stock/<int:reservation_id>/delete/", views.event_stock_delete_view, name="event_stock_delete"),
+
     # API
     path("api/events/quick-create/", views.quick_create_event_api, name="quick_create_event_api"),
     path("api/events/<int:event_id>/move/", views.quick_move_event_api, name="quick_move_event_api"),

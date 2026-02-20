@@ -22,9 +22,11 @@ except Exception:  # pragma: no cover
     def log_action(*args, **kwargs):  # type: ignore
         return None
 
-from .forms import EventEquipmentForm, EventForm, EventRentedEquipmentForm
-from .models import Event, EventEquipment, EventRentedEquipment
+from .forms import EventEquipmentForm, EventForm, EventRentedEquipmentForm, EventStockReservationForm
+from .models import Event, EventEquipment, EventRentedEquipment, EventStockReservation
 from .utils import auto_close_past_events, calculate_shortages
+
+from inventory.models import StockEquipmentType
 
 
 # =========================
@@ -77,6 +79,18 @@ def _can_view_all_events(user) -> bool:
         return True
     groups = set(user.groups.values_list("name", flat=True))
     return (ROLE_MANAGER in groups) or (ROLE_SENIOR_ENGINEER in groups)
+
+
+def _stock_available_for_event(event: Event, equipment_type: StockEquipmentType, exclude_event_id: int | None = None) -> int:
+    """Доступное количество данного типа на даты события (фаза 1)."""
+    sd = event.start_date
+    ed = event.end_date or event.start_date
+    return EventStockReservation.available_for_dates(
+        equipment_type=equipment_type,
+        start_date=sd,
+        end_date=ed,
+        exclude_event_id=exclude_event_id,
+    )
 
 
 def _participation_q(user) -> Q:
@@ -229,11 +243,39 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
     rented_items = EventRentedEquipment.objects.filter(event=event).select_related("equipment").order_by("equipment__name")
     shortages = calculate_shortages(event)
 
+    stock_reservations = (
+        EventStockReservation.objects.filter(event=event)
+        .select_related("equipment_type", "equipment_type__category", "equipment_type__subcategory")
+        .order_by("equipment_type__category__name", "equipment_type__subcategory__name", "equipment_type__name", "id")
+    )
+
+    stock_rows = []
+    stock_shortages = []
+    for r in stock_reservations:
+        available = _stock_available_for_event(event, r.equipment_type, exclude_event_id=event.id)
+        # available = максимальное количество, которое можно забронировать ЭТОМУ событию на его даты,
+        # если игнорировать его же бронь (то есть total_physical - reserved_other).
+        shortage = max(0, r.quantity - available)
+        stock_rows.append({
+            "reservation": r,
+            "available": available,
+            "shortage": shortage,
+        })
+        if shortage > 0:
+            stock_shortages.append({
+                "type": r.equipment_type,
+                "required": r.quantity,
+                "available": available,
+                "shortage": shortage,
+            })
+
     return render(request, "events/event_detail.html", {
         "event": event,
         "equipment_items": equipment_items,
         "rented_items": rented_items,
         "shortages": shortages,
+        "stock_rows": stock_rows,
+        "stock_shortages": stock_shortages,
         "can_modify": can_manage,
         "can_edit_equipment": can_edit_event_equipment(request.user),
     })
@@ -497,6 +539,146 @@ def event_rented_delete_view(request: HttpRequest, event_id: int, item_id: int) 
     item = get_object_or_404(EventRentedEquipment, id=item_id, event=event)
     if request.method == "POST":
         item.delete()
+    return redirect("event_detail", event_id=event.id)
+
+
+# ---- stock (warehouse) reservations: phase 1 ----
+
+@login_required
+def event_stock_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    """Добавить/увеличить бронь по типу склада на даты мероприятия."""
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
+    if not can_edit_event_equipment(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    q = (request.GET.get("q") or "").strip()
+    category_id = (request.GET.get("category") or "").strip()
+    subcategory_id = (request.GET.get("subcategory") or "").strip()
+
+    types_qs = StockEquipmentType.objects.filter(is_active=True).select_related("category", "subcategory")
+    if q:
+        types_qs = types_qs.filter(
+            Q(name__icontains=q)
+            | Q(category__name__icontains=q)
+            | Q(subcategory__name__icontains=q)
+        )
+    if category_id.isdigit():
+        types_qs = types_qs.filter(category_id=int(category_id))
+    if subcategory_id.isdigit():
+        types_qs = types_qs.filter(subcategory_id=int(subcategory_id))
+
+    types_qs = types_qs.order_by("category__name", "subcategory__name", "name", "id")
+
+    if request.method == "POST":
+        form = EventStockReservationForm(request.POST, event=event)
+        if form.is_valid():
+            eq_type = form.cleaned_data["equipment_type"]
+            qty_add = int(form.cleaned_data.get("quantity") or 0)
+            if qty_add <= 0:
+                return redirect("event_detail", event_id=event.id)
+
+            res, created = EventStockReservation.objects.get_or_create(
+                event=event,
+                equipment_type=eq_type,
+                defaults={"quantity": 0, "created_by": request.user},
+            )
+            # если запись уже была — created_by не трогаем
+            new_qty = (res.quantity or 0) + qty_add
+
+            max_allowed = _stock_available_for_event(event, eq_type, exclude_event_id=event.id)
+            if new_qty > max_allowed:
+                messages.error(
+                    request,
+                    f"Нельзя забронировать {new_qty} шт. Доступно на эти даты: {max_allowed}.",
+                )
+            else:
+                res.quantity = new_qty
+                if created and not res.created_by_id:
+                    res.created_by = request.user
+                res.save(update_fields=["quantity", "created_by"] if created else ["quantity"])
+                messages.success(request, "Бронь по складу сохранена.")
+                return redirect("event_detail", event_id=event.id)
+        else:
+            messages.error(request, "Исправьте ошибки в форме")
+    else:
+        form = EventStockReservationForm(event=event)
+
+    # уже забронировано этим событием
+    existing = (
+        EventStockReservation.objects.filter(event=event)
+        .select_related("equipment_type", "equipment_type__category", "equipment_type__subcategory")
+        .order_by("equipment_type__category__name", "equipment_type__subcategory__name", "equipment_type__name")
+    )
+
+    # строки типов с доступностью
+    type_rows = []
+    for t in types_qs[:300]:  # не грузим бесконечно
+        available = _stock_available_for_event(event, t, exclude_event_id=event.id)
+        type_rows.append({"type": t, "available": available})
+
+    # фильтры категорий/подкатегорий
+    from inventory.models import StockCategory, StockSubcategory
+    categories = StockCategory.objects.all().order_by("name")
+    subcats = StockSubcategory.objects.all().order_by("category__name", "name")
+    if category_id.isdigit():
+        subcats = subcats.filter(category_id=int(category_id))
+
+    return render(
+        request,
+        "events/event_stock_add.html",
+        {
+            "event": event,
+            "form": form,
+            "existing": existing,
+            "type_rows": type_rows,
+            "q": q,
+            "categories": categories,
+            "subcategories": subcats,
+            "category_id": category_id,
+            "subcategory_id": subcategory_id,
+        },
+    )
+
+
+@login_required
+def event_stock_update_qty_view(request: HttpRequest, event_id: int, reservation_id: int) -> HttpResponse:
+    """Изменить количество брони (0 = удалить)."""
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
+    if not can_edit_event_equipment(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    res = get_object_or_404(
+        EventStockReservation.objects.select_related("equipment_type"),
+        id=reservation_id,
+        event=event,
+    )
+
+    if request.method == "POST":
+        qty = _safe_int(request.POST.get("quantity"), 0)
+        if qty <= 0:
+            res.delete()
+            messages.success(request, "Бронь удалена")
+        else:
+            max_allowed = _stock_available_for_event(event, res.equipment_type, exclude_event_id=event.id)
+            if qty > max_allowed:
+                messages.error(request, f"Нельзя поставить {qty}. Доступно на эти даты: {max_allowed}.")
+            else:
+                res.quantity = qty
+                res.save(update_fields=["quantity"])
+                messages.success(request, "Бронь обновлена")
+
+    return redirect("event_detail", event_id=event.id)
+
+
+@login_required
+def event_stock_delete_view(request: HttpRequest, event_id: int, reservation_id: int) -> HttpResponse:
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
+    if not can_edit_event_equipment(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+    res = get_object_or_404(EventStockReservation, id=reservation_id, event=event)
+    if request.method == "POST":
+        res.delete()
+        messages.success(request, "Бронь удалена")
     return redirect("event_detail", event_id=event.id)
 
 

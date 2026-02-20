@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Бронь со склада (по типам)</h1>
+
+<p>
+  <strong>Мероприятие:</strong>
+  <a href="{% url 'event_detail' event.id %}">{{ event.name }}</a>
+  <span class="muted" style="margin-left:8px;">
+    ({{ event.start_date|date:"d.m.Y" }}{% if event.end_date and event.end_date != event.start_date %} – {{ event.end_date|date:"d.m.Y" }}{% endif %})
+  </span>
+</p>
+
+<div class="card" style="margin-top:14px;">
+  <h2 style="margin-top:0;">Добавить бронь</h2>
+
+  <form method="get" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:12px;">
+    <div>
+      <div class="muted" style="margin-bottom:4px;">Категория</div>
+      <select name="category" style="min-width:220px;">
+        <option value="">— все —</option>
+        {% for c in categories %}
+          <option value="{{ c.id }}" {% if category_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <div class="muted" style="margin-bottom:4px;">Подкатегория</div>
+      <select name="subcategory" style="min-width:260px;">
+        <option value="">— все —</option>
+        {% for s in subcategories %}
+          <option value="{{ s.id }}" {% if subcategory_id|stringformat:"s" == s.id|stringformat:"s" %}selected{% endif %}>
+            {{ s.category.name }} / {{ s.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="flex:1; min-width:240px;">
+      <div class="muted" style="margin-bottom:4px;">Поиск</div>
+      <input type="text" name="q" value="{{ q }}" placeholder="Название / категория / подкатегория" style="width:100%;">
+    </div>
+
+    <div>
+      <button type="submit" class="btn-secondary">Фильтр</button>
+      <a class="btn-secondary" href="{% url 'event_stock_add' event.id %}">Сброс</a>
+    </div>
+  </form>
+
+  <form method="post" style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
+    {% csrf_token %}
+
+    <div style="min-width:420px; flex:1;">
+      {{ form.equipment_type.label_tag }}
+      {{ form.equipment_type }}
+      {% if form.equipment_type.errors %}
+        <div class="muted" style="color:#b91c1c; margin-top:4px;">{{ form.equipment_type.errors }}</div>
+      {% endif %}
+      <div class="muted" style="margin-top:4px;">
+        Подсказка: ниже в таблице видно доступность на даты мероприятия.
+      </div>
+    </div>
+
+    <div style="min-width:220px;">
+      {{ form.quantity.label_tag }}
+      {{ form.quantity }}
+      {% if form.quantity.errors %}
+        <div class="muted" style="color:#b91c1c; margin-top:4px;">{{ form.quantity.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div>
+      <button type="submit" class="btn">Добавить</button>
+      <a class="btn-secondary" href="{% url 'event_detail' event.id %}">Назад</a>
+    </div>
+  </form>
+</div>
+
+
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Доступность по складу на даты мероприятия</h2>
+  <div class="muted" style="margin-bottom:10px;">
+    Показаны первые 300 типов по текущим фильтрам.
+  </div>
+
+  {% if type_rows %}
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th>Категория / Подкатегория</th>
+          <th>Тип</th>
+          <th style="width:220px;">Доступно на даты</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in type_rows %}
+          <tr>
+            <td>
+              {{ row.type.category.name }}
+              {% if row.type.subcategory %} / {{ row.type.subcategory.name }}{% endif %}
+            </td>
+            <td>{{ row.type.name }}</td>
+            <td><strong>{{ row.available }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted">Ничего не найдено по фильтрам.</div>
+  {% endif %}
+</div>
+
+
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Уже забронировано этим мероприятием</h2>
+
+  {% if existing %}
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th>Тип</th>
+          <th style="width:180px;">Кол-во</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in existing %}
+          <tr>
+            <td>
+              <strong>{{ r.equipment_type.name }}</strong>
+              <div class="muted" style="margin-top:2px;">
+                {{ r.equipment_type.category.name }}
+                {% if r.equipment_type.subcategory %} / {{ r.equipment_type.subcategory.name }}{% endif %}
+              </div>
+            </td>
+            <td>{{ r.quantity }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted">Пока нет броней.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
