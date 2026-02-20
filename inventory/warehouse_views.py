@@ -234,7 +234,27 @@ def stock_subcategory_delete_view(request, category_id: int, subcategory_id: int
 
 @login_required
 def stock_import_view(request):
+    if not can_edit_inventory(request.user):
+        return _forbidden()
+
     if request.method == "POST":
+        action = request.POST.get("action")
+
+        # Тестовая кнопка: удалить всё складское (для проверки импорта)
+        if action == "clear_all":
+            # порядок важен из-за PROTECT/ForeignKey
+            from .models import StockRepair
+
+            StockRepair.objects.all().delete()
+            StockEquipmentItem.objects.all().delete()
+            StockEquipmentType.objects.all().delete()
+            StockSubcategory.objects.all().delete()
+            StockCategory.objects.all().delete()
+
+            messages.success(request, "Склад очищен: удалены категории/подкатегории/типы/единицы/ремонты.")
+            return redirect("stock_import")
+
+        # Обычный импорт
         f = request.FILES.get("file")
         if not f:
             messages.error(request, "Файл не выбран.")

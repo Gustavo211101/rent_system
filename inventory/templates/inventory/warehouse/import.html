@@ -15,7 +15,7 @@
           <li>Наименование</li>
           <li>Инвентарный номер</li>
           <li>Статус (на мероприятии / на складе / в ремонте)</li>
-          <li><strong>Комплект</strong> (необязательно; список инвентарников через запятую/точку с запятой; пусто = очистить комплект)</li>
+          <li><strong>Комплект</strong> (необязательно; список инвентарников через запятую/точку с запятой/пробелы/переносы; <strong>пусто = очистить комплект</strong>)</li>
           <li>Комментарий</li>
           <li>Вес</li>
           <li>Ширина</li>
@@ -27,11 +27,20 @@
 
       <form method="post" enctype="multipart/form-data" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
         {% csrf_token %}
+        <input type="hidden" name="action" value="import">
         <div style="flex:1; min-width: 280px;">
           <label class="form-label">Excel файл (.xlsx)</label>
           <input class="form-control" type="file" name="file" accept=".xlsx" required>
         </div>
         <button class="btn btn-primary" type="submit">Импортировать</button>
+      </form>
+
+      <form method="post" style="margin-top:12px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="clear_all">
+        <button class="btn btn-outline-danger" type="submit" onclick="return confirm('Точно удалить ВСЕ данные склада? Это для тестов импорта.');">
+          Удалить всё (тест)
+        </button>
       </form>
 
       {% if result %}
@@ -47,7 +56,7 @@
 
         {% if result.errors %}
           <div class="alert alert-warning">
-            <div><strong>Предупреждения/ошибки:</strong></div>
+            <div><strong>Ошибки:</strong></div>
             <ul style="margin:6px 0 0 18px;">
               {% for e in result.errors %}
                 <li>{{ e }}</li>
