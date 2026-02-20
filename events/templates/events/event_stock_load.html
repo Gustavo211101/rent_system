@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 style="margin:0;">Погрузка (сканер) — {{ event.name }}</h1>
+    <div class="muted" style="margin-top:6px;">
+      {% if event.start_date == event.end_date %}
+        {{ event.start_date|date:"d.m.Y" }}
+      {% else %}
+        {{ event.start_date|date:"d.m.Y" }} – {{ event.end_date|date:"d.m.Y" }}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="page-actions">
+    <a class="btn-secondary" href="{% url 'event_detail' event.id %}">← Назад к мероприятию</a>
+  </div>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Сканирование инвентарников</h2>
+
+  <form method="post" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+    {% csrf_token %}
+    <div style="min-width:320px;">
+      <label class="muted" for="code"><strong>Сканируй / введи инвентарный номер</strong></label>
+      <input id="code" name="code" type="text" autocomplete="off" placeholder="Например: 100100" style="width:100%; padding:10px; font-size:16px;">
+      <div class="muted" style="margin-top:6px;">Сканер обычно вводит код и нажимает Enter.</div>
+    </div>
+    <button class="btn" type="submit" style="height:42px;">Добавить</button>
+  </form>
+
+  <div style="margin-top:18px;"></div>
+
+  <h3 style="margin:0;">План (бронь) → Факт (отсканировано)</h3>
+
+  {% if rows %}
+    <table class="list-table" style="margin-top:10px;">
+      <thead>
+        <tr>
+          <th>Тип</th>
+          <th style="width:160px;">Бронь</th>
+          <th style="width:200px;">Отсканировано</th>
+          <th style="width:160px;">Осталось</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>
+              <div><strong>{{ r.reservation.equipment_type.name }}</strong></div>
+              <div class="muted" style="margin-top:2px;">
+                {{ r.reservation.equipment_type.category.name }}
+                {% if r.reservation.equipment_type.subcategory %} / {{ r.reservation.equipment_type.subcategory.name }}{% endif %}
+              </div>
+            </td>
+            <td>{{ r.reservation.quantity }}</td>
+            <td><strong>{{ r.issued }}</strong> / {{ r.reservation.quantity }}</td>
+            <td>
+              {% if r.remaining == 0 %}
+                ✅
+              {% else %}
+                {{ r.remaining }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted" style="margin-top:10px;">Сначала сделай бронь по типам на мероприятие.</div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2 style="margin-top:0;">Отсканировано (выдано на мероприятие)</h2>
+
+  {% if issued_items %}
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th style="width:170px;">Инвентарник</th>
+          <th>Тип</th>
+          <th style="width:180px;">Время</th>
+          <th style="width:140px;">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for iss in issued_items %}
+          <tr>
+            <td><strong>{{ iss.item.inventory_number }}</strong></td>
+            <td>
+              {{ iss.item.equipment_type.name }}
+              <div class="muted" style="margin-top:2px;">
+                {{ iss.item.equipment_type.category.name }}
+                {% if iss.item.equipment_type.subcategory %} / {{ iss.item.equipment_type.subcategory.name }}{% endif %}
+              </div>
+            </td>
+            <td>{{ iss.issued_at|date:"d.m.Y H:i" }}</td>
+            <td>
+              <form method="post" action="{% url 'event_stock_issue_delete' event.id iss.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="btn-secondary" type="submit">Убрать</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="muted">Пока ничего не отсканировано.</div>
+  {% endif %}
+</div>
+
+<script>
+  // Автофокус: удобно для сканера
+  (function(){
+    const el = document.getElementById('code');
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  })();
+</script>
+
+{% endblock %}

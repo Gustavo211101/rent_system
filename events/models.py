@@ -181,3 +181,42 @@ class EventStockReservation(models.Model):
         reserved = qs.aggregate(models.Sum("quantity")).get("quantity__sum") or 0
 
         return max(0, total_physical - reserved)
+
+
+class EventStockIssue(models.Model):
+    """Фаза 2: фактическая выдача (погрузка) — привязка конкретных инвентарников к мероприятию.
+
+    Создаётся при сканировании инвентарника на погрузке.
+    Возврат (returned_*) будет реализован следующим шагом.
+    """
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="stock_issues")
+    item = models.ForeignKey(StockEquipmentItem, on_delete=models.PROTECT, related_name="event_issues")
+
+    issued_at = models.DateTimeField(auto_now_add=True)
+    issued_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="issued_stock_items",
+    )
+
+    returned_at = models.DateTimeField(null=True, blank=True)
+    returned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="returned_stock_items",
+    )
+
+    class Meta:
+        ordering = ["-issued_at", "-id"]
+
+    def __str__(self):
+        return f"{self.event} — {self.item.inventory_number}"
+
+    @property
+    def is_returned(self) -> bool:
+        return bool(self.returned_at)

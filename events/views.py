@@ -23,10 +23,10 @@ except Exception:  # pragma: no cover
         return None
 
 from .forms import EventEquipmentForm, EventForm, EventRentedEquipmentForm, EventStockReservationForm
-from .models import Event, EventEquipment, EventRentedEquipment, EventStockReservation
+from .models import Event, EventEquipment, EventRentedEquipment, EventStockReservation, EventStockIssue
 from .utils import auto_close_past_events, calculate_shortages
 
-from inventory.models import StockEquipmentType
+from inventory.models import StockEquipmentType, StockEquipmentItem
 
 
 # =========================
@@ -239,9 +239,8 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
 
     event = get_object_or_404(base_qs, id=event_id)
 
-    equipment_items = EventEquipment.objects.filter(event=event).select_related("equipment").order_by("equipment__name")
-    rented_items = EventRentedEquipment.objects.filter(event=event).select_related("equipment").order_by("equipment__name")
-    shortages = calculate_shortages(event)
+    # Старые блоки оборудования/аренды больше не используем в UX.
+    # Модели оставлены для совместимости, но в карточке показываем только новый склад.
 
     stock_reservations = (
         EventStockReservation.objects.filter(event=event)
@@ -251,6 +250,16 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
 
     stock_rows = []
     stock_shortages = []
+
+    # Фаза 2: сколько уже отсканировано/выдано на это мероприятие (по типам)
+    issued_qs = (
+        EventStockIssue.objects.filter(event=event, returned_at__isnull=True)
+        .select_related("item", "item__equipment_type")
+    )
+    issued_counts: dict[int, int] = defaultdict(int)
+    for iss in issued_qs:
+        issued_counts[iss.item.equipment_type_id] += 1
+
     for r in stock_reservations:
         available = _stock_available_for_event(event, r.equipment_type, exclude_event_id=event.id)
         # available = максимальное количество, которое можно забронировать ЭТОМУ событию на его даты,
@@ -260,6 +269,7 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
             "reservation": r,
             "available": available,
             "shortage": shortage,
+            "issued": issued_counts.get(r.equipment_type_id, 0),
         })
         if shortage > 0:
             stock_shortages.append({
@@ -271,9 +281,7 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
 
     return render(request, "events/event_detail.html", {
         "event": event,
-        "equipment_items": equipment_items,
-        "rented_items": rented_items,
-        "shortages": shortages,
+        "issued_items": issued_qs,
         "stock_rows": stock_rows,
         "stock_shortages": stock_shortages,
         "can_modify": can_manage,
@@ -680,6 +688,123 @@ def event_stock_delete_view(request: HttpRequest, event_id: int, reservation_id:
         res.delete()
         messages.success(request, "Бронь удалена")
     return redirect("event_detail", event_id=event.id)
+
+
+# ---- stock (warehouse) loading/scanning: phase 2 ----
+
+@login_required
+def event_stock_load_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    """Фаза 2: погрузка — сканируем инвентарники и привязываем к мероприятию."""
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
+    if not can_edit_event_equipment(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    reservations = (
+        EventStockReservation.objects.filter(event=event)
+        .select_related("equipment_type", "equipment_type__category", "equipment_type__subcategory")
+        .order_by("equipment_type__category__name", "equipment_type__subcategory__name", "equipment_type__name")
+    )
+
+    issued_qs = (
+        EventStockIssue.objects.filter(event=event, returned_at__isnull=True)
+        .select_related("item", "item__equipment_type", "item__equipment_type__category", "item__equipment_type__subcategory")
+        .order_by("-issued_at", "-id")
+    )
+
+    issued_counts: dict[int, int] = defaultdict(int)
+    for iss in issued_qs:
+        issued_counts[iss.item.equipment_type_id] += 1
+
+    rows = []
+    for r in reservations:
+        issued = issued_counts.get(r.equipment_type_id, 0)
+        rows.append({
+            "reservation": r,
+            "issued": issued,
+            "remaining": max(0, r.quantity - issued),
+        })
+
+    if request.method == "POST":
+        code = (request.POST.get("code") or "").strip()
+        if not code:
+            messages.error(request, "Пустой код")
+            return redirect("event_stock_load", event_id=event.id)
+
+        code = code.replace("\n", "").replace("\r", "").strip()
+
+        item = StockEquipmentItem.objects.filter(inventory_number__iexact=code).select_related("equipment_type").first()
+        if item is None and code.isdigit():
+            try:
+                item = StockEquipmentItem.objects.filter(id=int(code)).select_related("equipment_type").first()
+            except Exception:
+                item = None
+
+        if item is None:
+            messages.error(request, f"Не найден инвентарник: {code}")
+            return redirect("event_stock_load", event_id=event.id)
+
+        if item.status == StockEquipmentItem.STATUS_REPAIR:
+            messages.error(request, f"{item.inventory_number}: оборудование в ремонте")
+            return redirect("event_stock_load", event_id=event.id)
+
+        active_issue = EventStockIssue.objects.filter(item=item, returned_at__isnull=True).select_related("event").first()
+        if active_issue:
+            if active_issue.event_id == event.id:
+                messages.warning(request, f"{item.inventory_number}: уже добавлено в погрузку этого мероприятия")
+            else:
+                messages.error(request, f"{item.inventory_number}: уже выдано на мероприятие '{active_issue.event.name}'")
+            return redirect("event_stock_load", event_id=event.id)
+
+        res = EventStockReservation.objects.filter(event=event, equipment_type=item.equipment_type).first()
+        if not res:
+            messages.error(request, f"Тип '{item.equipment_type.name}' не забронирован. Сначала забронируйте количество.")
+            return redirect("event_stock_load", event_id=event.id)
+
+        already = issued_counts.get(item.equipment_type_id, 0)
+        if already >= res.quantity:
+            messages.error(request, f"По типу '{item.equipment_type.name}' уже отсканировано {already} из {res.quantity}.")
+            return redirect("event_stock_load", event_id=event.id)
+
+        EventStockIssue.objects.create(event=event, item=item, issued_by=request.user)
+        # Чтобы склад сразу показывал, что единица уехала
+        item.status = StockEquipmentItem.STATUS_EVENT
+        item.save(update_fields=["status"])
+
+        messages.success(request, f"Добавлено: {item.inventory_number} — {item.equipment_type.name}")
+        return redirect("event_stock_load", event_id=event.id)
+
+    return render(
+        request,
+        "events/event_stock_load.html",
+        {
+            "event": event,
+            "rows": rows,
+            "issued_items": issued_qs,
+        },
+    )
+
+
+@login_required
+def event_stock_issue_delete_view(request: HttpRequest, event_id: int, issue_id: int) -> HttpResponse:
+    """Удалить ошибочно отсканированную единицу (пока возврата нет — просто удаляем выдачу)."""
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
+    if not can_edit_event_equipment(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    issue = get_object_or_404(EventStockIssue.objects.select_related("item"), id=issue_id, event=event, returned_at__isnull=True)
+    if request.method == "POST":
+        item = issue.item
+        issue.delete()
+
+        # Если эта единица больше нигде не числится как выданная — вернём статус "на складе".
+        still_active = EventStockIssue.objects.filter(item=item, returned_at__isnull=True).exists()
+        if not still_active and item.status != StockEquipmentItem.STATUS_REPAIR:
+            item.status = StockEquipmentItem.STATUS_STORAGE
+            item.save(update_fields=["status"])
+
+        messages.success(request, f"Удалено из погрузки: {item.inventory_number}")
+
+    return redirect("event_stock_load", event_id=event.id)
 
 
 # ---- API ----
