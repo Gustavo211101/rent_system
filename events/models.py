@@ -172,7 +172,13 @@ class EventStockReservation(models.Model):
         ).exclude(status=StockEquipmentItem.STATUS_REPAIR).count()
 
         # Сумма броней на пересекающиеся даты (кроме текущего события)
-        qs = EventStockReservation.objects.select_related("event").filter(equipment_type=equipment_type)
+        # Важно: учитываем только «активные» события, иначе бронь будет «залипать» навсегда.
+        qs = (
+            EventStockReservation.objects.select_related("event")
+            .filter(equipment_type=equipment_type)
+            .filter(event__is_deleted=False)
+            .filter(event__status__in=[Event.STATUS_DRAFT, Event.STATUS_CONFIRMED])
+        )
         if exclude_event_id:
             qs = qs.exclude(event_id=exclude_event_id)
 

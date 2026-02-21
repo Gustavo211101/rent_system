@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseForbidden, Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,6 +11,46 @@ from django.shortcuts import get_object_or_404, redirect, render
 from .permissions import can_manage_staff
 
 User = get_user_model()
+
+
+def _role_permission_choices():
+    """Список прав, которые редактируем в UI ролей.
+
+    Раньше в проекте в форме роли были чекбоксы. В шаблоне
+    accounts/staff_role_form.html они всё ещё ожидаются
+    (perm_choices/current_perm_ids). В какой-то момент обработчик
+    прав в staff_role_*_view выпал — из-за этого чекбоксы пропали.
+
+    Здесь мы показываем только "наши" кастомные права, чтобы
+    интерфейс не превратился в простыню всех Permission Django.
+    """
+
+    wanted = [
+        ("accounts", "manage_staff"),
+        ("inventory", "manage_inventory"),
+        ("events", "edit_event_card"),
+        ("events", "edit_event_equipment"),
+    ]
+
+    qs = Permission.objects.select_related("content_type").filter(
+        Q(content_type__app_label="accounts", codename="manage_staff")
+        | Q(content_type__app_label="inventory", codename="manage_inventory")
+        | Q(content_type__app_label="events", codename="edit_event_card")
+        | Q(content_type__app_label="events", codename="edit_event_equipment")
+    )
+
+    # Сортируем в порядке wanted, чтобы список был стабильным
+    order = {f"{a}.{c}": i for i, (a, c) in enumerate(wanted)}
+    perms = sorted(
+        list(qs),
+        key=lambda p: order.get(f"{p.content_type.app_label}.{p.codename}", 999),
+    )
+
+    choices = []
+    for p in perms:
+        label = f"{p.content_type.app_label}: {p.name}"
+        choices.append((int(p.id), label))
+    return choices
 
 
 def _deny():
@@ -257,21 +297,41 @@ def staff_role_add_view(request):
     if not can_manage_staff(request.user):
         return _deny()
 
+    perm_choices = _role_permission_choices()
+
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
         if not name:
             messages.error(request, "Название роли обязательно.")
-            return render(request, "accounts/staff_role_form.html", {"tab": "roles"})
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "perm_choices": perm_choices, "current_perm_ids": []},
+            )
 
         if Group.objects.filter(name=name).exists():
             messages.error(request, "Такая роль уже существует.")
-            return render(request, "accounts/staff_role_form.html", {"tab": "roles"})
+            return render(
+                request,
+                "accounts/staff_role_form.html",
+                {"tab": "roles", "perm_choices": perm_choices, "current_perm_ids": []},
+            )
 
-        Group.objects.create(name=name)
+        role = Group.objects.create(name=name)
+
+        # ✅ сохраняем права роли из чекбоксов
+        perm_ids = [p for p in request.POST.getlist("perm_ids") if str(p).isdigit()]
+        if perm_ids:
+            role.permissions.set(Permission.objects.filter(id__in=[int(x) for x in perm_ids]))
+
         messages.success(request, "Роль создана.")
         return redirect("staff_roles")
 
-    return render(request, "accounts/staff_role_form.html", {"tab": "roles"})
+    return render(
+        request,
+        "accounts/staff_role_form.html",
+        {"tab": "roles", "perm_choices": perm_choices, "current_perm_ids": []},
+    )
 
 
 @login_required
@@ -281,6 +341,9 @@ def staff_role_edit_view(request, group_id: int):
 
     role = get_object_or_404(Group, id=group_id)
 
+    perm_choices = _role_permission_choices()
+    current_perm_ids = [int(p.id) for p in role.permissions.all()]
+
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
         if not name:
@@ -288,7 +351,12 @@ def staff_role_edit_view(request, group_id: int):
             return render(
                 request,
                 "accounts/staff_role_form.html",
-                {"tab": "roles", "role": role},
+                {
+                    "tab": "roles",
+                    "role": role,
+                    "perm_choices": perm_choices,
+                    "current_perm_ids": current_perm_ids,
+                },
             )
 
         if Group.objects.filter(name=name).exclude(id=role.id).exists():
@@ -296,15 +364,34 @@ def staff_role_edit_view(request, group_id: int):
             return render(
                 request,
                 "accounts/staff_role_form.html",
-                {"tab": "roles", "role": role},
+                {
+                    "tab": "roles",
+                    "role": role,
+                    "perm_choices": perm_choices,
+                    "current_perm_ids": current_perm_ids,
+                },
             )
 
         role.name = name
         role.save()
+
+        # ✅ сохраняем права роли из чекбоксов
+        perm_ids = [p for p in request.POST.getlist("perm_ids") if str(p).isdigit()]
+        role.permissions.set(Permission.objects.filter(id__in=[int(x) for x in perm_ids]))
+
         messages.success(request, "Роль обновлена.")
         return redirect("staff_roles")
 
-    return render(request, "accounts/staff_role_form.html", {"tab": "roles", "role": role})
+    return render(
+        request,
+        "accounts/staff_role_form.html",
+        {
+            "tab": "roles",
+            "role": role,
+            "perm_choices": perm_choices,
+            "current_perm_ids": current_perm_ids,
+        },
+    )
 
 
 @login_required
