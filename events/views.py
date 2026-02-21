@@ -633,6 +633,9 @@ def event_stock_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
     if subcategory_id.isdigit():
         types_qs = types_qs.filter(subcategory_id=int(subcategory_id))
 
+    reservation_blockers = None
+    reservation_summary = None
+
     types_qs = types_qs.order_by("category__name", "subcategory__name", "name", "id")
 
     if request.method == "POST":
@@ -657,6 +660,37 @@ def event_stock_add_view(request: HttpRequest, event_id: int) -> HttpResponse:
                     request,
                     f"Нельзя забронировать {new_qty} шт. Доступно на эти даты: {max_allowed}.",
                 )
+                # собрать информацию: кто бронирует на пересекающиеся даты
+                from django.db.models import Sum
+                from inventory.models import StockEquipmentItem
+
+                total_physical = StockEquipmentItem.objects.filter(equipment_type=eq_type).exclude(status=StockEquipmentItem.STATUS_REPAIR).count()
+                in_repair = StockEquipmentItem.objects.filter(equipment_type=eq_type, status=StockEquipmentItem.STATUS_REPAIR).count()
+
+                overlap_qs = (
+                    EventStockReservation.objects.select_related('event')
+                    .filter(equipment_type=eq_type)
+                    .filter(event__is_deleted=False)
+                    .filter(event__status__in=[Event.STATUS_DRAFT, Event.STATUS_CONFIRMED])
+                    .exclude(event_id=event.id)
+                    .filter(event__start_date__lte=event.end_date, event__end_date__gte=event.start_date)
+                )
+
+                per_event = (
+                    overlap_qs.values('event_id', 'event__name', 'event__start_date', 'event__end_date', 'event__status')
+                    .annotate(qty=Sum('quantity'))
+                    .order_by('-qty', 'event__start_date')
+                )
+
+                reservation_blockers = list(per_event[:15])
+                reserved_by_others = sum([x['qty'] or 0 for x in reservation_blockers])
+                reservation_summary = {
+                    'total_physical': total_physical,
+                    'in_repair': in_repair,
+                    'reserved_by_others': reserved_by_others,
+                    'max_allowed': max_allowed,
+                    'requested_new_qty': new_qty,
+                }
             else:
                 res.quantity = new_qty
                 if created and not res.created_by_id:

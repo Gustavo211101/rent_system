@@ -23,7 +23,7 @@ def event_stock_transfer_view(request, event_id: int):
     q = (request.GET.get("q") or "").strip()
 
     if request.method == "POST":
-        inventory_number = (request.POST.get("inventory_number") or "").strip()
+        inventory_number = ((request.POST.get("code") or request.POST.get("inventory_number")) or "").strip()
 
         if not target_event_id:
             result_message = "Выбери целевое мероприятие."
@@ -40,7 +40,9 @@ def event_stock_transfer_view(request, event_id: int):
                 user=request.user,
             )
             result_message = res.message
-            result_success = res.success
+            result_success = getattr(res, "success", None)
+            if result_success is None:
+                result_success = getattr(res, "ok", False)
 
     # Search + list for selecting target event
     base_qs = (

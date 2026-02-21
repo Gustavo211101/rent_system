@@ -31,17 +31,24 @@
       {% if target_events %}
         <div style="margin-top: 8px; display:flex; flex-direction: column; gap:6px;">
           {% for e in target_events %}
-            <label style="display:flex; gap:10px; align-items: center;">
-              <input type="radio" name="__target_pick" {% if target_event_id|default:'' == e.id|stringformat:"s" %}checked{% endif %}
-                     onclick="document.getElementById('target_event_id').value='{{ e.id }}';" />
-              <span>
-                <b>#{{ e.id }}</b> — {{ e.name }}
-                <span style="opacity:0.7;">({{ e.start_date }}{% if e.end_date and e.end_date != e.start_date %}–{{ e.end_date }}{% endif %}, {{ e.get_status_display }})</span>
-                {% if e.client %}<span style="opacity:0.7;"> • {{ e.client }}</span>{% endif %}
-                {% if e.location %}<span style="opacity:0.7;"> • {{ e.location }}</span>{% endif %}
-              </span>
-              <a class="btn-secondary" style="margin-left:auto;" href="?q={{ q|urlencode }}&target={{ e.id }}">Выбрать</a>
-            </label>
+            {% if e.status == 'cancelled' or e.status == 'closed' %}
+    <label style="display:flex; gap:10px; align-items:center; opacity:0.55;">
+        <input type="radio" disabled>
+        <span>
+            #{{ e.id }} — {{ e.name }} ({{ e.start_date|date:"d.m.Y" }}) — {{ e.status }}
+        </span>
+        <span style="color:#c00;">нельзя выбрать</span>
+    </label>
+{% else %}
+    <label style="display:flex; gap:10px; align-items:center;">
+        <input type="radio"
+               name="target_pick"
+               onclick="document.getElementById('target_event_id').value='{{ e.id }}'">
+        <span>
+            #{{ e.id }} — {{ e.name }} ({{ e.start_date|date:"d.m.Y" }}) — {{ e.status }}
+        </span>
+    </label>
+{% endif %}
           {% endfor %}
         </div>
       {% else %}
@@ -57,7 +64,11 @@
 
     <div style="margin-bottom: 10px; display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
       <div><b>Выбрано:</b>
-        {% if target_event_id %}
+        {% if target_event %}
+          <span style="padding:2px 6px; border:1px solid #eee; border-radius: 6px;">
+            #{{ target_event.id }} — {{ target_event.name }}
+          </span>
+        {% elif target_event_id %}
           <span style="padding:2px 6px; border:1px solid #eee; border-radius: 6px;">ID {{ target_event_id }}</span>
         {% else %}
           <span style="opacity:0.7;">не выбрано</span>

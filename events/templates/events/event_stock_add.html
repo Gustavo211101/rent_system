@@ -77,6 +77,51 @@
   </form>
 </div>
 
+{% if reservation_blockers %}
+  <div class="card" style="margin-top:18px; border-color:#fca5a5;">
+    <h2 style="margin-top:0;">Почему нет доступности</h2>
+    {% if reservation_summary %}
+      <div class="muted" style="margin-bottom:10px;">
+        Всего физически (не в ремонте): <b>{{ reservation_summary.total_physical }}</b>,
+        в ремонте: <b>{{ reservation_summary.in_repair }}</b>,
+        забронировано другими: <b>{{ reservation_summary.reserved_by_others }}</b>.
+        Доступно на даты: <b>{{ reservation_summary.max_allowed }}</b>.
+      </div>
+    {% endif %}
+
+    <div style="margin-bottom:8px;"><b>Пересекающиеся брони других мероприятий:</b></div>
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th>Мероприятие</th>
+          <th style="width:160px;">Даты</th>
+          <th style="width:140px;">Статус</th>
+          <th style="width:120px;">Кол-во</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in reservation_blockers %}
+          <tr>
+            <td>
+              <a href="{% url 'event_detail' b.event_id %}">#{{ b.event_id }} — {{ b.event__name }}</a>
+            </td>
+            <td>
+              {{ b.event__start_date|date:"d.m.Y" }}{% if b.event__end_date and b.event__end_date != b.event__start_date %}–{{ b.event__end_date|date:"d.m.Y" }}{% endif %}
+            </td>
+            <td>
+              {% if b.event__status == 'draft' %}Черновик{% elif b.event__status == 'confirmed' %}Подтверждено{% elif b.event__status == 'cancelled' %}Отменено{% elif b.event__status == 'closed' %}Закрыто{% else %}{{ b.event__status }}{% endif %}
+            </td>
+            <td><b>{{ b.qty }}</b></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="muted" style="margin-top:10px;">
+      Подсказка: чтобы освободить доступность — уменьши бронь у пересекающегося мероприятия или перенеси даты.
+    </div>
+  </div>
+{% endif %}
 
 <div class="card" style="margin-top:18px;">
   <h2 style="margin-top:0;">Доступность по складу на даты мероприятия</h2>
@@ -111,6 +156,51 @@
   {% endif %}
 </div>
 
+{% if reservation_blockers %}
+  <div class="card" style="margin-top:18px; border-color:#fca5a5;">
+    <h2 style="margin-top:0;">Почему нет доступности</h2>
+    {% if reservation_summary %}
+      <div class="muted" style="margin-bottom:10px;">
+        Всего физически (не в ремонте): <b>{{ reservation_summary.total_physical }}</b>,
+        в ремонте: <b>{{ reservation_summary.in_repair }}</b>,
+        забронировано другими: <b>{{ reservation_summary.reserved_by_others }}</b>.
+        Доступно на даты: <b>{{ reservation_summary.max_allowed }}</b>.
+      </div>
+    {% endif %}
+
+    <div style="margin-bottom:8px;"><b>Пересекающиеся брони других мероприятий:</b></div>
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th>Мероприятие</th>
+          <th style="width:160px;">Даты</th>
+          <th style="width:140px;">Статус</th>
+          <th style="width:120px;">Кол-во</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in reservation_blockers %}
+          <tr>
+            <td>
+              <a href="{% url 'event_detail' b.event_id %}">#{{ b.event_id }} — {{ b.event__name }}</a>
+            </td>
+            <td>
+              {{ b.event__start_date|date:"d.m.Y" }}{% if b.event__end_date and b.event__end_date != b.event__start_date %}–{{ b.event__end_date|date:"d.m.Y" }}{% endif %}
+            </td>
+            <td>
+              {% if b.event__status == 'draft' %}Черновик{% elif b.event__status == 'confirmed' %}Подтверждено{% elif b.event__status == 'cancelled' %}Отменено{% elif b.event__status == 'closed' %}Закрыто{% else %}{{ b.event__status }}{% endif %}
+            </td>
+            <td><b>{{ b.qty }}</b></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="muted" style="margin-top:10px;">
+      Подсказка: чтобы освободить доступность — уменьши бронь у пересекающегося мероприятия или перенеси даты.
+    </div>
+  </div>
+{% endif %}
 
 <div class="card" style="margin-top:18px;">
   <h2 style="margin-top:0;">Уже забронировано этим мероприятием</h2>
