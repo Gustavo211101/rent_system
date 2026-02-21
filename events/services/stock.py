@@ -191,7 +191,62 @@ def _active_issue_for_item(item: StockEquipmentItem) -> Optional[EventStockIssue
     )
 
 
-def issue_item_to_event(event: Event, item: StockEquipmentItem, user) -> StockActionResult:
+def _kit_items(item: StockEquipmentItem) -> list[StockEquipmentItem]:
+    """Return kit items for a given inventory item.
+
+    The project already models a kit on the *item* level via
+    StockEquipmentItem.kit_items (M2M to self).
+    """
+    try:
+        rel = getattr(item, "kit_items", None)
+        if rel is None:
+            return []
+        return list(rel.all())
+    except Exception:
+        return []
+
+
+def _plan_kit_issue(event: Event, parent_item: StockEquipmentItem) -> Tuple[bool, str, list[StockEquipmentItem]]:
+    """Validate kit availability and return which kit items should be issued.
+
+    Returns: (ok, message, kit_items_to_issue)
+    """
+    kit = _kit_items(parent_item)
+    if not kit:
+        return True, "", []
+
+    to_issue: list[StockEquipmentItem] = []
+
+    # Per-item checks
+    for ki in kit:
+        if ki.status == _status_repair():
+            return False, f"Комплект: единица {ki.inventory_number} в ремонте — выдача невозможна.", []
+
+        active = _active_issue_for_item(ki)
+        if active is not None and active.event_id != event.id:
+            return False, f"Комплект: единица {ki.inventory_number} уже выдана на другое мероприятие.", []
+        if active is None:
+            to_issue.append(ki)
+
+    # Check reservation limits per type (including required kit additions)
+    needed_by_type: dict[int, int] = {}
+    for ki in to_issue:
+        needed_by_type[ki.equipment_type_id] = needed_by_type.get(ki.equipment_type_id, 0) + 1
+
+    for equipment_type_id, need in needed_by_type.items():
+        sample_item = next(ki for ki in to_issue if ki.equipment_type_id == equipment_type_id)
+        et = sample_item.equipment_type
+        reserved_qty = _reservation_limit(event, et)
+        if reserved_qty <= 0:
+            return False, f"Комплект: в мероприятии нет брони по типу '{et}'.", []
+        issued_qty = _issued_count(event, et)
+        if issued_qty + need > reserved_qty:
+            return False, f"Комплект: по типу '{et}' не хватает лимита брони (нужно ещё {need}).", []
+
+    return True, "", to_issue
+
+
+def issue_item_to_event(event: Event, item: StockEquipmentItem, user, *, _skip_kit: bool = False) -> StockActionResult:
     # basic checks
     if item.status == _status_repair():
         return StockActionResult(False, "Единица в ремонте — выдача невозможна.")
@@ -204,6 +259,14 @@ def issue_item_to_event(event: Event, item: StockEquipmentItem, user) -> StockAc
     issued_qty = _issued_count(event, item.equipment_type)
     if issued_qty >= reserved_qty:
         return StockActionResult(False, "Лимит по брони уже выбран.")
+
+    # validate kit upfront (avoid half-issued kits)
+    if not _skip_kit:
+        kit_ok, kit_msg, kit_to_issue = _plan_kit_issue(event, item)
+        if not kit_ok:
+            return StockActionResult(False, kit_msg)
+    else:
+        kit_to_issue = []
 
     # already issued somewhere?
     active = _active_issue_for_item(item)
@@ -222,9 +285,20 @@ def issue_item_to_event(event: Event, item: StockEquipmentItem, user) -> StockAc
                 reason=f"Выдача на мероприятие #{event.id}",
                 meta={"event_id": event.id, "action": "issue"},
             )
+
+            # Auto-issue kit items (item-level kits)
+            for ki in kit_to_issue:
+                res = issue_item_to_event(event, ki, user, _skip_kit=True)
+                if not res.ok:
+                    # rollback whole operation
+                    raise ValueError(res.message)
+
+        if kit_to_issue:
+            return StockActionResult(True, f"Выдано. Комплект: +{len(kit_to_issue)}")
         return StockActionResult(True, "Выдано.")
+    except ValueError as e:
+        return StockActionResult(False, str(e))
     except IntegrityError:
-        # race condition / constraint hit
         return StockActionResult(False, "Не удалось выдать: единица уже выдана или добавлена ранее (конфликт).")
 
 
@@ -237,12 +311,13 @@ def return_item_from_event(event: Event, item: StockEquipmentItem, user) -> Stoc
     if issue is None:
         return StockActionResult(False, "Эта единица не числится выданной на данное мероприятие.")
 
+    kit = _kit_items(item)
+
     with transaction.atomic():
         issue.returned_at = timezone.now()
         issue.returned_by = user
         issue.save(update_fields=["returned_at", "returned_by"])
 
-        # If item is currently in repair, don't overwrite.
         if item.status != _status_repair():
             _set_item_status(
                 item,
@@ -251,6 +326,32 @@ def return_item_from_event(event: Event, item: StockEquipmentItem, user) -> Stoc
                 reason=f"Возврат с мероприятия #{event.id}",
                 meta={"event_id": event.id, "action": "return"},
             )
+
+        # Auto-return kit items that are currently issued to this event.
+        returned_kit = 0
+        for ki in kit:
+            child_issue = (
+                EventStockIssue.objects.filter(event=event, item=ki, returned_at__isnull=True)
+                .order_by("-issued_at")
+                .first()
+            )
+            if child_issue is None:
+                continue
+            child_issue.returned_at = timezone.now()
+            child_issue.returned_by = user
+            child_issue.save(update_fields=["returned_at", "returned_by"])
+            if ki.status != _status_repair():
+                _set_item_status(
+                    ki,
+                    _status_storage(),
+                    user=user,
+                    reason=f"Автовозврат комплекта с мероприятия #{event.id} (вместе с {item.inventory_number})",
+                    meta={"event_id": event.id, "action": "return_kit", "parent": item.inventory_number},
+                )
+            returned_kit += 1
+
+    if kit:
+        return StockActionResult(True, f"Возвращено. Комплект: {returned_kit}.")
     return StockActionResult(True, "Возвращено.")
 
 
@@ -294,6 +395,26 @@ def transfer_item_between_events(source_event: Event, target_event: Event, item:
     if issued_qty >= reserved_qty:
         return StockActionResult(False, "В целевом мероприятии лимит брони по этому типу уже выбран.")
 
+    # validate kit capacity in target (only for kit items currently issued to source)
+    kit = _kit_items(item)
+    kit_open: list[StockEquipmentItem] = []
+    for ki in kit:
+        if EventStockIssue.objects.filter(event=source_event, item=ki, returned_at__isnull=True).exists():
+            kit_open.append(ki)
+    if kit_open:
+        needed_by_type: dict[int, int] = {}
+        for ki in kit_open:
+            needed_by_type[ki.equipment_type_id] = needed_by_type.get(ki.equipment_type_id, 0) + 1
+        for equipment_type_id, need in needed_by_type.items():
+            sample_item = next(ki for ki in kit_open if ki.equipment_type_id == equipment_type_id)
+            et = sample_item.equipment_type
+            r_qty = _reservation_limit(target_event, et)
+            if r_qty <= 0:
+                return StockActionResult(False, f"Комплект: в целевом мероприятии нет брони по типу '{et}'.")
+            i_qty = _issued_count(target_event, et)
+            if i_qty + need > r_qty:
+                return StockActionResult(False, f"Комплект: в целевом мероприятии не хватает лимита по '{et}'.")
+
     try:
         with transaction.atomic():
             # close old issue
@@ -312,6 +433,32 @@ def transfer_item_between_events(source_event: Event, target_event: Event, item:
                 reason=f"Перевыдача: {source_event.id} → {target_event.id}",
                 meta={"source_event_id": source_event.id, "target_event_id": target_event.id, "action": "transfer"},
             )
+
+            # transfer kit items
+            for ki in kit_open:
+                child_issue = (
+                    EventStockIssue.objects.filter(event=source_event, item=ki, returned_at__isnull=True)
+                    .order_by("-issued_at")
+                    .first()
+                )
+                if child_issue is None:
+                    continue
+                child_issue.returned_at = timezone.now()
+                child_issue.returned_by = user
+                child_issue.save(update_fields=["returned_at", "returned_by"])
+                EventStockIssue.objects.create(event=target_event, item=ki, issued_at=timezone.now(), issued_by=user)
+                _set_item_status(
+                    ki,
+                    _status_on_event(),
+                    user=user,
+                    reason=f"Перевыдача комплекта: {source_event.id} → {target_event.id} (вместе с {item.inventory_number})",
+                    meta={
+                        "source_event_id": source_event.id,
+                        "target_event_id": target_event.id,
+                        "action": "transfer_kit",
+                        "parent": item.inventory_number,
+                    },
+                )
         return StockActionResult(True, "Перевыдано.")
     except IntegrityError:
         return StockActionResult(False, "Не удалось перевыдать (конфликт). Попробуйте ещё раз.")
