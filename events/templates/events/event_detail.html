@@ -123,6 +123,7 @@
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <a class="btn" href="{% url 'event_stock_add' event.id %}">➕ Забронировать со склада</a>
         <a class="btn-secondary" href="{% url 'event_stock_load' event.id %}">🚚 Погрузка (сканер)</a>
+        <a class="btn-secondary" href="{% url 'event_stock_return' event.id %}">↩ Возврат (сканер)</a>
       </div>
     {% endif %}
   </div>

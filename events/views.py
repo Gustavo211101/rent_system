@@ -785,6 +785,82 @@ def event_stock_load_view(request: HttpRequest, event_id: int) -> HttpResponse:
 
 
 @login_required
+def event_stock_return_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    """Фаза 3: возврат — сканируем инвентарники и отмечаем returned_at/returned_by."""
+    event = get_object_or_404(Event, id=event_id, is_deleted=False)
+    if not can_edit_event_equipment(request.user):
+        return HttpResponseForbidden("Недостаточно прав")
+
+    # Активные выдачи по этому мероприятию
+    active_issues = (
+        EventStockIssue.objects.filter(event=event, returned_at__isnull=True)
+        .select_related(
+            "item",
+            "item__equipment_type",
+            "item__equipment_type__category",
+            "item__equipment_type__subcategory",
+        )
+        .order_by("-issued_at", "-id")
+    )
+
+    if request.method == "POST":
+        code = (request.POST.get("code") or "").strip()
+        if not code:
+            messages.error(request, "Пустой код")
+            return redirect("event_stock_return", event_id=event.id)
+
+        code = code.replace("\n", "").replace("\r", "").strip()
+
+        item = StockEquipmentItem.objects.filter(inventory_number__iexact=code).select_related("equipment_type").first()
+        if item is None and code.isdigit():
+            try:
+                item = StockEquipmentItem.objects.filter(id=int(code)).select_related("equipment_type").first()
+            except Exception:
+                item = None
+
+        if item is None:
+            messages.error(request, f"Не найден инвентарник: {code}")
+            return redirect("event_stock_return", event_id=event.id)
+
+        issue = (
+            EventStockIssue.objects.filter(event=event, item=item, returned_at__isnull=True)
+            .select_related("item")
+            .first()
+        )
+        if not issue:
+            # либо уже возвращено, либо вообще не выдавалось на это мероприятие
+            ever = EventStockIssue.objects.filter(event=event, item=item).exists()
+            if ever:
+                messages.warning(request, f"{item.inventory_number}: уже возвращено")
+            else:
+                messages.error(request, f"{item.inventory_number}: не числится выданным на это мероприятие")
+            return redirect("event_stock_return", event_id=event.id)
+
+        issue.returned_at = timezone.now()
+        issue.returned_by = request.user
+        issue.save(update_fields=["returned_at", "returned_by"])
+
+        # Если единица больше нигде не активна — вернём статус "на складе".
+        still_active = EventStockIssue.objects.filter(item=item, returned_at__isnull=True).exists()
+        if not still_active and item.status != StockEquipmentItem.STATUS_REPAIR:
+            item.status = StockEquipmentItem.STATUS_STORAGE
+            item.save(update_fields=["status"])
+
+        messages.success(request, f"Возврат: {item.inventory_number} — {item.equipment_type.name}")
+        return redirect("event_stock_return", event_id=event.id)
+
+    return render(
+        request,
+        "events/event_stock_return.html",
+        {
+            "event": event,
+            "active_issues": active_issues,
+            "active_count": active_issues.count(),
+        },
+    )
+
+
+@login_required
 def event_stock_issue_delete_view(request: HttpRequest, event_id: int, issue_id: int) -> HttpResponse:
     """Удалить ошибочно отсканированную единицу (пока возврата нет — просто удаляем выдачу)."""
     event = get_object_or_404(Event, id=event_id, is_deleted=False)
