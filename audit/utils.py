@@ -17,6 +17,7 @@ def log_action(
     entity_type: str | None = None,
     message: str | None = None,
     details: str | None = None,
+    meta: dict | None = None,
 ):
     """
     Универсальный логгер, который НЕ ломается из-за разных названий полей в AuditLog.
@@ -78,7 +79,7 @@ def log_action(
 
     # object_repr (разные имена)
     if object_repr:
-        for name in ("object_repr", "obj_repr", "target_repr", "title"):
+        for name in ("entity_repr", "object_repr", "obj_repr", "target_repr", "title"):
             if name in fields:
                 data[name] = object_repr
                 break
@@ -89,6 +90,10 @@ def log_action(
             if name in fields:
                 data[name] = message
                 break
+
+    # meta (JSON)
+    if meta and "meta" in fields:
+        data["meta"] = meta
 
     # Создаём запись (только по тем полям, которые существуют)
     AuditLog.objects.create(**data)

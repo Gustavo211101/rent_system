@@ -7,7 +7,7 @@ from datetime import date
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -27,6 +27,13 @@ from .models import Event, EventEquipment, EventRentedEquipment, EventStockReser
 from .utils import auto_close_past_events, calculate_shortages
 
 from inventory.models import StockEquipmentType, StockEquipmentItem
+
+from .services.stock import (
+    issue_item_to_event,
+    return_item_from_event,
+    can_cancel_event,
+    can_close_event,
+)
 
 
 # =========================
@@ -251,25 +258,46 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
     stock_rows = []
     stock_shortages = []
 
-    # Фаза 2: сколько уже отсканировано/выдано на это мероприятие (по типам)
-    issued_qs = (
+    # Фаза 2/3: сколько выдано и сколько возвращено по типам
+    active_issued_qs = (
         EventStockIssue.objects.filter(event=event, returned_at__isnull=True)
         .select_related("item", "item__equipment_type")
     )
-    issued_counts: dict[int, int] = defaultdict(int)
-    for iss in issued_qs:
-        issued_counts[iss.item.equipment_type_id] += 1
+    all_issues_qs = (
+        EventStockIssue.objects.filter(event=event)
+        .select_related("item", "item__equipment_type")
+    )
+
+    issued_active_counts: dict[int, int] = defaultdict(int)
+    issued_total_counts: dict[int, int] = defaultdict(int)
+    returned_counts: dict[int, int] = defaultdict(int)
+
+    for iss in all_issues_qs:
+        et_id = iss.item.equipment_type_id
+        issued_total_counts[et_id] += 1
+        if iss.returned_at:
+            returned_counts[et_id] += 1
+
+    for iss in active_issued_qs:
+        issued_active_counts[iss.item.equipment_type_id] += 1
 
     for r in stock_reservations:
         available = _stock_available_for_event(event, r.equipment_type, exclude_event_id=event.id)
         # available = максимальное количество, которое можно забронировать ЭТОМУ событию на его даты,
         # если игнорировать его же бронь (то есть total_physical - reserved_other).
         shortage = max(0, r.quantity - available)
+        issued_total = issued_total_counts.get(r.equipment_type_id, 0)
+        returned = returned_counts.get(r.equipment_type_id, 0)
+        issued_active = issued_active_counts.get(r.equipment_type_id, 0)
         stock_rows.append({
             "reservation": r,
             "available": available,
             "shortage": shortage,
-            "issued": issued_counts.get(r.equipment_type_id, 0),
+            "issued_active": issued_active,
+            "issued_total": issued_total,
+            "returned": returned,
+            "unreturned": max(0, issued_total - returned),
+            "remaining_to_issue": max(0, r.quantity - issued_total),
         })
         if shortage > 0:
             stock_shortages.append({
@@ -279,13 +307,30 @@ def event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
                 "shortage": shortage,
             })
 
+    # Статусные ограничения для UX (дублируем логику из event_set_status_view)
+    has_any_issues = all_issues_qs.exists()
+    has_unreturned = active_issued_qs.exists()
+    # Отмена возможна только до выдачи
+    can_cancel = not has_any_issues
+    # Закрыть можно только если всё выдано (по броням) и всё возвращено
+    can_close = True
+    if has_unreturned:
+        can_close = False
+    else:
+        for r in stock_reservations:
+            if issued_total_counts.get(r.equipment_type_id, 0) < r.quantity:
+                can_close = False
+                break
+
     return render(request, "events/event_detail.html", {
         "event": event,
-        "issued_items": issued_qs,
+        "issued_items": active_issued_qs,
         "stock_rows": stock_rows,
         "stock_shortages": stock_shortages,
         "can_modify": can_manage,
         "can_edit_equipment": can_edit_event_equipment(request.user),
+        "can_cancel": can_cancel,
+        "can_close": can_close,
     })
 
 
@@ -357,6 +402,19 @@ def event_set_status_view(request: HttpRequest, event_id: int, status: str) -> H
     if status not in allowed:
         messages.error(request, "Некорректный статус.")
         return redirect("event_detail", event_id=event.id)
+
+    # Бизнес-правила статусов вынесены в сервисный слой.
+    if status == "cancelled":
+        ok, reason = can_cancel_event(event=event)
+        if not ok:
+            messages.error(request, reason)
+            return redirect("event_detail", event_id=event.id)
+
+    if status == "closed":
+        ok, reason = can_close_event(event=event)
+        if not ok:
+            messages.error(request, reason)
+            return redirect("event_detail", event_id=event.id)
 
     event.status = status
     event.save(update_fields=["status"])
@@ -743,32 +801,10 @@ def event_stock_load_view(request: HttpRequest, event_id: int) -> HttpResponse:
             messages.error(request, f"Не найден инвентарник: {code}")
             return redirect("event_stock_load", event_id=event.id)
 
-        if item.status == StockEquipmentItem.STATUS_REPAIR:
-            messages.error(request, f"{item.inventory_number}: оборудование в ремонте")
+        res = issue_item_to_event(event=event, item=item, user=request.user)
+        if not res.ok:
+            messages.error(request, f"{item.inventory_number}: {res.message}")
             return redirect("event_stock_load", event_id=event.id)
-
-        active_issue = EventStockIssue.objects.filter(item=item, returned_at__isnull=True).select_related("event").first()
-        if active_issue:
-            if active_issue.event_id == event.id:
-                messages.warning(request, f"{item.inventory_number}: уже добавлено в погрузку этого мероприятия")
-            else:
-                messages.error(request, f"{item.inventory_number}: уже выдано на мероприятие '{active_issue.event.name}'")
-            return redirect("event_stock_load", event_id=event.id)
-
-        res = EventStockReservation.objects.filter(event=event, equipment_type=item.equipment_type).first()
-        if not res:
-            messages.error(request, f"Тип '{item.equipment_type.name}' не забронирован. Сначала забронируйте количество.")
-            return redirect("event_stock_load", event_id=event.id)
-
-        already = issued_counts.get(item.equipment_type_id, 0)
-        if already >= res.quantity:
-            messages.error(request, f"По типу '{item.equipment_type.name}' уже отсканировано {already} из {res.quantity}.")
-            return redirect("event_stock_load", event_id=event.id)
-
-        EventStockIssue.objects.create(event=event, item=item, issued_by=request.user)
-        # Чтобы склад сразу показывал, что единица уехала
-        item.status = StockEquipmentItem.STATUS_EVENT
-        item.save(update_fields=["status"])
 
         messages.success(request, f"Добавлено: {item.inventory_number} — {item.equipment_type.name}")
         return redirect("event_stock_load", event_id=event.id)
@@ -791,8 +827,7 @@ def event_stock_return_view(request: HttpRequest, event_id: int) -> HttpResponse
     if not can_edit_event_equipment(request.user):
         return HttpResponseForbidden("Недостаточно прав")
 
-    # Активные выдачи по этому мероприятию
-    active_issues = (
+    issued_qs = (
         EventStockIssue.objects.filter(event=event, returned_at__isnull=True)
         .select_related(
             "item",
@@ -822,31 +857,12 @@ def event_stock_return_view(request: HttpRequest, event_id: int) -> HttpResponse
             messages.error(request, f"Не найден инвентарник: {code}")
             return redirect("event_stock_return", event_id=event.id)
 
-        issue = (
-            EventStockIssue.objects.filter(event=event, item=item, returned_at__isnull=True)
-            .select_related("item")
-            .first()
-        )
-        if not issue:
-            # либо уже возвращено, либо вообще не выдавалось на это мероприятие
-            ever = EventStockIssue.objects.filter(event=event, item=item).exists()
-            if ever:
-                messages.warning(request, f"{item.inventory_number}: уже возвращено")
-            else:
-                messages.error(request, f"{item.inventory_number}: не числится выданным на это мероприятие")
+        res = return_item_from_event(event=event, item=item, user=request.user)
+        if not res.ok:
+            messages.error(request, f"{item.inventory_number}: {res.message}")
             return redirect("event_stock_return", event_id=event.id)
 
-        issue.returned_at = timezone.now()
-        issue.returned_by = request.user
-        issue.save(update_fields=["returned_at", "returned_by"])
-
-        # Если единица больше нигде не активна — вернём статус "на складе".
-        still_active = EventStockIssue.objects.filter(item=item, returned_at__isnull=True).exists()
-        if not still_active and item.status != StockEquipmentItem.STATUS_REPAIR:
-            item.status = StockEquipmentItem.STATUS_STORAGE
-            item.save(update_fields=["status"])
-
-        messages.success(request, f"Возврат: {item.inventory_number} — {item.equipment_type.name}")
+        messages.success(request, f"Возвращено: {item.inventory_number} — {item.equipment_type.name}")
         return redirect("event_stock_return", event_id=event.id)
 
     return render(
@@ -854,8 +870,7 @@ def event_stock_return_view(request: HttpRequest, event_id: int) -> HttpResponse
         "events/event_stock_return.html",
         {
             "event": event,
-            "active_issues": active_issues,
-            "active_count": active_issues.count(),
+            "issued_items": issued_qs,
         },
     )
 

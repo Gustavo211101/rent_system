@@ -3,6 +3,8 @@ from django.db.models import Sum
 from django.utils import timezone
 from django.conf import settings
 
+from audit.utils import log_action
+
 
 class EquipmentCategory(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -238,6 +240,44 @@ class StockEquipmentItem(models.Model):
 
     def __str__(self):
         return f"{self.equipment_type.name} ({self.inventory_number})"
+
+    def set_status(
+        self,
+        new_status: str,
+        *,
+        actor=None,
+        reason: str | None = None,
+        meta: dict | None = None,
+    ) -> bool:
+        """Единый способ менять статус единицы + писать движение в audit.
+
+        Возвращает True, если статус реально изменился.
+        """
+
+        old_status = self.status
+        if old_status == new_status:
+            return False
+
+        self.status = new_status
+        self.save(update_fields=["status"])
+
+        status_names = dict(self.STATUS_CHOICES)
+        msg = f"Статус: {status_names.get(old_status, old_status)} → {status_names.get(new_status, new_status)}"
+        if reason:
+            msg += f". {reason}"
+
+        log_action(
+            user=actor,
+            action="update",
+            obj=self,
+            message=msg,
+            meta={
+                "from": old_status,
+                "to": new_status,
+                **(meta or {}),
+            },
+        )
+        return True
 
 
 class StockRepair(models.Model):

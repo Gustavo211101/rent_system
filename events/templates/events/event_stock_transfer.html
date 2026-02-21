@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>⇄ Перевыдача на другое мероприятие</h1>
+
+  <div style="margin: 12px 0;">
+    <a class="btn-secondary" href="{% url 'event_detail' event.id %}">← К мероприятию</a>
+  </div>
+
+  {% if result_message %}
+    <div class="alert {% if result_success %}alert-success{% else %}alert-danger{% endif %}" style="margin: 12px 0;">
+      {{ result_message }}
+    </div>
+  {% endif %}
+
+  <form method="post" style="margin: 16px 0;">
+    {% csrf_token %}
+
+    <div style="margin-bottom: 10px;">
+      <label for="target_event_id">ID целевого мероприятия</label>
+      <input id="target_event_id" name="target_event_id" type="number" min="1" required style="width: 160px; margin-left: 8px;" value="{{ target_event_id|default:'' }}" />
+    </div>
+
+    <div>
+      <label for="inventory_number">Сканируй инвентарник</label>
+      <input id="inventory_number" name="inventory_number" type="text" autofocus autocomplete="off" style="width: 320px; margin-left: 8px;" />
+      <button class="btn-primary" type="submit" style="margin-left: 8px;">Перевыдать</button>
+    </div>
+  </form>
+
+  <div style="margin-top: 18px;"></div>
+
+  <h3>Сейчас выдано и не возвращено ({{ open_issues|length }})</h3>
+
+  {% if open_issues %}
+    <table class="list-table">
+      <thead>
+        <tr>
+          <th>Инвентарник</th>
+          <th>Тип</th>
+          <th>Выдано</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for issue in open_issues %}
+          <tr>
+            <td>
+              <a href="{% url 'warehouse_item_card' issue.item.id %}">{{ issue.item.inventory_number }}</a>
+            </td>
+            <td>{{ issue.item.equipment_type.name }}</td>
+            <td>{{ issue.issued_at|date:"d.m.Y H:i" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="opacity: .8;">Нет активных выдач.</p>
+  {% endif %}
+{% endblock %}

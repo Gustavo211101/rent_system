@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from accounts.permissions import can_edit_inventory, can_view_stock
+from audit.models import AuditLog
 
 from reportlab.graphics.barcode import createBarcodeDrawing
 from reportlab.graphics import renderSVG
@@ -132,6 +133,12 @@ def stock_item_card_view(request, type_id: int, item_id: int):
         .order_by("-opened_at", "-id")
     )
 
+    movements = (
+        AuditLog.objects.filter(entity_type="StockEquipmentItem", entity_id=str(item.id))
+        .select_related("actor")
+        .order_by("-created_at", "-id")[:30]
+    )
+
     return render(
         request,
         "inventory/warehouse/item_card.html",
@@ -141,6 +148,7 @@ def stock_item_card_view(request, type_id: int, item_id: int):
             "can_manage": _can_manage(request.user),
             "open_repair": open_repair,
             "repairs": repairs,
+            "movements": movements,
         },
     )
 
@@ -263,8 +271,11 @@ def stock_item_open_repair_view(request, type_id: int, item_id: int):
             messages.error(request, "Укажите причину/заметку для ремонта.")
         else:
             StockRepair.objects.create(equipment_item=item, reason=reason, opened_by=request.user)
-            item.status = StockEquipmentItem.STATUS_REPAIR
-            item.save(update_fields=["status"])
+            item.set_status(
+                StockEquipmentItem.STATUS_REPAIR,
+                actor=request.user,
+                reason=f"Отправлено в ремонт: {reason}",
+            )
             messages.success(request, "Единица отправлена в ремонт.")
             return redirect("stock_item_card", type_id=eq_type.id, item_id=item.id)
 
@@ -294,8 +305,11 @@ def stock_item_close_repair_view(request, type_id: int, item_id: int):
             repair.closed_by = request.user
             repair.save(update_fields=["close_note", "closed_at", "closed_by"])
 
-            item.status = StockEquipmentItem.STATUS_STORAGE
-            item.save(update_fields=["status"])
+            item.set_status(
+                StockEquipmentItem.STATUS_STORAGE,
+                actor=request.user,
+                reason=f"Возврат из ремонта: {note}",
+            )
             messages.success(request, "Единица возвращена на склад.")
             return redirect("stock_item_card", type_id=eq_type.id, item_id=item.id)
 

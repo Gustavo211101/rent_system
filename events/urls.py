@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import stock_transfer_views
 
 urlpatterns = [
     path("calendar/", views.calendar_view, name="calendar"),
@@ -30,4 +31,5 @@ urlpatterns = [
     # API
     path("api/events/quick-create/", views.quick_create_event_api, name="quick_create_event_api"),
     path("api/events/<int:event_id>/move/", views.quick_move_event_api, name="quick_move_event_api"),
+    path("events/<int:event_id>/stock/transfer/", stock_transfer_views.event_stock_transfer_view, name="event_stock_transfer"),
 ]

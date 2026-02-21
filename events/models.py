@@ -219,6 +219,20 @@ class EventStockIssue(models.Model):
 
     class Meta:
         ordering = ["-issued_at", "-id"]
+        constraints = [
+            # Один и тот же инвентарник не может быть выдан дважды в рамках одного мероприятия.
+            models.UniqueConstraint(
+                fields=["event", "item"],
+                condition=models.Q(returned_at__isnull=True),
+                name="uniq_event_stock_issue_active_event_item",
+            ),
+            # Один и тот же инвентарник не может быть одновременно "активно" выдан в разные мероприятия.
+            models.UniqueConstraint(
+                fields=["item"],
+                condition=models.Q(returned_at__isnull=True),
+                name="uniq_event_stock_issue_active_item",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.event} — {self.item.inventory_number}"
