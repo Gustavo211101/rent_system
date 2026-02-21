@@ -3,8 +3,10 @@
 {% block content %}
   <h1>⇄ Перевыдача на другое мероприятие</h1>
 
-  <div style="margin: 12px 0;">
+  <div style="margin: 12px 0; display:flex; gap:8px; flex-wrap: wrap;">
     <a class="btn-secondary" href="{% url 'event_detail' event.id %}">← К мероприятию</a>
+    <a class="btn-secondary" href="{% url 'event_stock_load' event.id %}">🚚 Погрузка</a>
+    <a class="btn-secondary" href="{% url 'event_stock_return' event.id %}">↩ Возврат</a>
   </div>
 
   {% if result_message %}
@@ -13,27 +15,74 @@
     </div>
   {% endif %}
 
+  <div style="margin: 16px 0; padding: 12px; border: 1px solid #eee; border-radius: 8px;">
+    <form method="get" style="display:flex; gap:10px; align-items: center; flex-wrap: wrap;">
+      <label for="q"><b>Найти мероприятие</b></label>
+      <input id="q" name="q" type="text" value="{{ q|default:'' }}" placeholder="название / клиент / локация / ID" style="width: 360px;" />
+      {% if target_event_id %}<input type="hidden" name="target" value="{{ target_event_id }}">{% endif %}
+      <button class="btn-secondary" type="submit">Найти</button>
+      {% if q %}
+        <a class="btn-secondary" href="?">Сбросить</a>
+      {% endif %}
+    </form>
+
+    <div style="margin-top: 12px;">
+      <b>Целевое мероприятие</b>
+      {% if target_events %}
+        <div style="margin-top: 8px; display:flex; flex-direction: column; gap:6px;">
+          {% for e in target_events %}
+            <label style="display:flex; gap:10px; align-items: center;">
+              <input type="radio" name="__target_pick" {% if target_event_id|default:'' == e.id|stringformat:"s" %}checked{% endif %}
+                     onclick="document.getElementById('target_event_id').value='{{ e.id }}';" />
+              <span>
+                <b>#{{ e.id }}</b> — {{ e.name }}
+                <span style="opacity:0.7;">({{ e.start_date }}{% if e.end_date and e.end_date != e.start_date %}–{{ e.end_date }}{% endif %}, {{ e.get_status_display }})</span>
+                {% if e.client %}<span style="opacity:0.7;"> • {{ e.client }}</span>{% endif %}
+                {% if e.location %}<span style="opacity:0.7;"> • {{ e.location }}</span>{% endif %}
+              </span>
+              <a class="btn-secondary" style="margin-left:auto;" href="?q={{ q|urlencode }}&target={{ e.id }}">Выбрать</a>
+            </label>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="margin-top: 8px; opacity: 0.7;">Ничего не найдено.</div>
+      {% endif %}
+    </div>
+  </div>
+
   <form method="post" style="margin: 16px 0;">
     {% csrf_token %}
 
-    <div style="margin-bottom: 10px;">
-      <label for="target_event_id">ID целевого мероприятия</label>
-      <input id="target_event_id" name="target_event_id" type="number" min="1" required style="width: 160px; margin-left: 8px;" value="{{ target_event_id|default:'' }}" />
+    <input id="target_event_id" name="target_event_id" type="hidden" value="{{ target_event_id|default:'' }}" />
+
+    <div style="margin-bottom: 10px; display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+      <div><b>Выбрано:</b>
+        {% if target_event_id %}
+          <span style="padding:2px 6px; border:1px solid #eee; border-radius: 6px;">ID {{ target_event_id }}</span>
+        {% else %}
+          <span style="opacity:0.7;">не выбрано</span>
+        {% endif %}
+      </div>
+
+      <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+        <label for="target_event_id_manual" style="opacity:0.7;">или ID вручную</label>
+        <input id="target_event_id_manual" type="number" min="1" style="width: 120px;"
+               oninput="document.getElementById('target_event_id').value=this.value;" placeholder="ID" />
+      </div>
     </div>
 
-    <div>
-      <label for="inventory_number">Сканируй инвентарник</label>
-      <input id="inventory_number" name="inventory_number" type="text" autofocus autocomplete="off" style="width: 320px; margin-left: 8px;" />
-      <button class="btn-primary" type="submit" style="margin-left: 8px;">Перевыдать</button>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+      <label for="inventory_number"><b>Сканируй инвентарник</b></label>
+      <input id="inventory_number" name="inventory_number" type="text" autofocus autocomplete="off" style="width: 320px;" />
+      <button class="btn-primary" type="submit">Перевыдать</button>
     </div>
   </form>
 
   <div style="margin-top: 18px;"></div>
 
   <h3>Сейчас выдано и не возвращено ({{ open_issues|length }})</h3>
-
   {% if open_issues %}
-    <table class="list-table">
+    <table class="list-table" style="margin-top: 10px;">
       <thead>
         <tr>
           <th>Инвентарник</th>
@@ -45,7 +94,7 @@
         {% for issue in open_issues %}
           <tr>
             <td>
-              <a href="{% url 'warehouse_item_card' issue.item.id %}">{{ issue.item.inventory_number }}</a>
+              <a href="{% url 'stock_item_card' issue.item.equipment_type_id issue.item.id %}">{{ issue.item.inventory_number }}</a>
             </td>
             <td>{{ issue.item.equipment_type.name }}</td>
             <td>{{ issue.issued_at|date:"d.m.Y H:i" }}</td>
@@ -54,6 +103,6 @@
       </tbody>
     </table>
   {% else %}
-    <p style="opacity: .8;">Нет активных выдач.</p>
+    <div style="opacity:0.7; margin-top: 8px;">Нет невозвращённых единиц.</div>
   {% endif %}
 {% endblock %}
