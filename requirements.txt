@@ -1,0 +1,10 @@
+asgiref==3.11.0
+charset-normalizer==3.4.4
+Django==5.2.9
+et_xmlfile==2.0.0
+openpyxl==3.1.5
+pillow==12.1.0
+python-barcode==0.16.1
+reportlab==4.4.9
+sqlparse==0.5.5
+typing_extensions==4.15.0
