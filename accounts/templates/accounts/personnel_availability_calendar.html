@@ -11,10 +11,10 @@
 </div>
 
 <div class="card" style="margin-top:16px;">
-  <form method="get" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+  <form id="personnelCalForm" method="get" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
     <div>
       <label>Пользователь</label>
-      <select name="user_id">
+      <select id="personnelUserSelect" name="user_id">
         <option value="">— выберите —</option>
         {% for u in users %}
           <option value="{{ u.id }}" {% if selected_user and selected_user.id == u.id %}selected{% endif %}>
@@ -24,24 +24,48 @@
       </select>
     </div>
 
-    <div>
-      <label>Год</label>
-      <input type="number" name="year" value="{{ year }}" style="width:120px;">
-    </div>
-
-    <div>
-      <label>Месяц</label>
-      <input type="number" name="month" value="{{ month }}" min="1" max="12" style="width:120px;">
-    </div>
-
-    <div>
-      <button class="btn" type="submit">Показать</button>
-    </div>
+    {# сохраняем текущий месяц/год при выборе пользователя #}
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
   </form>
 </div>
 
 <div style="margin-top:16px;">
-  <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
+  {% comment %}
+    Навигация по месяцам как в основном календаре (стрелки).
+    end_date у нас включительный, сетка строится по month/year.
+  {% endcomment %}
+  {% if month == 1 %}
+    {% with prev_year=year|add:"-1" prev_month=12 %}
+      {% with next_year=year next_month=month|add:"1" %}
+        <div style="display:flex; align-items:center; gap:12px;">
+          <a class="btn-secondary" title="Предыдущий месяц" href="?year={{ prev_year }}&month={{ prev_month }}{% if selected_user %}&user_id={{ selected_user.id }}{% endif %}">←</a>
+          <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
+          <a class="btn-secondary" title="Следующий месяц" href="?year={{ next_year }}&month={{ next_month }}{% if selected_user %}&user_id={{ selected_user.id }}{% endif %}">→</a>
+        </div>
+      {% endwith %}
+    {% endwith %}
+  {% elif month == 12 %}
+    {% with prev_year=year prev_month=month|add:"-1" %}
+      {% with next_year=year|add:"1" next_month=1 %}
+        <div style="display:flex; align-items:center; gap:12px;">
+          <a class="btn-secondary" title="Предыдущий месяц" href="?year={{ prev_year }}&month={{ prev_month }}{% if selected_user %}&user_id={{ selected_user.id }}{% endif %}">←</a>
+          <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
+          <a class="btn-secondary" title="Следующий месяц" href="?year={{ next_year }}&month={{ next_month }}{% if selected_user %}&user_id={{ selected_user.id }}{% endif %}">→</a>
+        </div>
+      {% endwith %}
+    {% endwith %}
+  {% else %}
+    {% with prev_year=year prev_month=month|add:"-1" %}
+      {% with next_year=year next_month=month|add:"1" %}
+        <div style="display:flex; align-items:center; gap:12px;">
+          <a class="btn-secondary" title="Предыдущий месяц" href="?year={{ prev_year }}&month={{ prev_month }}{% if selected_user %}&user_id={{ selected_user.id }}{% endif %}">←</a>
+          <strong style="font-size:18px;">{{ month_name }} {{ year }}</strong>
+          <a class="btn-secondary" title="Следующий месяц" href="?year={{ next_year }}&month={{ next_month }}{% if selected_user %}&user_id={{ selected_user.id }}{% endif %}">→</a>
+        </div>
+      {% endwith %}
+    {% endwith %}
+  {% endif %}
 </div>
 
 <style>
@@ -135,7 +159,7 @@
   </div>
 
   {% for week in month_days %}
-    <div class="cal-week" style="--lanes: {{ week_lanes|get_item:week.0|length|default:3 }};">
+    <div class="cal-week">
       {% for day in week %}
         <div class="cal-day {% if day.month != month %}other-month{% endif %}">
           <div class="cal-day-number">{{ day.day }}</div>
@@ -158,5 +182,17 @@
 {% if not selected_user %}
   <p style="color:#6b7280; margin-top:12px;">Выберите пользователя сверху, чтобы показать его мероприятия.</p>
 {% endif %}
+
+<script>
+  (function(){
+    const form = document.getElementById('personnelCalForm');
+    const sel = document.getElementById('personnelUserSelect');
+    if (!form || !sel) return;
+    sel.addEventListener('change', function(){
+      // сразу применяем выбор пользователя, кнопка не нужна
+      form.submit();
+    });
+  })();
+</script>
 
 {% endblock %}
