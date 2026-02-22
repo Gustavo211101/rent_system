@@ -32,7 +32,7 @@ def validate_latin_optional(value: str, label: str):
 
 
 class EmployeeRegistrationForm(forms.Form):
-    username = forms.CharField(label="Username *", max_length=150)
+    username = forms.CharField(label="Логин *", max_length=150)
     email = forms.EmailField(label="Почта *")
     password1 = forms.CharField(label="Пароль *", widget=forms.PasswordInput)
     password2 = forms.CharField(label="Повтор пароля *", widget=forms.PasswordInput)
@@ -110,11 +110,11 @@ class EmployeeRegistrationForm(forms.Form):
     )
 
     def clean_username(self):
-        username = (self.cleaned_data.get("username") or "").strip()
+        username = (self.cleaned_data.get("Логин") or "").strip()
         if not username:
-            raise ValidationError("Username обязателен.")
+            raise ValidationError("Логин обязателен.")
         if User.objects.filter(username=username).exists():
-            raise ValidationError("Такой username уже существует.")
+            raise ValidationError("Такой логин уже существует.")
         return username
 
     # ✅ латиница
