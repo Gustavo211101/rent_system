@@ -110,7 +110,7 @@ class EmployeeRegistrationForm(forms.Form):
     )
 
     def clean_username(self):
-        username = (self.cleaned_data.get("Логин") or "").strip()
+        username = (self.cleaned_data.get("username") or "").strip()
         if not username:
             raise ValidationError("Логин обязателен.")
         if User.objects.filter(username=username).exists():
