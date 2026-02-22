@@ -13,6 +13,13 @@ urlpatterns = [
     # ссылка для нового сотрудника
     path("personnel/invite-link/", staff_invite_link_view, name="staff_invite_link"),
 
+    # календарь занятости персонала
+    path(
+        "personnel/availability/",
+        staff_views.staff_personnel_availability_calendar_view,
+        name="personnel_availability_calendar",
+    ),
+
     # users CRUD
     path("personnel/user/add/", staff_views.staff_user_add_view, name="staff_user_add"),
     path("personnel/user/add/", staff_views.staff_user_add_view, name="personnel_user_add"),

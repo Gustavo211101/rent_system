@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import calendar
+from dataclasses import dataclass
+from datetime import date, timedelta
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -10,7 +14,17 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .permissions import can_manage_staff
 
+from events.models import Event
+
 User = get_user_model()
+
+
+@dataclass(frozen=True)
+class _WeekSegment:
+    event: Event
+    start_col: int  # 0..6 (Mon..Sun)
+    span: int  # 1..7
+    lane: int  # 0..N
 
 
 def _role_permission_choices():
@@ -84,6 +98,145 @@ def staff_users_view(request):
         request,
         "accounts/staff_users.html",
         {"tab": "users", "users": users_qs, "q": q, "roles": roles, "role": role},
+    )
+
+
+def _month_grid(year: int, month: int) -> list[list[date]]:
+    """Сетка месяца: недели (Пн..Вс), включая дни соседних месяцев."""
+    cal = calendar.Calendar(firstweekday=calendar.MONDAY)
+    weeks = []
+    for week in cal.monthdatescalendar(year, month):
+        weeks.append(list(week))
+    return weeks
+
+
+def _ru_month_name(month: int) -> str:
+    names = [
+        "Январь",
+        "Февраль",
+        "Март",
+        "Апрель",
+        "Май",
+        "Июнь",
+        "Июль",
+        "Август",
+        "Сентябрь",
+        "Октябрь",
+        "Ноябрь",
+        "Декабрь",
+    ]
+    if 1 <= month <= 12:
+        return names[month - 1]
+    return ""
+
+
+def _assign_lanes(segments: list[_WeekSegment]) -> list[_WeekSegment]:
+    """Greedy lane assignment per week to avoid overlaps."""
+    # Sort by start, then by longer spans first (slightly nicer)
+    ordered = sorted(segments, key=lambda s: (s.start_col, -s.span, getattr(s.event, "id", 0)))
+    lane_ends: list[int] = []  # last occupied col (inclusive) per lane
+    out: list[_WeekSegment] = []
+    for s in ordered:
+        placed_lane = None
+        for i, end_col in enumerate(lane_ends):
+            if s.start_col > end_col:
+                placed_lane = i
+                lane_ends[i] = s.start_col + s.span - 1
+                break
+        if placed_lane is None:
+            placed_lane = len(lane_ends)
+            lane_ends.append(s.start_col + s.span - 1)
+        out.append(_WeekSegment(event=s.event, start_col=s.start_col, span=s.span, lane=placed_lane))
+    # Keep original order stable-ish for rendering
+    return sorted(out, key=lambda s: (s.lane, s.start_col, -s.span))
+
+
+@login_required
+def staff_personnel_availability_calendar_view(request):
+    """Календарь занятости сотрудников по мероприятиям."""
+    if not can_manage_staff(request.user):
+        return _deny()
+
+    # Users list
+    users = User.objects.filter(is_active=True).order_by("username")
+
+    # Selected params
+    user_id_raw = (request.GET.get("user_id") or "").strip()
+    today = date.today()
+    year = int((request.GET.get("year") or today.year) or today.year)
+    month = int((request.GET.get("month") or today.month) or today.month)
+    if month < 1:
+        month = 1
+    if month > 12:
+        month = 12
+
+    selected_user = None
+    if user_id_raw.isdigit():
+        selected_user = User.objects.filter(id=int(user_id_raw)).first()
+
+    month_days = _month_grid(year, month)
+
+    week_segments: dict[date, list[_WeekSegment]] = {week[0]: [] for week in month_days}
+    week_lanes: dict[date, list[None]] = {week[0]: [None] * 1 for week in month_days}
+
+    if selected_user:
+        # Find events where the user participates.
+        # Exclude deleted/cancelled. Keep draft/confirmed/closed for history.
+        qs = (
+            Event.objects.filter(is_deleted=False)
+            .exclude(status=Event.STATUS_CANCELLED)
+            .filter(
+                Q(responsible=selected_user)
+                | Q(s_engineer=selected_user)
+                | Q(engineers=selected_user)
+                | Q(role_slots__users=selected_user)
+            )
+            .distinct()
+        )
+
+        # Limit by month span (for performance)
+        month_start = month_days[0][0]
+        month_end = month_days[-1][-1]
+        qs = qs.filter(start_date__lte=month_end, end_date__gte=month_start)
+        events = list(qs.order_by("start_date", "id"))
+
+        for week in month_days:
+            ws = week[0]
+            we = week[-1]
+            segs: list[_WeekSegment] = []
+            for ev in events:
+                ev_start = ev.start_date
+                ev_end = ev.end_date or ev.start_date
+                if ev_end < ws or ev_start > we:
+                    continue
+                seg_start = max(ev_start, ws)
+                seg_end = min(ev_end, we)
+                start_col = (seg_start - ws).days
+                span = (seg_end - seg_start).days + 1
+                segs.append(_WeekSegment(event=ev, start_col=start_col, span=span, lane=0))
+
+            assigned = _assign_lanes(segs)
+            week_segments[ws] = assigned
+            lanes_count = 1
+            if assigned:
+                lanes_count = max(s.lane for s in assigned) + 1
+            # Template uses |length on this value (see template)
+            week_lanes[ws] = [None] * lanes_count
+
+    return render(
+        request,
+        "accounts/personnel_availability_calendar.html",
+        {
+            "tab": "users",
+            "users": users,
+            "selected_user": selected_user,
+            "year": year,
+            "month": month,
+            "month_name": _ru_month_name(month),
+            "month_days": month_days,
+            "week_segments": week_segments,
+            "week_lanes": week_lanes,
+        },
     )
 
 

@@ -5,6 +5,7 @@
 <div class="toolbar" style="margin-top:14px;">
   <h1 style="margin:0;">Персонал</h1>
   <div style="display:flex; gap:10px; align-items:center;">
+    <a class="btn-secondary" href="{% url 'personnel_availability_calendar' %}">Календарь занятости</a>
     <a class="btn-secondary" href="{% url 'staff_invite_link' %}">Ссылка для нового сотрудника</a>
     <a class="btn" href="{% url 'staff_user_add' %}">➕ Добавить</a>
   </div>
