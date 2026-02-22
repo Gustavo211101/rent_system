@@ -152,7 +152,7 @@ def calendar_view(request: HttpRequest) -> HttpResponse:
 
     # Фильтры
     if cal_filter == "confirmed":
-        qs = qs.filter(status="confirmed")
+        qs = qs.filter(status__in=["confirmed", "in_progress"])
     elif cal_filter == "mine":
         qs = qs.filter(_participation_q(request.user)).distinct()
 
@@ -214,7 +214,7 @@ def event_list_view(request: HttpRequest) -> HttpResponse:
     # - закрытые и отменённые всегда туда
     # - или те, у которых дата окончания < сегодня
     past_q = (
-        Q(status__in=[Event.STATUS_CLOSED, Event.STATUS_CANCELLED])
+        Q(status__in=[Event.STATUS_CLOSED, Event.STATUS_PROBLEM])
         | Q(end_date__lt=today)
         | (Q(end_date__isnull=True) & Q(start_date__lt=today))
     )
@@ -402,12 +402,6 @@ def event_set_status_view(request: HttpRequest, event_id: int, status: str) -> H
         messages.error(request, reason or "Нельзя изменить статус.")
         return redirect("event_detail", event_id=event.id)
 
-    # Доп. условия для закрытия
-    if status == Event.STATUS_CLOSED:
-        ok2, reason2 = event.is_ready_to_close()
-        if not ok2:
-            messages.error(request, reason2)
-            return redirect("event_detail", event_id=event.id)
 
     event.status = status
     event.save(update_fields=["status"])
@@ -730,76 +724,6 @@ def event_stock_update_qty_view(request: HttpRequest, event_id: int, reservation
 
 
 @login_required
-
-
-@login_required
-def event_stock_return_view(request: HttpRequest, event_id: int) -> HttpResponse:
-    event = get_object_or_404(Event, pk=event_id, is_deleted=False)
-
-    if not can_edit_event_equipment(request.user):
-        return HttpResponseForbidden("Недостаточно прав")
-
-    if request.method == "POST":
-        code = (request.POST.get("inventory_number") or request.POST.get("code") or "").strip()
-
-        if not code:
-            messages.error(request, "Введите инвентарный номер.")
-            return redirect("event_stock_return", event_id=event.id)
-
-        try:
-            item = StockEquipmentItem.objects.select_related("equipment_type").get(inventory_number=code)
-        except StockEquipmentItem.DoesNotExist:
-            messages.error(request, f"Предмет с инвентарным номером '{code}' не найден.")
-            return redirect("event_stock_return", event_id=event.id)
-
-        issue = (
-            EventStockIssue.objects.filter(event=event, item=item, returned_at__isnull=True)
-            .order_by("-issued_at")
-            .first()
-        )
-
-        if not issue:
-            other_issue = (
-                EventStockIssue.objects.filter(item=item, returned_at__isnull=True)
-                .select_related("event")
-                .order_by("-issued_at")
-                .first()
-            )
-            if other_issue and other_issue.event_id != event.id:
-                messages.error(
-                    request,
-                    f"Этот предмет сейчас выдан на мероприятие «{other_issue.event.name}» (ID {other_issue.event.id}).",
-                )
-            else:
-                messages.error(request, "Этот предмет не числится выданным на это мероприятие.")
-            return redirect("event_stock_return", event_id=event.id)
-
-        issue.returned_at = timezone.now()
-        issue.returned_by = request.user
-        issue.save(update_fields=["returned_at", "returned_by"])
-
-        # Возвращаем на склад (простая логика: предмет больше не на мероприятии)
-        item.status = StockEquipmentItem.STATUS_STORAGE
-        item.save(update_fields=["status"])
-
-        log_action(request.user, "event_stock_return", event, extra={"item_id": item.id})
-        messages.success(request, f"Возврат отмечен: {item.inventory_number} ({item.equipment_type.name}).")
-
-        return redirect("event_stock_return", event_id=event.id)
-
-    issued_items = (
-        EventStockIssue.objects.filter(event=event, returned_at__isnull=True)
-        .select_related("item__equipment_type", "issued_by")
-        .order_by("-issued_at")
-    )
-
-    return render(
-        request,
-        "events/event_stock_return.html",
-        {"event": event, "issued_items": issued_items},
-    )
-
-
 def event_stock_delete_view(request: HttpRequest, event_id: int, reservation_id: int) -> HttpResponse:
     event = get_object_or_404(Event, id=event_id, is_deleted=False)
     if not can_edit_event_equipment(request.user):
@@ -821,13 +745,16 @@ def event_stock_load_view(request: HttpRequest, event_id: int) -> HttpResponse:
         return HttpResponseForbidden("Недостаточно прав")
 
 
-    # workflow: при первом заходе в погрузку из "Подтверждено" переводим в "Погрузка"
-    if event.status == Event.STATUS_CONFIRMED:
-        event.status = Event.STATUS_LOADING
+    # workflow: при первом заходе на выдачу переводим в "В работе"
+    event.apply_auto_status()
+
+    # Старт выдачи: переводим в "В работе" независимо от статуса до этого
+    if event.status not in {Event.STATUS_CLOSED, Event.STATUS_PROBLEM} and event.status != Event.STATUS_IN_PROGRESS:
+        event.status = Event.STATUS_IN_PROGRESS
         event.save(update_fields=["status"])
 
-    if event.status not in {Event.STATUS_LOADING, Event.STATUS_IN_PROGRESS}:
-        messages.error(request, "Погрузка доступна только для мероприятий в статусе 'Погрузка' или 'В работе'.")
+    if event.status in {Event.STATUS_CLOSED, Event.STATUS_PROBLEM}:
+        messages.error(request, "Нельзя выдавать оборудование: мероприятие уже завершено.")
         return redirect("event_detail", event_id=event.id)
 
     reservations = (

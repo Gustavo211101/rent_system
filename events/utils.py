@@ -18,13 +18,25 @@ def purge_soft_deleted_events(days: int = 30) -> int:
 
 
 
-def auto_close_past_events():
+def auto_close_past_events() -> int:
     """
-    Автозакрытие прошедших мероприятий:
-    если end_date < today и статус не closed/cancelled -> closed
+    Авто-статус прошедших мероприятий:
+    - если end_date < today и есть невозвращённые инвентарники -> problem
+    - если end_date < today и всё возвращено -> closed
+    Возвращает количество изменённых записей (примерно).
     """
     today = date.today()
-    Event.objects.filter(end_date__lt=today, is_deleted=False).exclude(status__in=["closed", "cancelled"]).update(status="closed")
+    qs = Event.objects.filter(end_date__lt=today, is_deleted=False)
+
+    # 1) Сначала отметим проблемные (есть невозвращённые)
+    problem_qs = qs.filter(stock_issues__returned_at__isnull=True).exclude(status=Event.STATUS_PROBLEM)
+    n_problem = problem_qs.update(status=Event.STATUS_PROBLEM)
+
+    # 2) Остальные прошедшие без активных выдач -> closed
+    closed_qs = qs.exclude(stock_issues__returned_at__isnull=True).exclude(status=Event.STATUS_CLOSED)
+    n_closed = closed_qs.update(status=Event.STATUS_CLOSED)
+
+    return int(n_problem or 0) + int(n_closed or 0)
 
 
 def calculate_shortages(event: Event):
@@ -123,7 +135,7 @@ def find_personnel_conflicts(*, user_ids: list[int], start_date: date, end_date:
 
     qs = (
         Event.objects.filter(is_deleted=False)
-        .exclude(status__in=[Event.STATUS_CANCELLED, Event.STATUS_CLOSED])
+        .exclude(status__in=[Event.STATUS_PROBLEM, Event.STATUS_CLOSED])
         .filter(start_date__lte=end_date, end_date__gte=start_date)
     )
     if exclude_event_id:

@@ -184,8 +184,7 @@ def staff_personnel_availability_calendar_view(request):
         # Exclude deleted/cancelled. Keep draft/confirmed/closed for history.
         qs = (
             Event.objects.filter(is_deleted=False)
-            .exclude(status=Event.STATUS_CANCELLED)
-            .filter(
+                        .filter(
                 Q(responsible=selected_user)
                 | Q(s_engineer=selected_user)
                 | Q(engineers=selected_user)

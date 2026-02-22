@@ -90,11 +90,8 @@
       {% for st in event.allowed_next_statuses %}
         <a class="btn-secondary" href="{% url 'event_set_status' event.id st %}">{{ st|status_label }}</a>
       {% endfor %}
-      {% if event.status != 'cancelled' and event.status != 'closed' %}
+      {% if event.status != 'closed' %}
         {# быстрые действия, которые не всегда являются “следующим шагом” #}
-        {% if event.status != 'draft' %}
-          <a class="btn-secondary" href="{% url 'event_set_status' event.id 'draft' %}">В черновик</a>
-        {% endif %}
       {% endif %}
     {% endif %}
     {% endif %}

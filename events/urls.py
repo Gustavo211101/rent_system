@@ -25,7 +25,7 @@ urlpatterns = [
     # stock loading / scanning (phase 2)
     path("events/<int:event_id>/stock/load/", views.event_stock_load_view, name="event_stock_load"),
     # stock return / scanning (phase 3)
-    path("events/<int:event_id>/stock/return/", views.event_stock_return_view, name="event_stock_return"),
+    path("events/<int:event_id>/stock/return/",views.event_stock_delete_view,name="event_stock_return",),
     path("events/<int:event_id>/stock/issue/<int:issue_id>/delete/", views.event_stock_issue_delete_view, name="event_stock_issue_delete"),
 
     # API

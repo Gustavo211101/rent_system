@@ -109,7 +109,7 @@
               {{ b.event__start_date|date:"d.m.Y" }}{% if b.event__end_date and b.event__end_date != b.event__start_date %}–{{ b.event__end_date|date:"d.m.Y" }}{% endif %}
             </td>
             <td>
-              {% if b.event__status == 'draft' %}Черновик{% elif b.event__status == 'confirmed' %}Подтверждено{% elif b.event__status == 'cancelled' %}Отменено{% elif b.event__status == 'closed' %}Закрыто{% else %}{{ b.event__status }}{% endif %}
+              {% if b.event__status == 'draft' %}Черновик{% elif b.event__status == 'confirmed' %}Подтверждено{% elif b.event__status == 'problem' %}Проблема{% elif b.event__status == 'closed' %}Закрыто{% else %}{{ b.event__status }}{% endif %}
             </td>
             <td><b>{{ b.qty }}</b></td>
           </tr>
@@ -188,7 +188,7 @@
               {{ b.event__start_date|date:"d.m.Y" }}{% if b.event__end_date and b.event__end_date != b.event__start_date %}–{{ b.event__end_date|date:"d.m.Y" }}{% endif %}
             </td>
             <td>
-              {% if b.event__status == 'draft' %}Черновик{% elif b.event__status == 'confirmed' %}Подтверждено{% elif b.event__status == 'cancelled' %}Отменено{% elif b.event__status == 'closed' %}Закрыто{% else %}{{ b.event__status }}{% endif %}
+              {% if b.event__status == 'draft' %}Черновик{% elif b.event__status == 'confirmed' %}Подтверждено{% elif b.event__status == 'problem' %}Проблема{% elif b.event__status == 'closed' %}Закрыто{% else %}{{ b.event__status }}{% endif %}
             </td>
             <td><b>{{ b.qty }}</b></td>
           </tr>

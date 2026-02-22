@@ -17,45 +17,37 @@ class Event(models.Model):
             ("edit_event_equipment", "Can edit event equipment (own/rented)"),
         ]
 
+    # ---- Status workflow (simplified) ----
     STATUS_DRAFT = "draft"
-    STATUS_PLANNED = "planned"
     STATUS_CONFIRMED = "confirmed"
-    STATUS_LOADING = "loading"
     STATUS_IN_PROGRESS = "in_progress"
-    STATUS_FINISHED = "finished"
-    STATUS_CANCELLED = "cancelled"
     STATUS_CLOSED = "closed"
+    STATUS_PROBLEM = "problem"
 
     STATUS_CHOICES = (
         (STATUS_DRAFT, "Черновик"),
-        (STATUS_PLANNED, "Запланировано"),
-        (STATUS_CONFIRMED, "Подтверждено"),
-        (STATUS_LOADING, "Погрузка"),
+        (STATUS_CONFIRMED, "Подтвержден"),
         (STATUS_IN_PROGRESS, "В работе"),
-        (STATUS_FINISHED, "Завершено"),
-        (STATUS_CANCELLED, "Отменено"),
         (STATUS_CLOSED, "Закрыто"),
+        (STATUS_PROBLEM, "Проблема"),
     )
 
     # Статусы, которые считаем “активными” для календаря/фильтров
+    # Статусы, которые считаем “активными” для календаря/фильтров
     STATUS_ACTIVE = (
-        STATUS_PLANNED,
+        STATUS_DRAFT,
         STATUS_CONFIRMED,
-        STATUS_LOADING,
         STATUS_IN_PROGRESS,
-        STATUS_FINISHED,
     )
 
     # Разрешённые переходы статусов (workflow)
+    # В работу переходим автоматически при старте погрузки (сканирование/выдача).
     STATUS_TRANSITIONS: dict[str, tuple[str, ...]] = {
-        STATUS_DRAFT: (STATUS_PLANNED, STATUS_CANCELLED),
-        STATUS_PLANNED: (STATUS_CONFIRMED, STATUS_CANCELLED, STATUS_DRAFT),
-        STATUS_CONFIRMED: (STATUS_LOADING, STATUS_CANCELLED, STATUS_PLANNED),
-        STATUS_LOADING: (STATUS_IN_PROGRESS,),
-        STATUS_IN_PROGRESS: (STATUS_FINISHED,),
-        STATUS_FINISHED: (STATUS_CLOSED,),
-        STATUS_CANCELLED: (),
+        STATUS_DRAFT: (STATUS_CONFIRMED,),
+        STATUS_CONFIRMED: (STATUS_DRAFT,),
+        STATUS_IN_PROGRESS: (),
         STATUS_CLOSED: (),
+        STATUS_PROBLEM: (),
     }
 
     name = models.CharField(max_length=200)
@@ -111,44 +103,56 @@ class Event(models.Model):
         return self.STATUS_TRANSITIONS.get(self.status, ())
 
     def can_set_status(self, new_status: str) -> tuple[bool, str]:
-        """Возвращает (ok, reason)."""
+        """Возвращает (ok, reason). UI-переходы статуса (упрощённые)."""
         if new_status == self.status:
             return True, ""
         if new_status not in dict(self.STATUS_CHOICES):
             return False, "Некорректный статус."
+        # Закрыто/Проблема выставляются автоматически (по дате и возвратам)
+        if new_status in {self.STATUS_CLOSED, self.STATUS_PROBLEM}:
+            return False, "Этот статус выставляется автоматически."
         allowed = set(self.allowed_next_statuses())
         if new_status not in allowed:
             return False, "Недопустимый переход статуса."
-        # Нельзя отменять, если уже есть выданные (не возвращённые) инвентарники
-        if new_status == self.STATUS_CANCELLED and self.has_active_stock_issues():
-            return False, "Нельзя отменить мероприятие: сначала оформите возврат выданного оборудования."
+        # В работу переходим автоматически при старте погрузки (выдача/сканирование)
+        if new_status == self.STATUS_IN_PROGRESS:
+            return False, "Статус 'В работе' выставляется автоматически при старте погрузки."
         return True, ""
+
 
     def is_ready_to_close(self) -> tuple[bool, str]:
-        """Условия закрытия: нет невозвращённого оборудования и по брони всё было выдано."""
+        """Условия автозакрытия: дата прошла и нет невозвращённого оборудования."""
+        from django.utils import timezone
+        today = timezone.localdate()
+        if self.end_date and self.end_date >= today:
+            return False, "Нельзя закрыть: дата ещё не прошла."
         if self.has_active_stock_issues():
             return False, "Нельзя закрыть: есть невозвращённые инвентарники."
-
-        # Проверим, что выдача (фактические сканы) покрывает бронь по типам
-        from django.apps import apps
-        from django.db.models import Count
-
-        EventStockReservation = apps.get_model("events", "EventStockReservation")
-        EventStockIssue = apps.get_model("events", "EventStockIssue")
-
-        issued_counts = (
-            EventStockIssue.objects.filter(event=self)
-            .values("item__equipment_type_id")
-            .annotate(c=Count("id"))
-        )
-        issued_map = {row["item__equipment_type_id"]: int(row["c"] or 0) for row in issued_counts}
-
-        for r in EventStockReservation.objects.filter(event=self):
-            if issued_map.get(r.equipment_type_id, 0) < r.quantity:
-                return False, "Нельзя закрыть: не всё оборудование было выдано по брони."
-
         return True, ""
 
+    def get_auto_status(self):
+        """Возвращает (status, changed_flag) по правилам 'Закрыто/Проблема'."""
+        from django.utils import timezone
+        today = timezone.localdate()
+        if not self.end_date or self.end_date >= today:
+            return self.status, False
+        if self.has_active_stock_issues():
+            if self.status != self.STATUS_PROBLEM:
+                return self.STATUS_PROBLEM, True
+            return self.status, False
+        if self.status != self.STATUS_CLOSED:
+            return self.STATUS_CLOSED, True
+        return self.status, False
+
+    def apply_auto_status(self, save: bool = True) -> bool:
+        """Применяет авто-статус (Закрыто/Проблема). Возвращает True если изменилось."""
+        new_status, changed = self.get_auto_status()
+        if not changed:
+            return False
+        self.status = new_status
+        if save:
+            self.save(update_fields=["status"])
+        return True
 
     def clean(self):
         if not self.end_date:
