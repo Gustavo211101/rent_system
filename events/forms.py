@@ -176,6 +176,18 @@ class EventForm(forms.ModelForm):
         return event
 
 
+
+    def clean(self):
+        cleaned = super().clean()
+        # Валидация workflow статусов (для редактирования существующего мероприятия)
+        if self.instance and getattr(self.instance, "id", None):
+            new_status = cleaned.get("status")
+            if new_status:
+                ok, reason = self.instance.can_set_status(new_status)
+                if not ok and new_status != self.instance.status:
+                    self.add_error("status", reason or "Недопустимый переход статуса.")
+        return cleaned
+
 class EventEquipmentForm(forms.ModelForm):
     equipment = forms.ModelChoiceField(
         queryset=Equipment.objects.all().order_by("name"),

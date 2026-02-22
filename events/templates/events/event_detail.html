@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load event_extras %}
 
 {% block content %}
 <div class="page-head">
@@ -85,26 +86,17 @@
 
       <div style="height:10px;"></div>
 
-      {% if event.status != 'draft' %}
-        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'draft' %}">В черновик</a>
-      {% endif %}
-      {% if event.status != 'confirmed' %}
-        <a class="btn-secondary" href="{% url 'event_set_status' event.id 'confirmed' %}">Подтвердить</a>
-      {% endif %}
-      {% if event.status != 'cancelled' %}
-        {% if can_cancel %}
-          <a class="btn-secondary" href="{% url 'event_set_status' event.id 'cancelled' %}">Отменить</a>
-        {% else %}
-          <span class="btn-secondary" style="opacity:.5; cursor:not-allowed;" title="Отмена возможна только до выдачи">Отменить</span>
+      {% if event.allowed_next_statuses %}
+      {% for st in event.allowed_next_statuses %}
+        <a class="btn-secondary" href="{% url 'event_set_status' event.id st %}">{{ st|status_label }}</a>
+      {% endfor %}
+      {% if event.status != 'cancelled' and event.status != 'closed' %}
+        {# быстрые действия, которые не всегда являются “следующим шагом” #}
+        {% if event.status != 'draft' %}
+          <a class="btn-secondary" href="{% url 'event_set_status' event.id 'draft' %}">В черновик</a>
         {% endif %}
       {% endif %}
-      {% if event.status != 'closed' %}
-        {% if can_close %}
-          <a class="btn-secondary" href="{% url 'event_set_status' event.id 'closed' %}">Закрыть</a>
-        {% else %}
-          <span class="btn-secondary" style="opacity:.5; cursor:not-allowed;" title="Закрыть можно только когда всё выдано и всё возвращено">Закрыть</span>
-        {% endif %}
-      {% endif %}
+    {% endif %}
     {% endif %}
   </div>
 </div>
@@ -131,8 +123,6 @@
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <a class="btn" href="{% url 'event_stock_add' event.id %}">➕ Забронировать со склада</a>
         <a class="btn-secondary" href="{% url 'event_stock_load' event.id %}">🚚 Погрузка (сканер)</a>
-        <a class="btn-secondary" href="{% url 'event_stock_return' event.id %}">↩ Возврат (сканер)</a>
-        <a class="btn-secondary" href="{% url 'event_stock_transfer' event.id %}">⇄ Перевыдача</a>
       </div>
     {% endif %}
   </div>
@@ -145,7 +135,7 @@
         <tr>
           <th>Тип</th>
           <th style="width:200px;">Бронь</th>
-          <th style="width:240px;">Выдача / Возврат</th>
+          <th style="width:220px;">Отсканировано</th>
           <th style="width:220px;">Доступно на даты</th>
           {% if can_edit_equipment %}
             <th style="width:260px;">Действия</th>
@@ -178,20 +168,13 @@
 
             <td>
               <div>
-                <div><strong>Выдано:</strong> {{ row.issued_total|default:0 }} / {{ row.reservation.quantity }}</div>
-                <div class="muted" style="margin-top:2px;">
-                  <strong>Возвращено:</strong> {{ row.returned|default:0 }} / {{ row.issued_total|default:0 }}
-                </div>
-                {% if row.unreturned|add:0 > 0 %}
-                  <div class="muted" style="margin-top:2px; color:#b05;">
-                    ⚠ не возвращено: {{ row.unreturned }}
-                  </div>
-                {% elif row.remaining_to_issue|add:0 > 0 %}
-                  <div class="muted" style="margin-top:2px;">Осталось выдать: {{ row.remaining_to_issue }}</div>
-                {% else %}
-                  <div class="muted" style="margin-top:2px;">✅ Выдано и возвращено</div>
-                {% endif %}
+                <strong>{{ row.issued|default:0 }}</strong> / {{ row.reservation.quantity }}
               </div>
+              {% if row.issued and row.issued|add:0 >= row.reservation.quantity %}
+                <div class="muted" style="margin-top:2px;">✅ План закрыт</div>
+              {% else %}
+                <div class="muted" style="margin-top:2px;">Осталось: {{ row.remaining }}</div>
+              {% endif %}
             </td>
 
             <td>

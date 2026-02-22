@@ -110,3 +110,36 @@ def calculate_shortages(event: Event):
 
     result.sort(key=lambda x: x["shortage"], reverse=True)
     return result
+
+
+def find_personnel_conflicts(*, user_ids: list[int], start_date: date, end_date: date, exclude_event_id: int | None = None):
+    """Возвращает словарь {user_id: [events...]} для пересекающихся мероприятий.
+    Не блокирует сохранение — используется для предупреждений.
+    """
+    from django.db.models import Q
+
+    if not user_ids:
+        return {}
+
+    qs = (
+        Event.objects.filter(is_deleted=False)
+        .exclude(status__in=[Event.STATUS_CANCELLED, Event.STATUS_CLOSED])
+        .filter(start_date__lte=end_date, end_date__gte=start_date)
+    )
+    if exclude_event_id:
+        qs = qs.exclude(id=exclude_event_id)
+
+    conflicts: dict[int, list[Event]] = {uid: [] for uid in user_ids}
+    for uid in user_ids:
+        u_q = (
+            Q(responsible_id=uid)
+            | Q(s_engineer_id=uid)
+            | Q(engineers__id=uid)
+            | Q(role_slots__users__id=uid)
+        )
+        evs = list(qs.filter(u_q).distinct().order_by("start_date", "id")[:50])
+        if evs:
+            conflicts[uid] = evs
+
+    # убрать пустые
+    return {uid: evs for uid, evs in conflicts.items() if evs}

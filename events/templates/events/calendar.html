@@ -274,7 +274,7 @@
     <label class="muted" for="filter" style="white-space:nowrap;">Фильтр:</label>
     <select id="filter" name="filter" onchange="this.form.submit()">
       <option value="all" {% if filter == "all" %}selected{% endif %}>Все</option>
-      <option value="confirmed" {% if filter == "confirmed" %}selected{% endif %}>Только подтверждённые</option>
+      <option value="confirmed" {% if filter == "confirmed" %}selected{% endif %}>Только активные</option>
       <option value="mine" {% if filter == "mine" %}selected{% endif %}>Только мои</option>
     </select>
     <noscript><button class="btn-secondary" type="submit">OK</button></noscript>

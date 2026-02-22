@@ -18,16 +18,45 @@ class Event(models.Model):
         ]
 
     STATUS_DRAFT = "draft"
+    STATUS_PLANNED = "planned"
     STATUS_CONFIRMED = "confirmed"
+    STATUS_LOADING = "loading"
+    STATUS_IN_PROGRESS = "in_progress"
+    STATUS_FINISHED = "finished"
     STATUS_CANCELLED = "cancelled"
     STATUS_CLOSED = "closed"
 
     STATUS_CHOICES = (
         (STATUS_DRAFT, "Черновик"),
+        (STATUS_PLANNED, "Запланировано"),
         (STATUS_CONFIRMED, "Подтверждено"),
+        (STATUS_LOADING, "Погрузка"),
+        (STATUS_IN_PROGRESS, "В работе"),
+        (STATUS_FINISHED, "Завершено"),
         (STATUS_CANCELLED, "Отменено"),
         (STATUS_CLOSED, "Закрыто"),
     )
+
+    # Статусы, которые считаем “активными” для календаря/фильтров
+    STATUS_ACTIVE = (
+        STATUS_PLANNED,
+        STATUS_CONFIRMED,
+        STATUS_LOADING,
+        STATUS_IN_PROGRESS,
+        STATUS_FINISHED,
+    )
+
+    # Разрешённые переходы статусов (workflow)
+    STATUS_TRANSITIONS: dict[str, tuple[str, ...]] = {
+        STATUS_DRAFT: (STATUS_PLANNED, STATUS_CANCELLED),
+        STATUS_PLANNED: (STATUS_CONFIRMED, STATUS_CANCELLED, STATUS_DRAFT),
+        STATUS_CONFIRMED: (STATUS_LOADING, STATUS_CANCELLED, STATUS_PLANNED),
+        STATUS_LOADING: (STATUS_IN_PROGRESS,),
+        STATUS_IN_PROGRESS: (STATUS_FINISHED,),
+        STATUS_FINISHED: (STATUS_CLOSED,),
+        STATUS_CANCELLED: (),
+        STATUS_CLOSED: (),
+    }
 
     name = models.CharField(max_length=200)
 
@@ -74,6 +103,52 @@ class Event(models.Model):
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def has_active_stock_issues(self) -> bool:
+        return self.stock_issues.filter(returned_at__isnull=True).exists()
+
+    def allowed_next_statuses(self) -> tuple[str, ...]:
+        return self.STATUS_TRANSITIONS.get(self.status, ())
+
+    def can_set_status(self, new_status: str) -> tuple[bool, str]:
+        """Возвращает (ok, reason)."""
+        if new_status == self.status:
+            return True, ""
+        if new_status not in dict(self.STATUS_CHOICES):
+            return False, "Некорректный статус."
+        allowed = set(self.allowed_next_statuses())
+        if new_status not in allowed:
+            return False, "Недопустимый переход статуса."
+        # Нельзя отменять, если уже есть выданные (не возвращённые) инвентарники
+        if new_status == self.STATUS_CANCELLED and self.has_active_stock_issues():
+            return False, "Нельзя отменить мероприятие: сначала оформите возврат выданного оборудования."
+        return True, ""
+
+    def is_ready_to_close(self) -> tuple[bool, str]:
+        """Условия закрытия: нет невозвращённого оборудования и по брони всё было выдано."""
+        if self.has_active_stock_issues():
+            return False, "Нельзя закрыть: есть невозвращённые инвентарники."
+
+        # Проверим, что выдача (фактические сканы) покрывает бронь по типам
+        from django.apps import apps
+        from django.db.models import Count
+
+        EventStockReservation = apps.get_model("events", "EventStockReservation")
+        EventStockIssue = apps.get_model("events", "EventStockIssue")
+
+        issued_counts = (
+            EventStockIssue.objects.filter(event=self)
+            .values("item__equipment_type_id")
+            .annotate(c=Count("id"))
+        )
+        issued_map = {row["item__equipment_type_id"]: int(row["c"] or 0) for row in issued_counts}
+
+        for r in EventStockReservation.objects.filter(event=self):
+            if issued_map.get(r.equipment_type_id, 0) < r.quantity:
+                return False, "Нельзя закрыть: не всё оборудование было выдано по брони."
+
+        return True, ""
+
 
     def clean(self):
         if not self.end_date:
@@ -172,13 +247,7 @@ class EventStockReservation(models.Model):
         ).exclude(status=StockEquipmentItem.STATUS_REPAIR).count()
 
         # Сумма броней на пересекающиеся даты (кроме текущего события)
-        # Важно: учитываем только «активные» события, иначе бронь будет «залипать» навсегда.
-        qs = (
-            EventStockReservation.objects.select_related("event")
-            .filter(equipment_type=equipment_type)
-            .filter(event__is_deleted=False)
-            .filter(event__status__in=[Event.STATUS_DRAFT, Event.STATUS_CONFIRMED])
-        )
+        qs = EventStockReservation.objects.select_related("event").filter(equipment_type=equipment_type)
         if exclude_event_id:
             qs = qs.exclude(event_id=exclude_event_id)
 
@@ -219,20 +288,6 @@ class EventStockIssue(models.Model):
 
     class Meta:
         ordering = ["-issued_at", "-id"]
-        constraints = [
-            # Один и тот же инвентарник не может быть выдан дважды в рамках одного мероприятия.
-            models.UniqueConstraint(
-                fields=["event", "item"],
-                condition=models.Q(returned_at__isnull=True),
-                name="uniq_event_stock_issue_active_event_item",
-            ),
-            # Один и тот же инвентарник не может быть одновременно "активно" выдан в разные мероприятия.
-            models.UniqueConstraint(
-                fields=["item"],
-                condition=models.Q(returned_at__isnull=True),
-                name="uniq_event_stock_issue_active_item",
-            ),
-        ]
 
     def __str__(self):
         return f"{self.event} — {self.item.inventory_number}"
